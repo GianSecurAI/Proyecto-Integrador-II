@@ -1,0 +1,22 @@
+@use 'tokens' as *;
+
+:host {
+  display: block;
+}
+
+.product-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--ar-space-5);
+
+  @media (min-width: $bp-sm) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @media (min-width: $bp-lg) {
+    // Figma's Catalogo desktop layout is a ~1087px content column (3 cards wide) next to the
+    // filter sidebar, not Home's full-width 4-column grid — matched here rather than reused,
+    // since the two pages have different available width.
+    grid-template-columns: repeat(3, 1fr);
+  }
+}

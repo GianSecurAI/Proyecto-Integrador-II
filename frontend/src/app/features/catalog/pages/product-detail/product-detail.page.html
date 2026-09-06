@@ -1,0 +1,85 @@
+<main class="product-detail">
+  <div class="product-detail__container">
+    @if (detail(); as detail) {
+      <div class="product-detail__overview">
+        <app-product-gallery [images]="detail.images" />
+        <section class="product-detail__summary" aria-labelledby="product-title">
+          <nav aria-label="Ruta de navegación" class="product-detail__breadcrumb">
+            <a routerLink="/">Inicio</a><span aria-hidden="true">/</span>
+            <a routerLink="/catalog">Productos</a><span aria-hidden="true">/</span>
+            <span>{{ detail.product.category }}</span>
+          </nav>
+          <div>
+            <p class="product-detail__eyebrow">
+              {{ detail.product.category }} / {{ detail.product.subcategory }}
+            </p>
+            <h1 id="product-title">{{ detail.product.title }}</h1>
+          </div>
+          <p class="product-detail__price">S/ {{ detail.product.price.toFixed(2) }}</p>
+          <p class="product-detail__lead">{{ detail.description }}</p>
+          <div class="product-detail__actions">
+            <button
+              type="button"
+              class="ui-btn ui-btn--primary ui-btn--lg ui-btn--full"
+              (click)="previewAction('buy')"
+            >
+              Comprar ahora S/ {{ detail.product.price.toFixed(2) }}
+            </button>
+            <button
+              type="button"
+              class="ui-btn ui-btn--ghost ui-btn--on-dark ui-btn--md ui-btn--full"
+              (click)="previewAction('basket')"
+            >
+              Añadir a la cesta
+            </button>
+            <p role="status" class="product-detail__feedback">{{ actionMessage() }}</p>
+          </div>
+        </section>
+      </div>
+      <section class="product-detail__panel" aria-labelledby="description-title">
+        <h2 id="description-title">Descripción</h2>
+        <h3>{{ detail.product.title }}</h3>
+        <p>{{ detail.description }}</p>
+        @if (detail.characteristics.length) {
+          <h3>Características principales</h3>
+          <ul>
+            @for (characteristic of detail.characteristics; track characteristic) {
+              <li>{{ characteristic }}</li>
+            }
+          </ul>
+        }
+      </section>
+      <section class="product-detail__panel" aria-labelledby="specifications-title">
+        <h2 id="specifications-title">Especificaciones del producto</h2>
+        <dl class="product-detail__specifications">
+          @for (specification of detail.specifications; track specification.label) {
+            <div>
+              <dt>{{ specification.label }}</dt>
+              <dd>{{ specification.value }}</dd>
+            </div>
+          }
+        </dl>
+      </section>
+      @if (detail.relatedProducts.length) {
+        <section aria-labelledby="related-title" class="product-detail__related">
+          <h2 id="related-title">También te puede interesar</h2>
+          <div class="product-detail__related-grid">
+            @for (product of detail.relatedProducts; track product.id) {
+              <app-product-card [product]="product" />
+            }
+          </div>
+        </section>
+      }
+    } @else {
+      <h1>Producto no encontrado</h1>
+      <app-empty-state
+        title="No encontramos este producto"
+        description="Puedes seguir explorando nuestro catálogo."
+      >
+        <a emptyStateAction class="ui-btn ui-btn--primary ui-btn--md" routerLink="/catalog"
+          >Volver al catálogo</a
+        >
+      </app-empty-state>
+    }
+  </div>
+</main>

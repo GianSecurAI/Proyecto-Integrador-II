@@ -1,0 +1,104 @@
+@use 'tokens' as *;
+
+:host {
+  display: block;
+  background: var(--ar-color-black);
+  color: var(--ar-color-white);
+  padding: var(--ar-space-8) var(--ar-space-5);
+}
+
+.why-choose-us {
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.why-choose-us__header {
+  text-align: center;
+  max-width: 640px;
+  margin: 0 auto var(--ar-space-7);
+}
+
+.why-choose-us__heading {
+  margin: 0 0 var(--ar-space-3);
+  font-size: var(--ar-font-size-2xl);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--ar-letter-spacing-wide);
+}
+
+.why-choose-us__heading-accent {
+  color: var(--ar-color-accent);
+}
+
+.why-choose-us__subheading {
+  margin: 0;
+  color: var(--ar-color-muted-on-dark);
+}
+
+.why-choose-us__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--ar-space-5);
+
+  @media (min-width: $bp-sm) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @media (min-width: $bp-lg) {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.feature-card {
+  background: var(--ar-color-black);
+  border: var(--ar-border-width) solid var(--ar-color-white);
+  border-radius: var(--ar-radius-md);
+  box-shadow: var(--ar-shadow-hard);
+  padding: var(--ar-space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ar-space-3);
+}
+
+.feature-card__icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--ar-radius-md);
+  border: var(--ar-border-width) solid var(--ar-color-black);
+  box-shadow: var(--ar-shadow-hard-sm);
+  color: var(--ar-color-black);
+
+  svg {
+    width: 24px;
+    height: 24px;
+  }
+}
+
+.feature-card__icon--accent {
+  background: var(--ar-color-accent);
+}
+
+.feature-card__icon--info {
+  background: var(--ar-color-accent-info);
+}
+
+.feature-card__icon--success {
+  background: var(--ar-color-accent-success);
+}
+
+.feature-card__title {
+  margin: 0;
+  font-size: var(--ar-font-size-base);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--ar-letter-spacing-wide);
+}
+
+.feature-card__description {
+  margin: 0;
+  font-size: var(--ar-font-size-sm);
+  color: var(--ar-color-muted-on-dark);
+}

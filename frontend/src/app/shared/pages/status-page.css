@@ -1,0 +1,33 @@
+/* Shared visual treatment for not-found / forbidden / unexpected-error pages. High-contrast,
+   simple palette chosen deliberately over the (unverified for contrast) Figma neo-brutalist
+   palette — Constitution Principle XVI requires contrast to be checked before reuse, and no
+   verification has happened yet, so this uses a conservative, known-accessible pairing instead. */
+.status-page {
+  max-width: 32rem;
+  margin: 4rem auto;
+  padding: 0 1.5rem;
+  text-align: center;
+  color: #1a1a1a;
+}
+
+.status-page h1 {
+  font-size: 1.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.status-page p {
+  font-size: 1rem;
+  line-height: 1.5;
+  margin-bottom: 1.5rem;
+}
+
+.status-page a {
+  color: #0b5fff;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.status-page a:focus-visible {
+  outline: 3px solid #0b5fff;
+  outline-offset: 2px;
+}

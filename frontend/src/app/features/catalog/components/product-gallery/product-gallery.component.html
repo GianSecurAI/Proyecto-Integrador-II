@@ -1,0 +1,25 @@
+<section aria-label="Fotos del producto" class="gallery">
+  <h2 class="gallery__heading">Fotos</h2>
+  <div class="gallery__stage">
+    @if (selectedImage(); as image) {
+      <img class="gallery__image" [src]="image.src" [alt]="image.alt" width="714" height="539" />
+    } @else {
+      <p class="gallery__empty">Imagen no disponible</p>
+    }
+  </div>
+  @if (images().length > 1) {
+    <div class="gallery__thumbnails" role="group" aria-label="Seleccionar foto">
+      @for (image of images(); track image.src; let index = $index) {
+        <button
+          class="gallery__thumbnail"
+          type="button"
+          [attr.aria-label]="'Ver foto ' + (index + 1)"
+          [attr.aria-pressed]="selectedImage()?.src === image.src"
+          (click)="selectedSource.set(image.src)"
+        >
+          <img [src]="image.src" alt="" width="156" height="156" />
+        </button>
+      }
+    </div>
+  }
+</section>

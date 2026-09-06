@@ -1,0 +1,27 @@
+@use 'tokens' as *;
+
+// Shared layout for the loading/empty/error state components (shared/ui/*-state). Kept as one
+// global partial so the three components don't each redefine the same box.
+.ui-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ar-space-3);
+  padding: var(--ar-space-7) var(--ar-space-4);
+  text-align: center;
+}
+
+.ui-state__title {
+  margin: 0;
+  font-size: var(--ar-font-size-lg);
+  text-transform: uppercase;
+}
+
+.ui-state__title--danger {
+  color: var(--ar-color-danger);
+}
+
+.ui-state__message {
+  margin: 0;
+  color: var(--ar-color-muted-on-light);
+}

@@ -1,0 +1,23 @@
+<header class="app-header">
+  <div class="app-header__bar">
+    <a class="app-header__brand" routerLink="/">
+      AR MAKERS <span class="app-header__brand-accent">3D</span>
+    </a>
+
+    <nav class="app-header__nav" aria-label="Principal">
+      <a class="ui-btn ui-btn--ghost ui-btn--on-dark ui-btn--sm" routerLink="/catalog">
+        Catálogo
+      </a>
+
+      @if (isAuthenticated()) {
+        <a class="ui-btn ui-btn--ghost ui-btn--on-dark ui-btn--sm" routerLink="/account">
+          Mi cuenta
+        </a>
+      } @else {
+        <a class="ui-btn ui-btn--ghost ui-btn--on-dark ui-btn--sm" routerLink="/auth/request-code">
+          Acceder
+        </a>
+      }
+    </nav>
+  </div>
+</header>

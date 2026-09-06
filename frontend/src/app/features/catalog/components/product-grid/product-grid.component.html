@@ -1,0 +1,29 @@
+@switch (status()) {
+  @case ('loading') {
+    <app-loading-state message="Cargando productos…" />
+  }
+  @case ('error') {
+    <app-error-state
+      title="No se pudieron cargar los productos"
+      description="Ocurrió un problema al conectar con el catálogo. Inténtalo de nuevo."
+    >
+      <app-button errorStateAction variant="secondary" (clicked)="onRetry()">
+        Reintentar
+      </app-button>
+    </app-error-state>
+  }
+  @default {
+    @if (products().length === 0) {
+      <app-empty-state
+        title="No encontramos productos"
+        description="Prueba a ajustar o restablecer los filtros para ver más resultados."
+      />
+    } @else {
+      <div class="product-grid">
+        @for (product of products(); track product.id) {
+          <app-product-card [product]="product" />
+        }
+      </div>
+    }
+  }
+}

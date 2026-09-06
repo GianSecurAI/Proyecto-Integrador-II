@@ -1,0 +1,58 @@
+@use 'tokens' as *;
+
+:host {
+  display: block;
+  background: var(--ar-color-black);
+  color: var(--ar-color-white);
+  padding: var(--ar-space-8) var(--ar-space-5);
+}
+
+.product-showcase {
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.product-showcase__header {
+  text-align: center;
+  max-width: 640px;
+  margin: 0 auto var(--ar-space-7);
+}
+
+.product-showcase__heading {
+  margin: 0 0 var(--ar-space-3);
+  font-size: var(--ar-font-size-2xl);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--ar-letter-spacing-wide);
+  line-height: var(--ar-line-height-tight);
+}
+
+.product-showcase__heading-accent {
+  color: var(--ar-color-accent);
+}
+
+.product-showcase__subheading {
+  margin: 0;
+  color: var(--ar-color-muted-on-dark);
+}
+
+.product-showcase__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--ar-space-5);
+  margin-bottom: var(--ar-space-7);
+
+  @media (min-width: $bp-md) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @media (min-width: $bp-lg) {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.product-showcase__footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}

@@ -1,0 +1,7 @@
+<div class="ui-state ui-state--error" role="alert">
+  <h2 class="ui-state__title ui-state__title--danger">{{ title() }}</h2>
+  @if (description()) {
+    <p class="ui-state__message">{{ description() }}</p>
+  }
+  <ng-content select="[errorStateAction]"></ng-content>
+</div>

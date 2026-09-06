@@ -1,0 +1,23 @@
+<section class="hero">
+  <h1 class="hero__heading">
+    Productos <span class="hero__heading-accent">y</span> regalos personalizados
+  </h1>
+  <p class="hero__subheading">
+    Regalos únicos, pegatinas personalizadas y tesoros impresos en 3D hechos exclusivamente para ti.
+  </p>
+
+  <a class="ui-btn ui-btn--primary ui-btn--lg ui-btn--on-dark hero__cta" routerLink="/catalog">
+    Comprar ahora →
+  </a>
+
+  <div class="hero__divider" aria-hidden="true"></div>
+
+  <dl class="hero__stats">
+    @for (stat of stats; track stat.label) {
+      <div class="hero__stat">
+        <dt class="hero__stat-value">{{ stat.value }}</dt>
+        <dd class="hero__stat-label">{{ stat.label }}</dd>
+      </div>
+    }
+  </dl>
+</section>

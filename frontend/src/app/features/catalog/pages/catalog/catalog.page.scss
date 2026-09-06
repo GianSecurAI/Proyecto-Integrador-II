@@ -1,0 +1,50 @@
+@use 'tokens' as *;
+
+:host {
+  display: block;
+}
+
+.catalog-page {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: var(--ar-space-6) var(--ar-space-5) var(--ar-space-8);
+}
+
+.catalog-page__body {
+  display: grid;
+  gap: var(--ar-space-5);
+  margin-top: var(--ar-space-6);
+
+  @media (min-width: $bp-lg) {
+    // Figma's Catalogo desktop layout is a two-column page: a narrow filter sidebar next to a
+    // wide product grid (~1087px content column). Below this breakpoint there's no responsive
+    // spec in Figma at all (same situation as Home), so the sidebar becomes a toggleable panel
+    // stacked above the grid instead — our own mobile-first call, per Principle XVII.
+    grid-template-columns: 280px 1fr;
+    align-items: start;
+  }
+}
+
+.catalog-page__filters-toggle {
+  width: fit-content;
+
+  @media (min-width: $bp-lg) {
+    display: none;
+  }
+}
+
+.catalog-page__filters {
+  display: none;
+
+  &--open {
+    display: block;
+  }
+
+  @media (min-width: $bp-lg) {
+    display: block;
+  }
+}
+
+.catalog-page__grid {
+  min-width: 0;
+}

@@ -1,0 +1,45 @@
+@use 'tokens' as *;
+
+:host {
+  display: block;
+}
+
+.app-header {
+  // Overrides the global focus-ring color (src/styles/_base.scss) so it stays visible
+  // against this dark surface — see the --ar-color-focus comment in _tokens.scss.
+  --ar-color-focus: var(--ar-color-white);
+
+  background: var(--ar-color-black);
+  color: var(--ar-color-white);
+  border-bottom: var(--ar-border-width-thick) solid var(--ar-color-white);
+}
+
+.app-header__bar {
+  max-width: 1280px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--ar-space-4);
+  padding: var(--ar-space-4) var(--ar-space-5);
+}
+
+.app-header__brand {
+  font-weight: 700;
+  font-size: var(--ar-font-size-lg);
+  text-transform: uppercase;
+  letter-spacing: var(--ar-letter-spacing-wide);
+  text-decoration: none;
+  color: var(--ar-color-white);
+}
+
+.app-header__brand-accent {
+  color: var(--ar-color-accent);
+}
+
+.app-header__nav {
+  display: flex;
+  align-items: center;
+  gap: var(--ar-space-3);
+}

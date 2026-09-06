@@ -1,0 +1,21 @@
+@use 'tokens' as *;
+
+// Shared box layout (.ui-state, .ui-state__message) lives in src/styles/_states.scss.
+:host {
+  display: block;
+}
+
+.ui-state__spinner {
+  width: 2rem;
+  height: 2rem;
+  border: 3px solid var(--ar-color-black);
+  border-right-color: var(--ar-color-accent);
+  border-radius: 50%;
+  animation: ui-state-spin 0.7s linear infinite;
+}
+
+@keyframes ui-state-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

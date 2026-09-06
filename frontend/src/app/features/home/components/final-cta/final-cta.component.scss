@@ -1,0 +1,40 @@
+@use 'tokens' as *;
+
+:host {
+  display: block;
+  background: var(--ar-color-white);
+  color: var(--ar-color-black);
+  text-align: center;
+  padding: var(--ar-space-8) var(--ar-space-5);
+}
+
+.final-cta {
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.final-cta__heading {
+  margin: 0 0 var(--ar-space-3);
+  font-size: var(--ar-font-size-2xl);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--ar-letter-spacing-wide);
+}
+
+.final-cta__heading-accent {
+  // The base lime accent fails contrast as text on a white surface — see the
+  // --ar-color-accent-on-light comment in _tokens.scss.
+  color: var(--ar-color-accent-on-light);
+}
+
+.final-cta__subheading {
+  margin: 0 0 var(--ar-space-6);
+  color: var(--ar-color-muted-on-light);
+}
+
+.final-cta__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--ar-space-4);
+}

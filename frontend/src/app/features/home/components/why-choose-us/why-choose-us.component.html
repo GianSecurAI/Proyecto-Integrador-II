@@ -1,0 +1,61 @@
+<section class="why-choose-us">
+  <div class="why-choose-us__header">
+    <h2 class="why-choose-us__heading">
+      ¿Por qué elegir <span class="why-choose-us__heading-accent">Ar Makers 3D</span>?
+    </h2>
+    <p class="why-choose-us__subheading">
+      Ofrecemos calidad, creatividad y fiabilidad en cada producto.
+    </p>
+  </div>
+
+  <div class="why-choose-us__grid">
+    @for (feature of features; track feature.title) {
+      <div class="feature-card">
+        <div class="feature-card__icon" [class]="'feature-card__icon--' + feature.iconBg">
+          @switch (feature.icon) {
+            @case ('bolt') {
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" fill="currentColor" />
+              </svg>
+            }
+            @case ('shield') {
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path
+                  d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5l-8-3Z"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            }
+            @case ('star') {
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path
+                  d="m12 2 2.9 6.6 7.1.6-5.4 4.7 1.6 7-6.2-3.8-6.2 3.8 1.6-7L2 9.2l7.1-.6L12 2Z"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            }
+            @case ('chat') {
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path
+                  d="M4 4h16v11H8l-4 4V4Z"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            }
+          }
+        </div>
+        <h3 class="feature-card__title">{{ feature.title }}</h3>
+        <p class="feature-card__description">{{ feature.description }}</p>
+      </div>
+    }
+  </div>
+</section>

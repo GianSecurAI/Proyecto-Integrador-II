@@ -1,0 +1,106 @@
+// Design tokens for the Ar Makers 3D design system.
+//
+// Values are adapted from the Figma visual system (docs/discovery/05-figma-analysis.md
+// §6-9: typography, color, spacing, hard shadow, borders) — reuse of that visual language is
+// explicitly allowed by Constitution Principle XV. None of the *business flows* in that Figma
+// file (password + OAuth login, self-service cart/checkout, generic contact form) are reused
+// here; they are documented CONFLICTs, not a source for this design system.
+//
+// Two colors were shifted from their literal Figma values because Principle XVI requires
+// contrast to be verified before reuse (05-figma-analysis §7 explicitly flags the palette as
+// unverified):
+//   - muted text on a LIGHT surface: #888888 -> #5c5c5c (Figma's value is ~3.5:1 on white,
+//     below the 4.5:1 AA threshold for normal text; #5c5c5c is ~6.7:1).
+//   - danger/error: #ef4444 -> #dc2626 (Figma's value is ~3.8:1 on white; #dc2626 is ~4.8:1).
+// #888888 is kept unchanged as the muted color for DARK surfaces, where it already passes
+// (~5.9:1 on black).
+:root {
+  // Color — base palette
+  --ar-color-black: #000000;
+  --ar-color-white: #ffffff;
+  --ar-color-accent: #a3e635;
+  --ar-color-surface-dark: #1a1a1a;
+  --ar-color-shadow: #666666;
+  --ar-color-danger: #dc2626;
+  // "Why choose us" feature icon boxes (Home page, Figma node 1:358) — added when the Home
+  // page was implemented, following the same provenance-comment pattern as every other token.
+  --ar-color-accent-info: #22d3ee;
+  --ar-color-accent-success: #22c55e;
+  // WhatsApp brand green (Home final-CTA button, Figma node 1:422). Figma pairs this with white
+  // text (~2:1 contrast, fails WCAG AA); this token is used with BLACK text instead
+  // (~10.6:1, passes easily) — see `.ui-btn--whatsapp` in _buttons.scss, same contrast-fix
+  // pattern already applied to --ar-color-danger above.
+  --ar-color-whatsapp: #25d366;
+  // The base --ar-color-accent (#a3e635) is only ever verified against BLACK surfaces (header,
+  // hero, buttons with black text on top of it). Used as TEXT directly on a WHITE surface (Home
+  // final-CTA heading accent word, Figma node 1:422 renders on a white section) it is ~1.6:1,
+  // far below even the 3:1 large-text AA minimum. This darker variant (~5.9:1 on white) is used
+  // instead wherever the accent color is needed as text on a light background.
+  --ar-color-accent-on-light: #4d7c0f;
+
+  // Color — text
+  --ar-color-text-on-dark: var(--ar-color-white);
+  --ar-color-text-on-light: var(--ar-color-black);
+  --ar-color-muted-on-dark: #888888;
+  --ar-color-muted-on-light: #5c5c5c;
+
+  // Color — page-level defaults. Header/footer opt into a dark/light surface explicitly;
+  // everything else reads on the light page background.
+  --ar-color-page-bg: var(--ar-color-white);
+  --ar-color-page-text: var(--ar-color-black);
+  --ar-color-border-on-dark: var(--ar-color-white);
+  --ar-color-border-on-light: rgba(0, 0, 0, 0.2);
+
+  // Typography — Space Mono is the only family in the Figma file (§6), used at Bold/Regular.
+  --ar-font-family-base: 'Space Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --ar-font-size-xs: 0.75rem; // 12px
+  --ar-font-size-sm: 0.875rem; // 14px
+  --ar-font-size-base: 1rem; // 16px
+  --ar-font-size-lg: 1.125rem; // 18px
+  --ar-font-size-xl: 1.5rem; // 24px
+  --ar-font-size-2xl: 2rem; // 32px
+  --ar-line-height-tight: 1.2;
+  --ar-line-height-base: 1.5;
+  --ar-letter-spacing-wide: 0.05em;
+
+  // Spacing — approximates the 8px increments observed in Figma (§8).
+  --ar-space-1: 0.25rem; // 4px
+  --ar-space-2: 0.5rem; // 8px
+  --ar-space-3: 0.75rem; // 12px
+  --ar-space-4: 1rem; // 16px
+  --ar-space-5: 1.5rem; // 24px
+  --ar-space-6: 2rem; // 32px
+  --ar-space-7: 3rem; // 48px
+  --ar-space-8: 4rem; // 64px
+
+  // Radii — 2px badges, 4px inputs observed in Figma; 8px added for larger surfaces.
+  --ar-radius-sm: 2px;
+  --ar-radius-md: 4px;
+  --ar-radius-lg: 8px;
+
+  // Borders
+  --ar-border-width: 1px;
+  --ar-border-width-thick: 4px;
+
+  // Shadows — "hard"/neobrutalist, no blur (05-figma-analysis §7-8).
+  --ar-shadow-hard: 4px 4px 0 0 var(--ar-color-shadow);
+  --ar-shadow-hard-sm: 2px 2px 0 0 var(--ar-color-shadow);
+
+  // Focus ring — absent from the Figma file entirely (§9); designed from scratch per
+  // Principle XVI. Dark-surface components (e.g. the header) locally override
+  // --ar-color-focus to white so the ring stays visible against a black background.
+  --ar-color-focus: var(--ar-color-black);
+  --ar-color-focus-glow: rgba(163, 230, 53, 0.6);
+
+  // Motion
+  --ar-transition-fast: 120ms ease;
+}
+
+// Breakpoints — Figma ships a single fixed 1524px desktop frame with no responsive variants
+// (05-figma-analysis §15); this scale is our own mobile-first decision (Principle XVII), not
+// extracted from Figma. Kept as SCSS variables (not custom properties) so they can be used
+// inside @media queries.
+$bp-sm: 480px;
+$bp-md: 768px;
+$bp-lg: 1024px;
+$bp-xl: 1280px;

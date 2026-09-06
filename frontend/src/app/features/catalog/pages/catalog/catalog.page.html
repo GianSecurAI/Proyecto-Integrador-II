@@ -1,0 +1,40 @@
+<main class="catalog-page">
+  <app-catalog-toolbar
+    [category]="filters().category"
+    [query]="filters().query"
+    (categoryChange)="onFiltersChange({ category: $event })"
+    (queryChange)="onQueryChange($event)"
+  />
+
+  <div class="catalog-page__body">
+    <button
+      type="button"
+      class="catalog-page__filters-toggle ui-btn ui-btn--secondary ui-btn--sm"
+      (click)="toggleFiltersOpen()"
+      [attr.aria-expanded]="filtersOpen()"
+      aria-controls="catalog-filters-panel"
+    >
+      {{ filtersOpen() ? 'Ocultar filtros' : 'Mostrar filtros' }}
+    </button>
+
+    <div
+      id="catalog-filters-panel"
+      class="catalog-page__filters"
+      [class.catalog-page__filters--open]="filtersOpen()"
+    >
+      <app-catalog-filters
+        [filters]="filters()"
+        (filtersChange)="onFiltersChange($event)"
+        (reset)="onResetFilters()"
+      />
+    </div>
+
+    <div class="catalog-page__grid">
+      <app-product-grid
+        [status]="status()"
+        [products]="filteredProducts()"
+        (retry)="loadProducts()"
+      />
+    </div>
+  </div>
+</main>

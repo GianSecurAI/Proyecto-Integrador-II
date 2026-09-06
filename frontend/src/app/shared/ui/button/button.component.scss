@@ -1,0 +1,5 @@
+// Visual rules live in the global .ui-btn* classes (src/styles/_buttons.scss) so a plain
+// anchor styled as a button (e.g. the header's "Acceder" link) can share them exactly.
+:host {
+  display: inline-block;
+}

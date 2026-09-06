@@ -1,0 +1,53 @@
+@use 'tokens' as *;
+
+:host {
+  display: block;
+}
+
+.app-footer {
+  background: var(--ar-color-white);
+  color: var(--ar-color-black);
+  border-top: var(--ar-border-width-thick) solid var(--ar-color-black);
+}
+
+.app-footer__bar {
+  max-width: 1280px;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ar-space-6);
+  justify-content: space-between;
+  padding: var(--ar-space-6) var(--ar-space-5);
+}
+
+.app-footer__wordmark {
+  margin: 0 0 var(--ar-space-2);
+  font-weight: 700;
+  font-size: var(--ar-font-size-lg);
+  text-transform: uppercase;
+}
+
+.app-footer__tagline {
+  margin: 0;
+  color: var(--ar-color-muted-on-light);
+  max-width: 32ch;
+}
+
+.app-footer__links {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ar-space-2);
+
+  a {
+    text-decoration: underline;
+    color: var(--ar-color-black);
+  }
+}
+
+.app-footer__legal {
+  border-top: 1px solid var(--ar-color-border-on-light);
+  padding: var(--ar-space-4) var(--ar-space-5);
+  text-align: center;
+  font-size: var(--ar-font-size-sm);
+  color: var(--ar-color-muted-on-light);
+}

@@ -1,0 +1,55 @@
+<main class="auth-page">
+  <section class="auth-card" aria-labelledby="verify-code-heading">
+    <h1 id="verify-code-heading">Ingresa tu código</h1>
+    <p class="auth-card__description">
+      @if (email) {
+        Escribe el código de 6 dígitos que enviamos a <strong>{{ email }}</strong
+        >.
+      } @else {
+        Necesitamos tu correo para verificar un código. Te redirigiremos para solicitarlo.
+      }
+    </p>
+
+    <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <div class="form-field">
+        <label for="code">Código de verificación</label>
+        <input
+          id="code"
+          type="text"
+          formControlName="code"
+          inputmode="numeric"
+          autocomplete="one-time-code"
+          maxlength="6"
+          pattern="[0-9]*"
+          required
+          [attr.aria-invalid]="codeControl.invalid && codeControl.touched ? true : null"
+          [attr.aria-describedby]="codeControl.invalid && codeControl.touched ? 'code-error' : null"
+        />
+        @if (codeControl.invalid && codeControl.touched) {
+          <p id="code-error" class="form-field__error" role="alert">
+            Ingresa el código de 6 dígitos que recibiste por correo.
+          </p>
+        }
+      </div>
+
+      <button type="submit" [disabled]="submitting() || !email">
+        {{ submitting() ? 'Verificando…' : 'Verificar código' }}
+      </button>
+    </form>
+
+    <div aria-live="polite">
+      @if (successMessage()) {
+        <p class="auth-card__success">{{ successMessage() }}</p>
+      }
+      @if (errorMessage()) {
+        <p class="auth-card__error" role="alert">{{ errorMessage() }}</p>
+      }
+    </div>
+
+    <p class="auth-card__meta">
+      <button type="button" class="link-button" (click)="requestNewCode()">
+        ¿No recibiste el código? Solicitar uno nuevo
+      </button>
+    </p>
+  </section>
+</main>

@@ -1,0 +1,8 @@
+<div class="ui-state ui-state--empty">
+  <ng-content select="[emptyStateIcon]"></ng-content>
+  <h2 class="ui-state__title">{{ title() }}</h2>
+  @if (description()) {
+    <p class="ui-state__message">{{ description() }}</p>
+  }
+  <ng-content select="[emptyStateAction]"></ng-content>
+</div>

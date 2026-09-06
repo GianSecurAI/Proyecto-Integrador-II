@@ -1,0 +1,29 @@
+<app-card padding="sm" class="product-card">
+  <div class="product-card__content">
+    <div class="product-card__image" aria-hidden="true"></div>
+
+    @if (product().badge) {
+      <p class="product-card__badge">{{ product().badge }}</p>
+    }
+
+    <p class="product-card__eyebrow">{{ product().category }} / {{ product().subcategory }}</p>
+    <h3 class="product-card__title">{{ product().title }}</h3>
+
+    <p class="product-card__price">
+      <span class="product-card__price-current">S/ {{ product().price.toFixed(2) }}</span>
+      @if (product().compareAtPrice) {
+        <span class="product-card__price-compare"
+          >S/ {{ product().compareAtPrice?.toFixed(2) }}</span
+        >
+      }
+    </p>
+
+    <a
+      [routerLink]="['/catalog', product().id]"
+      [attr.aria-label]="'Ver más sobre ' + product().title"
+      class="ui-btn ui-btn--primary ui-btn--sm ui-btn--full"
+    >
+      Ver más
+    </a>
+  </div>
+</app-card>

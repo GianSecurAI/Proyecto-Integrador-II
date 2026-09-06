@@ -1,0 +1,20 @@
+<section class="product-showcase">
+  <div class="product-showcase__header">
+    <h2 class="product-showcase__heading">
+      {{ heading() }} <span class="product-showcase__heading-accent">{{ headingAccent() }}</span>
+    </h2>
+    <p class="product-showcase__subheading">{{ subheading() }}</p>
+  </div>
+
+  <div class="product-showcase__grid">
+    @for (product of products(); track product.id) {
+      <app-product-card [product]="product" />
+    }
+  </div>
+
+  <div class="product-showcase__footer">
+    <a class="ui-btn ui-btn--secondary ui-btn--lg ui-btn--on-dark" routerLink="/catalog">
+      {{ ctaLabel() }}
+    </a>
+  </div>
+</section>

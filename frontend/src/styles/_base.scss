@@ -1,0 +1,93 @@
+@use 'tokens' as *;
+
+// Global reset and base typography. Kept intentionally small — this is a foundation, not a
+// utility framework (Constitution Principle II).
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--ar-color-page-bg);
+  color: var(--ar-color-page-text);
+  font-family: var(--ar-font-family-base);
+  font-size: var(--ar-font-size-base);
+  line-height: var(--ar-line-height-base);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-weight: 700;
+  line-height: var(--ar-line-height-tight);
+  margin: 0 0 var(--ar-space-4);
+}
+
+p {
+  margin: 0 0 var(--ar-space-4);
+}
+
+a {
+  color: inherit;
+}
+
+button {
+  font-family: inherit;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+// Visible keyboard-focus indicator for every interactive element (Constitution Principle
+// XVI). Nothing in the Figma file designs a focus state (05-figma-analysis §9) — this is an
+// implementation-time addition, not extracted from Figma.
+:focus-visible {
+  outline: 3px solid var(--ar-color-focus);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 6px var(--ar-color-focus-glow);
+}
+
+// Skip-to-content link (Constitution Principle XVI) — every route now has a header before its
+// main content, so this needs to exist exactly once, in the shell.
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  background: var(--ar-color-accent);
+  color: var(--ar-color-black);
+  padding: var(--ar-space-2) var(--ar-space-4);
+  z-index: 100;
+  font-weight: 700;
+  text-transform: uppercase;
+  text-decoration: none;
+
+  &:focus {
+    left: var(--ar-space-4);
+    top: var(--ar-space-4);
+  }
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

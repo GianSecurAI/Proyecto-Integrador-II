@@ -1,0 +1,37 @@
+<div class="catalog-toolbar">
+  <h1 class="catalog-toolbar__heading">
+    Todos los <span class="catalog-toolbar__heading-accent">productos</span>
+  </h1>
+
+  <div class="catalog-toolbar__controls">
+    <div class="catalog-toolbar__pills" role="group" aria-label="Filtrar por categoría">
+      @for (cat of categories; track cat) {
+        <button
+          type="button"
+          class="catalog-toolbar__pill"
+          [class.catalog-toolbar__pill--active]="category() === cat"
+          [attr.aria-pressed]="category() === cat"
+          (click)="selectCategory(cat)"
+        >
+          {{ categoryLabels[cat] }}
+        </button>
+      }
+    </div>
+
+    <app-form-field
+      #searchField="appFormField"
+      label="Buscar productos"
+      class="catalog-toolbar__search"
+    >
+      <input
+        class="ui-input"
+        type="search"
+        [id]="searchField.inputId()"
+        [attr.aria-describedby]="searchField.describedBy()"
+        [value]="query()"
+        (input)="onQueryInput($any($event.target).value)"
+        placeholder="Buscar productos…"
+      />
+    </app-form-field>
+  </div>
+</div>

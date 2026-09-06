@@ -1,0 +1,118 @@
+@use 'tokens' as *;
+
+// Reusable button visual language, shared by `app-button` (shared/ui/button) and any plain
+// anchor styled as a button — e.g. the header's "Acceder" link, which must look like a button
+// but cannot be an actual <button> because it navigates (Constitution Principle II: one
+// definition, reused, instead of duplicating the same rules per element).
+.ui-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ar-space-2);
+  font-family: var(--ar-font-family-base);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--ar-letter-spacing-wide);
+  text-decoration: none;
+  border: var(--ar-border-width) solid var(--ar-color-black);
+  border-radius: var(--ar-radius-md);
+  cursor: pointer;
+  transition:
+    transform var(--ar-transition-fast),
+    box-shadow var(--ar-transition-fast);
+  box-shadow: var(--ar-shadow-hard);
+
+  &:active:not(:disabled) {
+    transform: translate(2px, 2px);
+    box-shadow: none;
+  }
+
+  &:disabled,
+  &[aria-disabled='true'] {
+    cursor: not-allowed;
+    opacity: 0.55;
+    box-shadow: none;
+  }
+}
+
+.ui-btn--sm {
+  padding: var(--ar-space-2) var(--ar-space-3);
+  font-size: var(--ar-font-size-sm);
+}
+
+.ui-btn--md {
+  padding: var(--ar-space-3) var(--ar-space-4);
+  font-size: var(--ar-font-size-base);
+}
+
+.ui-btn--lg {
+  padding: var(--ar-space-4) var(--ar-space-5);
+  font-size: var(--ar-font-size-lg);
+}
+
+.ui-btn--full {
+  width: 100%;
+}
+
+.ui-btn--primary {
+  background: var(--ar-color-accent);
+  color: var(--ar-color-black);
+  border-color: var(--ar-color-black);
+}
+
+.ui-btn--secondary {
+  background: var(--ar-color-white);
+  color: var(--ar-color-black);
+  border-color: var(--ar-color-black);
+}
+
+.ui-btn--ghost {
+  background: transparent;
+  color: var(--ar-color-black);
+  border-color: transparent;
+  box-shadow: none;
+
+  &:active:not(:disabled) {
+    transform: none;
+  }
+}
+
+.ui-btn--danger {
+  background: var(--ar-color-white);
+  color: var(--ar-color-danger);
+  border-color: var(--ar-color-danger);
+}
+
+// WhatsApp deep-link CTA (Home page final section). Black text on the brand green — see the
+// contrast-fix comment on --ar-color-whatsapp in _tokens.scss for why this isn't white-on-green.
+.ui-btn--whatsapp {
+  background: var(--ar-color-whatsapp);
+  color: var(--ar-color-black);
+  border-color: var(--ar-color-black);
+}
+
+// Dark-surface context (e.g. inside the header): swap secondary/ghost to a white
+// border/text pairing so they stay legible against black, matching the header treatment in
+// 05-figma-analysis §9 (white border, hard shadow, on a black background).
+.ui-btn--on-dark {
+  &.ui-btn--secondary,
+  &.ui-btn--ghost {
+    color: var(--ar-color-white);
+    border-color: var(--ar-color-white);
+  }
+}
+
+.ui-btn__spinner {
+  width: 1em;
+  height: 1em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: ui-btn-spin 0.6s linear infinite;
+}
+
+@keyframes ui-btn-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

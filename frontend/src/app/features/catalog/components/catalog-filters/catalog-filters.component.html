@@ -1,0 +1,77 @@
+<aside class="catalog-filters" aria-label="Filtros de catálogo">
+  <h2 class="catalog-filters__heading">Filtros</h2>
+
+  <fieldset class="catalog-filters__group">
+    <legend class="catalog-filters__legend">Opciones</legend>
+
+    <label class="catalog-filters__option">
+      <input
+        class="ui-checkbox"
+        type="checkbox"
+        [checked]="filters().onSaleOnly"
+        (change)="toggleOnSaleOnly($any($event.target).checked)"
+      />
+      Solo en oferta
+    </label>
+
+    <label class="catalog-filters__option">
+      <input
+        class="ui-checkbox"
+        type="checkbox"
+        [checked]="filters().personalizableOnly"
+        (change)="togglePersonalizableOnly($any($event.target).checked)"
+      />
+      Solo personalizable
+    </label>
+  </fieldset>
+
+  <fieldset class="catalog-filters__group">
+    <legend class="catalog-filters__legend">Categorías</legend>
+
+    @for (cat of categories; track cat) {
+      <label class="catalog-filters__option">
+        <input
+          class="ui-radio"
+          type="radio"
+          name="catalog-category"
+          [value]="cat"
+          [checked]="filters().category === cat"
+          (change)="selectCategory(cat)"
+        />
+        {{ categoryLabels[cat] }}
+      </label>
+    }
+  </fieldset>
+
+  <fieldset class="catalog-filters__group">
+    <legend class="catalog-filters__legend">Gama de precios</legend>
+
+    <app-form-field #minField="appFormField" label="Precio mínimo">
+      <input
+        class="ui-input"
+        type="number"
+        min="0"
+        inputmode="decimal"
+        [id]="minField.inputId()"
+        [value]="filters().minPrice ?? ''"
+        (input)="updateMinPrice($any($event.target).value)"
+      />
+    </app-form-field>
+
+    <app-form-field #maxField="appFormField" label="Precio máximo">
+      <input
+        class="ui-input"
+        type="number"
+        min="0"
+        inputmode="decimal"
+        [id]="maxField.inputId()"
+        [value]="filters().maxPrice ?? ''"
+        (input)="updateMaxPrice($any($event.target).value)"
+      />
+    </app-form-field>
+  </fieldset>
+
+  <app-button variant="secondary" [fullWidth]="true" (clicked)="onReset()">
+    Restablecer filtros
+  </app-button>
+</aside>

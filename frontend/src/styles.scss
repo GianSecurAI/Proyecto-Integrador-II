@@ -1,0 +1,7 @@
+// Global styles entry point. See docs/architecture/frontend-foundation.md for the rationale
+// behind the design system these partials implement.
+@use 'styles/tokens';
+@use 'styles/base';
+@use 'styles/buttons';
+@use 'styles/forms';
+@use 'styles/states';

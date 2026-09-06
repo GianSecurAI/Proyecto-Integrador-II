@@ -1,0 +1,29 @@
+@use 'tokens' as *;
+
+:host {
+  display: block;
+}
+
+.app-card {
+  background: var(--ar-color-white);
+  // The card's surface is always white regardless of the section it sits in, so its text color
+  // must be pinned here too — otherwise nesting a card inside a dark-themed ancestor (e.g. the
+  // Home page's product-showcase, which sets `color: white` on itself for its own heading text)
+  // leaks white-on-white text into every projected child that doesn't set its own color.
+  color: var(--ar-color-text-on-light);
+  border: var(--ar-border-width) solid var(--ar-color-black);
+  border-radius: var(--ar-radius-md);
+  box-shadow: var(--ar-shadow-hard);
+}
+
+.app-card--padding-sm {
+  padding: var(--ar-space-3);
+}
+
+.app-card--padding-md {
+  padding: var(--ar-space-5);
+}
+
+.app-card--padding-lg {
+  padding: var(--ar-space-6);
+}

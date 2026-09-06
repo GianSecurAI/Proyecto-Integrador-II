@@ -1,0 +1,5 @@
+// Shared box layout (.ui-state, .ui-state__title, .ui-state__message) lives in
+// src/styles/_states.scss.
+:host {
+  display: block;
+}

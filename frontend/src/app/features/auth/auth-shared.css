@@ -1,0 +1,133 @@
+/* Shared visual treatment for the two OTP auth screens (request-code, verify-code).
+   Mobile-first responsive layout (Constitution Principle XVII): a single column that grows
+   into a centered card on wider viewports, since the current Figma file only provides a fixed
+   desktop width with no responsive variants (05-figma-analysis.md §15) and this behavior had
+   to be designed from scratch during implementation.
+   Colors were chosen for verified contrast (Constitution Principle XVI) rather than reused
+   from Figma's neo-brutalist palette, which has not been contrast-checked. */
+
+.auth-page {
+  /* `flex: 1` (not `min-height: 100dvh`) — this page now renders inside the app shell's
+     header/footer (docs/architecture/frontend-foundation.md), so claiming the full viewport
+     height itself would push the footer below the fold. The shell's <div id="main-content">
+     is already a flex column, so this just fills whatever space the shell leaves it. */
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  box-sizing: border-box;
+  background: #f5f5f7;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 26rem;
+  background: #ffffff;
+  border: 1px solid #d8d8dd;
+  border-radius: 0.75rem;
+  padding: 2rem;
+  box-sizing: border-box;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+@media (min-width: 48rem) {
+  .auth-card {
+    padding: 2.5rem;
+  }
+}
+
+.auth-card h1 {
+  font-size: 1.375rem;
+  margin: 0 0 0.5rem;
+  color: #1a1a1a;
+}
+
+.auth-card__description {
+  color: #4a4a4f;
+  margin: 0 0 1.5rem;
+  line-height: 1.5;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  margin-bottom: 1.25rem;
+}
+
+.form-field label {
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.form-field input {
+  font-size: 1rem;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid #8a8a90;
+  border-radius: 0.5rem;
+  box-sizing: border-box;
+}
+
+.form-field input:focus-visible {
+  outline: 3px solid #0b5fff;
+  outline-offset: 1px;
+}
+
+.form-field input[aria-invalid='true'] {
+  border-color: #b3261e;
+}
+
+.form-field__error {
+  color: #b3261e;
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+button[type='submit'] {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #ffffff;
+  background: #0b5fff;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+
+button[type='submit']:disabled {
+  background: #8fb4ff;
+  cursor: not-allowed;
+}
+
+button[type='submit']:focus-visible {
+  outline: 3px solid #1a1a1a;
+  outline-offset: 2px;
+}
+
+.link-button {
+  background: none;
+  border: none;
+  color: #0b5fff;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+  font-size: 0.9375rem;
+}
+
+.auth-card__success {
+  color: #1a6b3a;
+  margin-top: 1rem;
+}
+
+.auth-card__error {
+  color: #b3261e;
+  margin-top: 1rem;
+}
+
+.auth-card__meta {
+  margin-top: 1.5rem;
+  text-align: center;
+}

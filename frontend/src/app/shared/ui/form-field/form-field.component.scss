@@ -1,0 +1,37 @@
+@use 'tokens' as *;
+
+:host {
+  display: block;
+}
+
+.ui-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ar-space-2);
+  margin-bottom: var(--ar-space-4);
+}
+
+.ui-field__label {
+  font-weight: 700;
+  font-size: var(--ar-font-size-sm);
+  text-transform: uppercase;
+  letter-spacing: var(--ar-letter-spacing-wide);
+}
+
+.ui-field__required {
+  color: var(--ar-color-danger);
+  margin-left: var(--ar-space-1);
+}
+
+.ui-field__hint {
+  margin: 0;
+  font-size: var(--ar-font-size-sm);
+  color: var(--ar-color-muted-on-light);
+}
+
+.ui-field__error {
+  margin: 0;
+  font-size: var(--ar-font-size-sm);
+  color: var(--ar-color-danger);
+  font-weight: 700;
+}

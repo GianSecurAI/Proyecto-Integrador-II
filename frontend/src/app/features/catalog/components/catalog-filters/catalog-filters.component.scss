@@ -1,0 +1,50 @@
+@use 'tokens' as *;
+
+:host {
+  display: block;
+}
+
+.catalog-filters {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ar-space-5);
+  padding: var(--ar-space-5);
+  background: var(--ar-color-white);
+  border: var(--ar-border-width) solid var(--ar-color-black);
+  border-radius: var(--ar-radius-md);
+  box-shadow: var(--ar-shadow-hard);
+}
+
+.catalog-filters__heading {
+  margin: 0;
+  font-size: var(--ar-font-size-lg);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--ar-letter-spacing-wide);
+}
+
+.catalog-filters__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ar-space-3);
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.catalog-filters__legend {
+  padding: 0 0 var(--ar-space-2);
+  font-size: var(--ar-font-size-sm);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--ar-letter-spacing-wide);
+  color: var(--ar-color-muted-on-light);
+}
+
+.catalog-filters__option {
+  display: flex;
+  align-items: center;
+  gap: var(--ar-space-2);
+  font-size: var(--ar-font-size-sm);
+  cursor: pointer;
+}

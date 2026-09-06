@@ -1,0 +1,43 @@
+@use 'tokens' as *;
+
+// Shared visual treatment for native form controls. These are plain CSS classes — not
+// components — because the business forms that will use them (custom order intake, contact
+// handoff, etc.) are not specified yet; wrapping every input type in its own component ahead
+// of a real requirement would be the abstraction Principle II warns against. Pair with
+// `app-form-field` (shared/ui/form-field) for the label/hint/error wiring.
+.ui-input,
+.ui-select {
+  width: 100%;
+  font-family: var(--ar-font-family-base);
+  font-size: var(--ar-font-size-base);
+  padding: var(--ar-space-3);
+  background: var(--ar-color-white);
+  color: var(--ar-color-black);
+  border: var(--ar-border-width) solid var(--ar-color-black);
+  border-radius: var(--ar-radius-md);
+
+  &::placeholder {
+    color: var(--ar-color-muted-on-light);
+  }
+
+  &[aria-invalid='true'] {
+    border-color: var(--ar-color-danger);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.ui-checkbox,
+.ui-radio {
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
+  // Figma's category radio (node 2:27) uses an arbitrary UI-kit blue (#0075ff) for the checked
+  // state, unrelated to this project's palette. Adapted to the same lime accent used everywhere
+  // else a selection/active state is shown (e.g. the catalog toolbar's active category pill),
+  // so the two category controls stay visually consistent with each other and the rest of the
+  // app, rather than reproducing an unrelated one-off color from the source file.
+  accent-color: var(--ar-color-accent);
+}

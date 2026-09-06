@@ -1,0 +1,15 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+.app-shell__main {
+  // display:flex here (rather than leaving each page to reach for 100dvh, which measures the
+  // whole viewport and ignores the header/footer now surrounding it) lets a routed page that
+  // wants to fill the remaining space opt in with a plain `flex: 1` instead of guessing a
+  // height.
+  display: flex;
+  flex-direction: column;
+  flex: 1 0 auto;
+}

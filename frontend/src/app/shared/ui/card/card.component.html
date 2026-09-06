@@ -1,0 +1,7 @@
+<div class="app-card" [class]="'app-card--padding-' + padding()">
+  <ng-content select="[cardHeader]"></ng-content>
+  <div class="app-card__body">
+    <ng-content></ng-content>
+  </div>
+  <ng-content select="[cardFooter]"></ng-content>
+</div>
