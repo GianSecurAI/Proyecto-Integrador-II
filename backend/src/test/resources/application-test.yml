@@ -1,0 +1,45 @@
+# Test-only configuration. Uses H2 in PostgreSQL compatibility mode instead of a real PostgreSQL
+# instance, because no local PostgreSQL/Docker is available in this execution environment (see
+# final report). The same Flyway migrations under db/migration (the actual source of truth, per
+# Constitution Principle X) run unmodified against it — the SQL was deliberately written to avoid
+# PostgreSQL-only syntax so this substitution is safe for verifying business logic, though it is
+# not a substitute for running quickstart.md against a real PostgreSQL instance (T054).
+spring:
+  datasource:
+    url: jdbc:h2:mem:armakers3d-test;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  mail:
+    host: localhost
+    port: 2525
+    username: test
+    password: test
+
+otp:
+  expiry-minutes: 10
+  max-attempts: 5
+  max-requests-per-window: 3
+  request-window-minutes: 15
+
+session:
+  ttl-hours: 24
+  cookie-name: ARM3D_SESSION
+  cookie-secure: false
+
+mail:
+  from: no-reply@test.local
+
+web:
+  cors:
+    allowed-origin: http://localhost:4200
+
+logging:
+  level:
+    com.armakers3d: DEBUG

@@ -1,0 +1,70 @@
+# Base configuration shared by every environment. No secret or environment-specific value is
+# hardcoded here (Constitution Principle XIV/XVIII) — everything that differs per environment is
+# read from an environment variable, with sane local-only defaults supplied in
+# application-local.yml, never here.
+spring:
+  application:
+    name: armakers3d-backend
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  jpa:
+    open-in-view: false
+    hibernate:
+      # Schema is owned exclusively by Flyway migrations (Constitution Principle X). "validate"
+      # merely confirms the JPA mapping matches the migrated schema; it never generates DDL.
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  mail:
+    host: ${MAIL_HOST}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_SMTP_AUTH:true}
+          starttls:
+            enable: ${MAIL_SMTP_STARTTLS:true}
+
+# One-time-code policy (research.md #1 / spec.md Assumptions). Externalized so the Product Owner
+# can tune the policy per environment without a code change, while the defaults match the values
+# the spec documents as the testable acceptance criteria.
+otp:
+  expiry-minutes: ${OTP_EXPIRY_MINUTES:10}
+  max-attempts: ${OTP_MAX_ATTEMPTS:5}
+  max-requests-per-window: ${OTP_MAX_REQUESTS_PER_WINDOW:3}
+  request-window-minutes: ${OTP_REQUEST_WINDOW_MINUTES:15}
+
+# Server-side session policy (research.md #3). The feature spec explicitly leaves session
+# lifetime out of scope; 24h is a documented, reasonable default for this academic-scale system.
+session:
+  ttl-hours: ${SESSION_TTL_HOURS:24}
+  cookie-name: ${SESSION_COOKIE_NAME:ARM3D_SESSION}
+  # Secure=true requires HTTPS; disabled only for local http:// development via
+  # application-local.yml, never in a deployed environment.
+  cookie-secure: ${SESSION_COOKIE_SECURE:true}
+
+mail:
+  from: ${MAIL_FROM:no-reply@armakers3d.com}
+
+# CORS origin for the Angular SPA, needed because the session cookie requires credentialed
+# cross-origin requests when frontend and backend are not served from the same origin.
+web:
+  cors:
+    allowed-origin: ${FRONTEND_ORIGIN:http://localhost:4200}
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
