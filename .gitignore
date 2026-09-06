@@ -1,0 +1,49 @@
+# Publish only application source directories and repository ignore rules.
+/*
+!/.gitignore
+!/backend/
+!/frontend/
+
+# Local workspace configuration and tooling.
+**/.agents/
+**/.codex/
+**/.claude/
+**/.specify/
+**/skills/
+**/reference/
+**/graphify-out/
+**/AGENTS.md
+**/CLAUDE.md
+**/SKILL.md
+
+# Dependencies and generated output.
+**/node_modules/
+**/target/
+**/dist/
+**/.angular/
+**/coverage/
+**/out-tsc/
+**/dependency-list.txt
+*.class
+*.jar
+*.war
+*.log
+
+# Credentials and machine-specific configuration.
+.env
+.env.*
+*.local.yml
+application-local.yml
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+
+# Editors and operating systems.
+**/.vscode/
+**/.idea/
+*.iml
+.DS_Store
+Thumbs.db
+*.swp
