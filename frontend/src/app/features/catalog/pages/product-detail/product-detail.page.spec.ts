@@ -7,18 +7,16 @@ import { ProductDetailPage } from './product-detail.page';
 describe('ProductDetailPage', () => {
   beforeEach(() => TestBed.configureTestingModule({ providers: [provideRouter(routes)] }));
 
-  it('opens the photo gallery and switches the selected photo accessibly', async () => {
+  it('renders the gallery placeholder for every product (no real photo in any fixture)', async () => {
+    // See mocks/product-details.mock.ts: no mock product has a real photo (an earlier version
+    // pointed one fixture at a real downloaded photo of a third-party branded product, which was
+    // removed). Thumbnail-switching itself is covered in isolation by
+    // product-gallery.component.spec.ts with synthetic image fixtures.
     const harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/catalog/llavero-diseno-naranja', ProductDetailPage);
     const element = harness.routeNativeElement!;
-    const thumbnails = element.querySelectorAll<HTMLButtonElement>('.gallery__thumbnail');
-    expect(thumbnails.length).toBe(2);
-    thumbnails[1].click();
-    harness.detectChanges();
-    expect(thumbnails[1].getAttribute('aria-pressed')).toBe('true');
-    expect(element.querySelector<HTMLImageElement>('.gallery__image')!.src).toContain(
-      'orange-keyring-2.png',
-    );
+    expect(element.querySelector('img')).toBeNull();
+    expect(element.querySelector('.gallery__empty')?.textContent).toContain('Imagen no disponible');
   });
 
   it('shows catalog purchase actions with mock-only feedback and no WhatsApp link', async () => {

@@ -15,12 +15,11 @@ describe('CatalogFiltersComponent', () => {
   });
 
   it('emits a partial patch when "Solo en oferta" is toggled', () => {
-    const emitted: Array<Record<string, unknown>> = [];
+    const emitted: Record<string, unknown>[] = [];
     fixture.componentInstance.filtersChange.subscribe((patch) => emitted.push(patch));
 
-    const checkbox: HTMLInputElement = fixture.nativeElement.querySelectorAll(
-      'input[type="checkbox"]',
-    )[0];
+    const checkbox: HTMLInputElement =
+      fixture.nativeElement.querySelectorAll('input[type="checkbox"]')[0];
     checkbox.checked = true;
     checkbox.dispatchEvent(new Event('change'));
 
@@ -28,12 +27,11 @@ describe('CatalogFiltersComponent', () => {
   });
 
   it('emits a partial patch when "Solo personalizable" is toggled', () => {
-    const emitted: Array<Record<string, unknown>> = [];
+    const emitted: Record<string, unknown>[] = [];
     fixture.componentInstance.filtersChange.subscribe((patch) => emitted.push(patch));
 
-    const checkbox: HTMLInputElement = fixture.nativeElement.querySelectorAll(
-      'input[type="checkbox"]',
-    )[1];
+    const checkbox: HTMLInputElement =
+      fixture.nativeElement.querySelectorAll('input[type="checkbox"]')[1];
     checkbox.checked = true;
     checkbox.dispatchEvent(new Event('change'));
 
@@ -41,7 +39,7 @@ describe('CatalogFiltersComponent', () => {
   });
 
   it('emits a category patch when a radio option is selected', () => {
-    const emitted: Array<Record<string, unknown>> = [];
+    const emitted: Record<string, unknown>[] = [];
     fixture.componentInstance.filtersChange.subscribe((patch) => emitted.push(patch));
 
     const radios: HTMLInputElement[] = Array.from(
@@ -55,7 +53,7 @@ describe('CatalogFiltersComponent', () => {
   });
 
   it('parses min/max price inputs to numbers, and empty strings to null', () => {
-    const emitted: Array<Record<string, unknown>> = [];
+    const emitted: Record<string, unknown>[] = [];
     fixture.componentInstance.filtersChange.subscribe((patch) => emitted.push(patch));
 
     const [minInput, maxInput]: HTMLInputElement[] = Array.from(
@@ -72,7 +70,7 @@ describe('CatalogFiltersComponent', () => {
 
   it('emits reset when "Restablecer filtros" is clicked', () => {
     let resetCount = 0;
-    fixture.componentInstance.reset.subscribe(() => resetCount++);
+    fixture.componentInstance.resetFilters.subscribe(() => resetCount++);
 
     const button: HTMLButtonElement = fixture.nativeElement.querySelector('button');
     button.click();

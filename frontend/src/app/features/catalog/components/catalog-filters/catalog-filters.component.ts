@@ -37,7 +37,7 @@ export class CatalogFiltersComponent {
   readonly filters = input.required<CatalogFilters>();
 
   readonly filtersChange = output<Partial<CatalogFilters>>();
-  readonly reset = output<void>();
+  readonly resetFilters = output<void>();
 
   readonly categories = CATALOG_CATEGORIES;
   readonly categoryLabels = CATALOG_CATEGORY_LABELS;
@@ -63,7 +63,7 @@ export class CatalogFiltersComponent {
   }
 
   onReset(): void {
-    this.reset.emit();
+    this.resetFilters.emit();
   }
 }
 
