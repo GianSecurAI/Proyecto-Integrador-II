@@ -1,0 +1,126 @@
+<div class="admin-incident-list-page">
+  <app-admin-page-header
+    title="Incidencias"
+    description="Consulta las incidencias reportadas por todos los clientes, clasifícalas por prioridad y gestiona su estado."
+  />
+
+  @switch (status()) {
+    @case ('loading') {
+      <app-loading-state message="Cargando incidencias…" />
+    }
+    @case ('error') {
+      <app-error-state
+        title="No se pudieron cargar las incidencias"
+        description="Ocurrió un problema al conectar con las incidencias administrativas. Inténtalo de nuevo."
+      >
+        <app-button errorStateAction variant="secondary" (clicked)="retry()">
+          Reintentar
+        </app-button>
+      </app-error-state>
+    }
+    @default {
+      @if (incidents().length === 0) {
+        <app-empty-state
+          title="Todavía no hay incidencias"
+          description="Cuando un cliente registre la primera incidencia, la verás aquí."
+        />
+      } @else {
+        <div class="admin-incident-list-page__filters">
+          <label class="admin-incident-list-page__filter">
+            <span>Buscar por descripción</span>
+            <input
+              class="ui-input"
+              type="search"
+              placeholder="Ej. fisura, dirección, seguimiento"
+              [value]="search()"
+              (input)="updateSearch($any($event.target).value)"
+            />
+          </label>
+          <label class="admin-incident-list-page__filter">
+            <span>Estado</span>
+            <select
+              class="ui-select"
+              [value]="statusFilter()"
+              (change)="updateStatusFilter($any($event.target).value)"
+            >
+              @for (opt of statusFilterOptions; track opt) {
+                <option [value]="opt">
+                  {{ opt === 'todos' ? 'Todos' : statusLabel(opt) }}
+                </option>
+              }
+            </select>
+          </label>
+          <label class="admin-incident-list-page__filter">
+            <span>Prioridad</span>
+            <select
+              class="ui-select"
+              [value]="priorityFilter()"
+              (change)="updatePriorityFilter($any($event.target).value)"
+            >
+              @for (opt of priorityFilterOptions; track opt) {
+                <option [value]="opt">
+                  {{ opt === 'todos' ? 'Todas' : priorityLabel(opt) }}
+                </option>
+              }
+            </select>
+          </label>
+        </div>
+
+        @if (filteredIncidents().length === 0) {
+          <app-empty-state
+            title="Ninguna incidencia coincide con los filtros"
+            description="Ajusta la búsqueda, el estado o la prioridad seleccionada."
+          />
+        } @else {
+          <app-admin-data-table>
+            <thead>
+              <tr>
+                <th scope="col">Pedido</th>
+                <th scope="col">Cliente</th>
+                <th scope="col">Descripción</th>
+                <th scope="col">Estado</th>
+                <th scope="col">Prioridad</th>
+                <th scope="col">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (incident of filteredIncidents(); track incident.id) {
+                <tr>
+                  <td>{{ incident.orderId }}</td>
+                  <td>{{ incident.customerEmail }}</td>
+                  <td>{{ descriptionPreview(incident.description) }}</td>
+                  <td>
+                    <app-status-badge
+                      [label]="statusLabel(incident.status)"
+                      [tone]="statusTone(incident.status)"
+                    />
+                  </td>
+                  <td>
+                    <app-status-badge
+                      [label]="priorityLabel(incident.priority)"
+                      [tone]="priorityTone(incident.priority)"
+                    />
+                  </td>
+                  <td>
+                    <a
+                      [routerLink]="['/admin/incidents', incident.id]"
+                      class="ui-btn ui-btn--ghost ui-btn--sm"
+                    >
+                      Ver detalle
+                    </a>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </app-admin-data-table>
+        }
+      }
+    }
+  }
+
+  <p class="admin-incident-list-page__notice">
+    Vista de demostración: estas incidencias no provienen de un servidor real. Para previsualizar
+    otros estados desde el navegador, añade <code>?mockState=empty</code> o
+    <code>?mockState=error</code> a esta URL.
+  </p>
+</div>

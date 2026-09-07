@@ -1,0 +1,206 @@
+<div class="admin-incident-detail-page">
+  <nav aria-label="Ruta de navegación" class="admin-incident-detail-page__breadcrumb">
+    <a routerLink="/admin/incidents">Incidencias</a>
+  </nav>
+
+  @switch (status()) {
+    @case ('loading') {
+      <app-loading-state message="Cargando la incidencia…" />
+    }
+    @case ('error') {
+      <app-error-state
+        title="No se pudo cargar la incidencia"
+        description="Ocurrió un problema al conectar con el detalle de la incidencia. Inténtalo de nuevo."
+      >
+        <app-button errorStateAction variant="secondary" (clicked)="retry()">
+          Reintentar
+        </app-button>
+      </app-error-state>
+    }
+    @case ('not-found') {
+      <h1>Incidencia no encontrada</h1>
+      <app-empty-state
+        title="No encontramos esta incidencia"
+        description="Revisa la lista de incidencias para ver las incidencias disponibles."
+      >
+        <a emptyStateAction class="ui-btn ui-btn--primary ui-btn--md" routerLink="/admin/incidents">
+          Volver a incidencias
+        </a>
+      </app-empty-state>
+    }
+    @default {
+      @if (incident(); as incident) {
+        <app-card>
+          <div class="admin-incident-detail-page__header">
+            <div>
+              <p class="admin-incident-detail-page__id">{{ incident.id }}</p>
+              <p class="admin-incident-detail-page__muted">
+                Reportada el {{ formatDate(incident.reportedAt) }}
+              </p>
+            </div>
+            <div class="admin-incident-detail-page__meta">
+              <app-status-badge
+                [label]="statusLabel(incident.status)"
+                [tone]="statusTone(incident.status)"
+              />
+              <app-status-badge
+                [label]="priorityLabel(incident.priority)"
+                [tone]="priorityTone(incident.priority)"
+              />
+            </div>
+          </div>
+
+          <dl class="admin-incident-detail-page__order">
+            <div>
+              <dt>Pedido asociado</dt>
+              <dd>{{ incident.orderId }} — {{ incident.orderSummary }}</dd>
+            </div>
+            <div>
+              <dt>Correo del cliente</dt>
+              <dd>{{ incident.customerEmail }}</dd>
+            </div>
+            @if (incident.customerName) {
+              <div>
+                <dt>Nombre</dt>
+                <dd>{{ incident.customerName }}</dd>
+              </div>
+            }
+            @if (incident.customerPhone) {
+              <div>
+                <dt>Teléfono</dt>
+                <dd>{{ incident.customerPhone }}</dd>
+              </div>
+            }
+          </dl>
+
+          <div class="admin-incident-detail-page__description">
+            <h2>Descripción</h2>
+            <p>{{ incident.description }}</p>
+          </div>
+
+          <div class="admin-incident-detail-page__resolution">
+            <h2>Resolución</h2>
+            @if (incident.resolution) {
+              <p>{{ incident.resolution }}</p>
+              @if (incident.resolvedAt) {
+                <p class="admin-incident-detail-page__muted">
+                  Resuelta el {{ formatDate(incident.resolvedAt) }}
+                </p>
+              }
+            } @else {
+              <p class="admin-incident-detail-page__muted">Sin resolución registrada.</p>
+            }
+          </div>
+        </app-card>
+
+        @if (canManage()) {
+          <app-card>
+            <h2>Cambiar estado</h2>
+            <form class="admin-incident-detail-page__form" (ngSubmit)="submitStatusUpdate()">
+              <label class="admin-incident-detail-page__field">
+                <span>Nuevo estado</span>
+                <select
+                  class="ui-select"
+                  [value]="selectedStatus() ?? ''"
+                  (change)="updateSelectedStatus($any($event.target).value)"
+                  [disabled]="updatingStatus()"
+                >
+                  <option value="" disabled>Selecciona un estado…</option>
+                  @for (next of otherStatuses(); track next) {
+                    <option [value]="next">{{ statusLabel(next) }}</option>
+                  }
+                </select>
+              </label>
+              <app-button
+                type="submit"
+                [loading]="updatingStatus()"
+                [disabled]="updatingStatus() || !selectedStatus()"
+              >
+                {{ updatingStatus() ? 'Actualizando…' : 'Actualizar estado' }}
+              </app-button>
+              @if (statusError()) {
+                <p role="alert" class="admin-incident-detail-page__error">{{ statusError() }}</p>
+              }
+              @if (statusSuccess()) {
+                <p role="status" class="admin-incident-detail-page__success">{{ statusSuccess() }}</p>
+              }
+            </form>
+          </app-card>
+
+          <app-card>
+            <h2>Cambiar prioridad</h2>
+            <form class="admin-incident-detail-page__form" (ngSubmit)="submitPriorityUpdate()">
+              <label class="admin-incident-detail-page__field">
+                <span>Nueva prioridad</span>
+                <select
+                  class="ui-select"
+                  [value]="selectedPriority() ?? ''"
+                  (change)="updateSelectedPriority($any($event.target).value)"
+                  [disabled]="updatingPriority()"
+                >
+                  <option value="" disabled>Selecciona una prioridad…</option>
+                  @for (next of otherPriorities(); track next) {
+                    <option [value]="next">{{ priorityLabel(next) }}</option>
+                  }
+                </select>
+              </label>
+              <app-button
+                type="submit"
+                [loading]="updatingPriority()"
+                [disabled]="updatingPriority() || !selectedPriority()"
+              >
+                {{ updatingPriority() ? 'Actualizando…' : 'Actualizar prioridad' }}
+              </app-button>
+              @if (priorityError()) {
+                <p role="alert" class="admin-incident-detail-page__error">{{ priorityError() }}</p>
+              }
+              @if (prioritySuccess()) {
+                <p role="status" class="admin-incident-detail-page__success">{{ prioritySuccess() }}</p>
+              }
+            </form>
+          </app-card>
+
+          <app-card>
+            <h2>Registrar resolución</h2>
+            <form class="admin-incident-detail-page__form" (ngSubmit)="submitResolution()">
+              <label class="admin-incident-detail-page__field">
+                <span>Texto de la resolución</span>
+                <textarea
+                  class="ui-input admin-incident-detail-page__textarea"
+                  rows="3"
+                  [value]="resolutionText()"
+                  (input)="updateResolutionText($any($event.target).value)"
+                  [disabled]="registeringResolution()"
+                  placeholder="Describe cómo se resolvió la incidencia…"
+                ></textarea>
+              </label>
+              <p class="admin-incident-detail-page__muted">
+                Registrar una resolución marca automáticamente esta incidencia como "Resuelta".
+              </p>
+              <app-button
+                type="submit"
+                [loading]="registeringResolution()"
+                [disabled]="registeringResolution() || !resolutionText().trim()"
+              >
+                {{ registeringResolution() ? 'Registrando…' : 'Registrar resolución' }}
+              </app-button>
+              @if (resolutionError()) {
+                <p role="alert" class="admin-incident-detail-page__error">{{ resolutionError() }}</p>
+              }
+              @if (resolutionSuccess()) {
+                <p role="status" class="admin-incident-detail-page__success">
+                  {{ resolutionSuccess() }}
+                </p>
+              }
+            </form>
+          </app-card>
+        }
+      }
+    }
+  }
+
+  <p class="admin-incident-detail-page__muted">
+    Vista de demostración: esta incidencia no proviene de un servidor real. Añade
+    <code>?mockState=error</code> a esta URL para previsualizar el estado de error.
+  </p>
+</div>
