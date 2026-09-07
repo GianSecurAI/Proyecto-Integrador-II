@@ -12,5 +12,13 @@
 
   <span class="admin-topbar__title">Panel de administración</span>
 
-  <span class="admin-topbar__user">Administrador</span>
+  <div class="admin-topbar__account">
+    <span class="admin-topbar__user">
+      {{ roleLabel() }}
+      @if (currentEmail()) {
+        <span class="admin-topbar__user-email">· {{ currentEmail() }}</span>
+      }
+    </span>
+    <button type="button" class="admin-topbar__logout" (click)="logout()">Cerrar sesión</button>
+  </div>
 </header>

@@ -41,10 +41,37 @@
   font-size: var(--ar-font-size-sm);
 }
 
-.admin-topbar__user {
+.admin-topbar__account {
   margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--ar-space-3);
+}
+
+.admin-topbar__user {
   color: var(--ar-color-muted-on-dark);
   font-size: var(--ar-font-size-sm);
+}
+
+.admin-topbar__user-email {
+  // Long emails must not force the topbar to overflow on narrow viewports.
+  display: none;
+}
+
+@media (min-width: $bp-md) {
+  .admin-topbar__user-email {
+    display: inline;
+  }
+}
+
+.admin-topbar__logout {
+  background: transparent;
+  color: var(--ar-color-white);
+  border: var(--ar-border-width) solid var(--ar-color-white);
+  border-radius: var(--ar-radius-md);
+  padding: var(--ar-space-1) var(--ar-space-3);
+  font-size: var(--ar-font-size-sm);
+  cursor: pointer;
 }
 
 @media (min-width: $bp-md) {
