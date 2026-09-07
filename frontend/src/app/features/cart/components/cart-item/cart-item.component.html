@@ -1,0 +1,43 @@
+<app-card padding="sm" class="cart-item">
+  <div class="cart-item__row">
+    <div class="cart-item__image" aria-hidden="true"></div>
+
+    <div class="cart-item__info">
+      <p class="cart-item__eyebrow">{{ item().category }} / {{ item().subcategory }}</p>
+      <h3 class="cart-item__title">{{ item().title }}</h3>
+      <p class="cart-item__unit-price">S/ {{ item().unitPrice.toFixed(2) }} c/u</p>
+    </div>
+
+    <div class="cart-item__quantity" role="group" [attr.aria-label]="'Cantidad de ' + item().title">
+      <button
+        type="button"
+        class="ui-btn ui-btn--ghost ui-btn--sm"
+        (click)="decrement()"
+        [disabled]="item().quantity <= 1"
+        aria-label="Disminuir cantidad"
+      >
+        &minus;
+      </button>
+      <span class="cart-item__quantity-value" aria-live="polite">{{ item().quantity }}</span>
+      <button
+        type="button"
+        class="ui-btn ui-btn--ghost ui-btn--sm"
+        (click)="increment()"
+        aria-label="Aumentar cantidad"
+      >
+        +
+      </button>
+    </div>
+
+    <p class="cart-item__subtotal">S/ {{ lineSubtotal().toFixed(2) }}</p>
+
+    <button
+      type="button"
+      class="cart-item__remove ui-btn ui-btn--ghost ui-btn--sm"
+      (click)="removeItem()"
+      [attr.aria-label]="'Quitar ' + item().title + ' del carrito'"
+    >
+      Quitar
+    </button>
+  </div>
+</app-card>

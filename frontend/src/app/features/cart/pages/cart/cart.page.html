@@ -1,0 +1,86 @@
+<main class="cart-page">
+  <div class="cart-page__container">
+    <h1>Carrito de compras</h1>
+
+    @switch (status()) {
+      @case ('error') {
+        <app-error-state
+          title="No se pudo cargar tu carrito"
+          description="Hubo un problema al leer el carrito guardado en este navegador (por ejemplo, en modo incógnito)."
+        >
+          <div errorStateAction class="cart-page__error-actions">
+            <app-button variant="secondary" (clicked)="retryLoad()">Reintentar</app-button>
+            <app-button variant="ghost" (clicked)="continueWithEmptyCart()">
+              Continuar con un carrito vacío
+            </app-button>
+          </div>
+        </app-error-state>
+      }
+      @default {
+        @if (isEmpty()) {
+          <app-empty-state
+            title="Tu carrito está vacío"
+            description="Explora el catálogo y añade productos para comenzar tu compra."
+          >
+            <a emptyStateAction routerLink="/catalog" class="ui-btn ui-btn--primary ui-btn--sm">
+              Ir al catálogo
+            </a>
+          </app-empty-state>
+        } @else {
+          <div class="cart-page__layout">
+            <section class="cart-page__items" aria-label="Productos en el carrito">
+              <ul class="cart-page__list">
+                @for (item of items(); track item.productId) {
+                  <li>
+                    <app-cart-item
+                      [item]="item"
+                      (quantityChange)="onQuantityChange($event)"
+                      (remove)="removeItem($event)"
+                    />
+                  </li>
+                }
+              </ul>
+              <button
+                type="button"
+                class="ui-btn ui-btn--ghost ui-btn--sm cart-page__clear"
+                (click)="clearCart()"
+              >
+                Vaciar carrito
+              </button>
+            </section>
+
+            <aside class="cart-page__summary" aria-labelledby="cart-summary-title">
+              <h2 id="cart-summary-title">Resumen del pedido</h2>
+              <dl class="cart-page__summary-list">
+                <div>
+                  <dt>Productos ({{ itemCount() }})</dt>
+                  <dd>S/ {{ subtotal().toFixed(2) }}</dd>
+                </div>
+                <div>
+                  <dt>Envío</dt>
+                  <dd>Se calcula en el checkout</dd>
+                </div>
+                <div class="cart-page__summary-total">
+                  <dt>Total</dt>
+                  <dd>S/ {{ subtotal().toFixed(2) }}</dd>
+                </div>
+              </dl>
+
+              <button
+                type="button"
+                class="ui-btn ui-btn--primary ui-btn--md ui-btn--full"
+                (click)="previewCheckout()"
+              >
+                Proceder al checkout
+              </button>
+              <a routerLink="/catalog" class="ui-btn ui-btn--ghost ui-btn--md ui-btn--full">
+                Seguir comprando
+              </a>
+              <p role="status" class="cart-page__feedback">{{ checkoutMessage() }}</p>
+            </aside>
+          </div>
+        }
+      }
+    }
+  </div>
+</main>
