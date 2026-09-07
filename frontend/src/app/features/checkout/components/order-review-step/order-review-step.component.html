@@ -1,0 +1,65 @@
+<section aria-label="Revisión final del pedido" [attr.aria-busy]="submitting()">
+  <h2>Revisa tu pedido</h2>
+
+  <section aria-labelledby="checkout-review-items-title" class="checkout-review-block">
+    <h3 id="checkout-review-items-title">Productos</h3>
+    <ul class="checkout-review-items">
+      @for (item of items(); track item.productId) {
+        <li>
+          <span class="checkout-review-items__title">{{ item.title }} × {{ item.quantity }}</span>
+          <span class="checkout-review-items__price">
+            S/ {{ (item.unitPrice * item.quantity).toFixed(2) }}
+          </span>
+        </li>
+      }
+    </ul>
+    <p class="checkout-review-subtotal">
+      Subtotal estimado ({{ itemCount() }} productos): <strong>S/ {{ subtotal().toFixed(2) }}</strong>
+    </p>
+    <p class="checkout-review-hint">
+      Estimado solo con fines de presentación — el monto final se confirma al procesar tu pedido.
+    </p>
+  </section>
+
+  @if (customerInfo(); as info) {
+    <section aria-labelledby="checkout-review-customer-title" class="checkout-review-block">
+      <h3 id="checkout-review-customer-title">Datos del cliente</h3>
+      <dl>
+        <div><dt>Nombre</dt><dd>{{ info.fullName }}</dd></div>
+        <div><dt>Correo</dt><dd>{{ info.email }}</dd></div>
+        <div><dt>Teléfono</dt><dd>{{ info.phone }}</dd></div>
+      </dl>
+    </section>
+  }
+
+  @if (deliveryInfo(); as delivery) {
+    <section aria-labelledby="checkout-review-delivery-title" class="checkout-review-block">
+      <h3 id="checkout-review-delivery-title">Entrega</h3>
+      <dl>
+        <div><dt>Dirección</dt><dd>{{ delivery.address }}</dd></div>
+        <div><dt>Distrito</dt><dd>{{ delivery.district }}</dd></div>
+        @if (delivery.notes) {
+          <div><dt>Notas</dt><dd>{{ delivery.notes }}</dd></div>
+        }
+      </dl>
+    </section>
+  }
+
+  <p class="checkout-review-payment-note">
+    Este pedido no incluye el pago — el pedido quedará registrado con estado "Pendiente" y te
+    avisaremos cuando se confirme.
+  </p>
+
+  @if (errorMessage()) {
+    <p role="alert" class="checkout-review-error">{{ errorMessage() }}</p>
+  }
+
+  <div class="checkout-step-actions">
+    <app-button type="button" variant="ghost" [disabled]="submitting()" (clicked)="goBack()">
+      Atrás
+    </app-button>
+    <app-button type="button" [loading]="submitting()" [disabled]="submitting()" (clicked)="submit()">
+      {{ submitting() ? 'Enviando…' : 'Confirmar y enviar pedido' }}
+    </app-button>
+  </div>
+</section>

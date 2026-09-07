@@ -1,0 +1,83 @@
+@use 'tokens' as *;
+
+:host {
+  display: block;
+}
+
+h2 {
+  margin: 0 0 var(--ar-space-4);
+  text-transform: uppercase;
+  font-size: var(--ar-font-size-lg);
+}
+
+.checkout-review-block {
+  border: var(--ar-border-width) solid var(--ar-color-border-on-light);
+  border-radius: var(--ar-radius-md);
+  padding: var(--ar-space-4);
+  margin-bottom: var(--ar-space-4);
+  max-width: 560px;
+}
+
+.checkout-review-block h3 {
+  margin: 0 0 var(--ar-space-3);
+  font-size: var(--ar-font-size-base);
+  text-transform: uppercase;
+}
+
+.checkout-review-items {
+  list-style: none;
+  margin: 0 0 var(--ar-space-3);
+  padding: 0;
+  display: grid;
+  gap: var(--ar-space-2);
+}
+
+.checkout-review-items li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--ar-space-3);
+}
+
+.checkout-review-subtotal {
+  margin: 0;
+}
+
+.checkout-review-hint {
+  margin: var(--ar-space-2) 0 0;
+  font-size: var(--ar-font-size-xs);
+  color: var(--ar-color-muted-on-light);
+}
+
+.checkout-review-block dl {
+  margin: 0;
+  display: grid;
+  gap: var(--ar-space-2);
+}
+
+.checkout-review-block dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--ar-space-3);
+}
+
+.checkout-review-block dt,
+.checkout-review-block dd {
+  margin: 0;
+  font-weight: 400;
+}
+
+.checkout-review-payment-note {
+  max-width: 560px;
+  font-size: var(--ar-font-size-sm);
+  color: var(--ar-color-muted-on-light);
+}
+
+.checkout-review-error {
+  color: var(--ar-color-danger);
+}
+
+.checkout-step-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ar-space-3);
+}

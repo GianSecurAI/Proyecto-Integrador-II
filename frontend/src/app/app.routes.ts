@@ -1,6 +1,8 @@
 import { Routes } from '@angular/router';
 import { ADMIN_ONLY_ROLES, CUSTOMER_ROLES, STAFF_ROLES } from './core/auth/roles';
 import { authGuard } from './core/guards/auth.guard';
+import { checkoutCartNotEmptyGuard } from './features/checkout/guards/checkout-cart-not-empty.guard';
+import { checkoutConfirmationGuard } from './features/checkout/guards/checkout-confirmation.guard';
 
 export const routes: Routes = [
   {
@@ -31,6 +33,30 @@ export const routes: Routes = [
     path: 'cart',
     loadComponent: () => import('./features/cart/pages/cart/cart.page').then((m) => m.CartPage),
     title: 'Carrito de compras — Ar Makers 3D',
+  },
+  {
+    // Standard-catalog self-service checkout (CLAUDE.md's "Business clarification: purchasing
+    // flows", steps 3-5 — EXCLUDING the payment-gateway step 4, not implemented by this
+    // frontend-only mock; see `features/checkout/pages/checkout/checkout.page.ts`'s doc comment).
+    // Public, unguarded — guest checkout, same reasoning as `/cart`. Blocked at the route level
+    // when the cart is empty (`checkoutCartNotEmptyGuard`, redirects to `/cart`).
+    path: 'checkout',
+    canActivate: [checkoutCartNotEmptyGuard],
+    loadComponent: () =>
+      import('./features/checkout/pages/checkout/checkout.page').then((m) => m.CheckoutPage),
+    title: 'Checkout — Ar Makers 3D',
+  },
+  {
+    // Reachable only right after a real, successful mock order submission
+    // (`checkoutConfirmationGuard`, redirects to `/cart` otherwise) — see
+    // `features/checkout/pages/confirmation/checkout-confirmation.page.ts`'s doc comment.
+    path: 'checkout/confirmacion',
+    canActivate: [checkoutConfirmationGuard],
+    loadComponent: () =>
+      import('./features/checkout/pages/confirmation/checkout-confirmation.page').then(
+        (m) => m.CheckoutConfirmationPage,
+      ),
+    title: 'Pedido registrado — Ar Makers 3D',
   },
   {
     path: 'auth',

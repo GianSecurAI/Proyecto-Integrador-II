@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
@@ -12,10 +12,11 @@ import { CartStateService } from '../../services/cart-state.service';
  * Standard-catalog self-service checkout only (CLAUDE.md's "Business clarification: purchasing
  * flows") — the advisor-mediated WhatsApp custom-order flow never reaches this page.
  *
- * All state comes from `CartStateService` — this page holds no cart data of its own, only the
- * ephemeral "Proceder al checkout" demo-feedback message (mirrors
- * `ProductDetailPage.previewAction`'s pattern: `previewCheckout()` below intentionally does NOT
- * navigate into a real payment flow, since checkout is out of scope for this feature).
+ * All state comes from `CartStateService` — this page holds no cart data of its own. "Proceder al
+ * checkout" is a plain `routerLink` into `/checkout`
+ * (`features/checkout/pages/checkout/checkout.page.ts`), which owns the multi-step
+ * cart-review/customer-info/delivery-info/final-review flow and the actual (mock) order
+ * submission — this page's job stops at "hand off to checkout."
  *
  * Deviations from the Figma "Carrito de compras" reference (node 2:1459), see this feature's
  * other files for the fuller reasoning:
@@ -51,8 +52,6 @@ export class CartPage {
   readonly itemCount = this.cart.itemCount;
   readonly subtotal = this.cart.subtotal;
 
-  readonly checkoutMessage = signal('');
-
   retryLoad(): void {
     this.cart.retryLoad();
   }
@@ -71,11 +70,5 @@ export class CartPage {
 
   clearCart(): void {
     this.cart.clearCart();
-  }
-
-  /** Demo-only feedback — see class doc comment. Never navigates into a real payment flow,
-   * since a real checkout is explicitly out of scope for this feature. */
-  previewCheckout(): void {
-    this.checkoutMessage.set('Vista de demostración. El checkout todavía no está disponible.');
   }
 }

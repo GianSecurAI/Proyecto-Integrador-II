@@ -1,0 +1,44 @@
+<section class="checkout-cart-review" aria-label="Revisión del carrito">
+  @if (isEmpty()) {
+    <app-empty-state
+      title="Tu carrito está vacío"
+      description="Explora el catálogo y añade productos para comenzar tu compra."
+    >
+      <a emptyStateAction routerLink="/catalog" class="ui-btn ui-btn--primary ui-btn--sm">
+        Ir al catálogo
+      </a>
+    </app-empty-state>
+  } @else {
+    <ul class="checkout-cart-review__list">
+      @for (item of items(); track item.productId) {
+        <li>
+          <app-cart-item
+            [item]="item"
+            (quantityChange)="onQuantityChange($event)"
+            (remove)="removeItem($event)"
+          />
+        </li>
+      }
+    </ul>
+
+    <dl class="checkout-cart-review__summary">
+      <div>
+        <dt>Productos ({{ itemCount() }})</dt>
+        <dd>S/ {{ subtotal().toFixed(2) }}</dd>
+      </div>
+      <div>
+        <dt>Envío</dt>
+        <dd>Se calcula en el checkout</dd>
+      </div>
+      <div class="checkout-cart-review__summary-total">
+        <dt>Total</dt>
+        <dd>S/ {{ subtotal().toFixed(2) }}</dd>
+      </div>
+    </dl>
+
+    <div class="checkout-cart-review__actions">
+      <a routerLink="/cart" class="ui-btn ui-btn--ghost ui-btn--md">Volver al carrito</a>
+      <app-button type="button" (clicked)="goNext()">Continuar</app-button>
+    </div>
+  }
+</section>

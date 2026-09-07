@@ -1,0 +1,38 @@
+@use 'tokens' as *;
+
+:host {
+  display: block;
+}
+
+.checkout-confirmation-page__container {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: var(--ar-space-8) var(--ar-space-5);
+  text-align: center;
+  display: grid;
+  gap: var(--ar-space-4);
+  justify-items: center;
+}
+
+h1 {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: var(--ar-letter-spacing-wide);
+  font-size: clamp(1.5rem, 2.2vw, 1.875rem);
+}
+
+.checkout-confirmation-page__id {
+  margin: 0;
+}
+
+.checkout-confirmation-page__message {
+  margin: 0;
+  color: var(--ar-color-muted-on-light);
+}
+
+.checkout-confirmation-page__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ar-space-3);
+  justify-content: center;
+}

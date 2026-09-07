@@ -1,0 +1,67 @@
+<section aria-label="Datos de entrega">
+  <h2>Datos de entrega</h2>
+  <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    <app-form-field
+      #addressField="appFormField"
+      label="Dirección"
+      [required]="true"
+      [error]="
+        addressControl.invalid && addressControl.touched ? 'Ingresa tu dirección de entrega.' : null
+      "
+    >
+      <input
+        class="ui-input"
+        [id]="addressField.inputId()"
+        type="text"
+        formControlName="address"
+        autocomplete="street-address"
+        placeholder="Ej. Av. Los Álamos 123"
+        [attr.aria-invalid]="addressField.hasError()"
+        [attr.aria-describedby]="addressField.describedBy()"
+      />
+    </app-form-field>
+
+    <app-form-field
+      #districtField="appFormField"
+      label="Distrito"
+      [required]="true"
+      [error]="
+        districtControl.invalid && districtControl.touched ? 'Ingresa tu distrito.' : null
+      "
+    >
+      <input
+        class="ui-input"
+        [id]="districtField.inputId()"
+        type="text"
+        formControlName="district"
+        autocomplete="address-level2"
+        placeholder="Ej. Miraflores"
+        [attr.aria-invalid]="districtField.hasError()"
+        [attr.aria-describedby]="districtField.describedBy()"
+      />
+    </app-form-field>
+
+    <app-form-field
+      #notesField="appFormField"
+      label="Referencia / notas de entrega (opcional)"
+      hint="Ej. un punto de referencia cercano."
+    >
+      <textarea
+        class="ui-input checkout-delivery-notes"
+        [id]="notesField.inputId()"
+        formControlName="notes"
+        rows="3"
+      ></textarea>
+    </app-form-field>
+
+    <div class="checkout-step-actions">
+      <app-button type="button" variant="ghost" (clicked)="goBack()">Atrás</app-button>
+      <app-button type="submit">Continuar</app-button>
+    </div>
+  </form>
+
+  <p class="checkout-delivery-notice">
+    Vista de demostración: escribe <code>__mock_fail__</code> en el campo Dirección para
+    previsualizar un error al registrar el pedido.
+  </p>
+</section>

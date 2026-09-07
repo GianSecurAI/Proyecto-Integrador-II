@@ -1,0 +1,40 @@
+<main class="checkout-page">
+  <div class="checkout-page__container">
+    <h1>Checkout</h1>
+
+    <ol class="checkout-page__steps" aria-label="Progreso del checkout">
+      @for (s of stepOrder; track s; let i = $index) {
+        <li
+          class="checkout-page__step"
+          [class.checkout-page__step--active]="i === stepIndex()"
+          [class.checkout-page__step--done]="i < stepIndex()"
+          [attr.aria-current]="i === stepIndex() ? 'step' : null"
+        >
+          <span class="checkout-page__step-number">{{ i + 1 }}</span>
+          {{ stepLabels[s] }}
+        </li>
+      }
+    </ol>
+
+    @switch (step()) {
+      @case ('cart') {
+        <app-checkout-cart-review-step (next)="goToStep('customer')" />
+      }
+      @case ('customer') {
+        <app-checkout-customer-info-step
+          (back)="goToStep('cart')"
+          (next)="goToStep('delivery')"
+        />
+      }
+      @case ('delivery') {
+        <app-checkout-delivery-info-step
+          (back)="goToStep('customer')"
+          (next)="goToStep('review')"
+        />
+      }
+      @case ('review') {
+        <app-checkout-review-step (back)="goToStep('delivery')" />
+      }
+    }
+  </div>
+</main>

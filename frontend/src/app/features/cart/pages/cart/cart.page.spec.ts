@@ -71,21 +71,14 @@ describe('CartPage', () => {
     expect(text).not.toContain('SSL');
   });
 
-  it('shows a demo-only checkout message without navigating anywhere real', () => {
+  it('links "Proceder al checkout" to the real /checkout route', () => {
     setup();
     cart.addItem(PRODUCT, 1);
     fixture.detectChanges();
 
-    const buttons: HTMLButtonElement[] = Array.from(
-      fixture.nativeElement.querySelectorAll('button'),
-    );
-    const checkoutButton = buttons.find((el) => el.textContent?.includes('Proceder al checkout'))!;
-    checkoutButton.click();
-    fixture.detectChanges();
-
-    expect(fixture.nativeElement.querySelector('[role="status"]').textContent).toContain(
-      'El checkout todavía no está disponible',
-    );
+    const links: HTMLAnchorElement[] = Array.from(fixture.nativeElement.querySelectorAll('a'));
+    const checkoutLink = links.find((el) => el.textContent?.includes('Proceder al checkout'))!;
+    expect(checkoutLink.getAttribute('routerLink')).toBe('/checkout');
   });
 
   it('removing the last item returns to the empty-cart state', () => {

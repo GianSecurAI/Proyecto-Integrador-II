@@ -1,0 +1,23 @@
+@use 'tokens' as *;
+
+:host {
+  display: block;
+}
+
+h2 {
+  margin: 0 0 var(--ar-space-4);
+  text-transform: uppercase;
+  font-size: var(--ar-font-size-lg);
+}
+
+form {
+  display: grid;
+  gap: var(--ar-space-4);
+  max-width: 480px;
+}
+
+.checkout-step-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ar-space-3);
+}
