@@ -7,6 +7,32 @@ import { routes } from './app.routes';
  * `account` route itself no longer has a `loadComponent` — it only holds the shared
  * `authGuard`/`role: 'CLIENTE'` and dispatches to its children).
  */
+/**
+ * Public, unauthenticated static content routes (footer "Políticas"/"Información del contacto"
+ * links) added alongside `features/legal/` — confirms each resolves to the right lazy component
+ * with no guard.
+ */
+describe('app.routes — /legal', () => {
+  const legalRoutes: Array<{ path: string; name: string }> = [
+    { path: 'legal/privacidad', name: 'PrivacyPolicyPage' },
+    { path: 'legal/reembolso', name: 'RefundPolicyPage' },
+    { path: 'legal/terminos', name: 'TermsOfServicePage' },
+    { path: 'legal/envio', name: 'ShippingPolicyPage' },
+    { path: 'legal/contacto', name: 'ContactInfoPage' },
+  ];
+
+  for (const { path, name } of legalRoutes) {
+    it(`loads ${name} for /${path}, unguarded`, async () => {
+      const route = routes.find((r) => r.path === path);
+      expect(route?.loadComponent).toBeTruthy();
+      expect(route?.canActivate).toBeFalsy();
+
+      const loaded = await route!.loadComponent!();
+      expect((loaded as { name: string }).name).toMatch(new RegExp(`^${name}`));
+    });
+  }
+});
+
 describe('app.routes', () => {
   const accountRoute = () => routes.find((route) => route.path === 'account');
 
@@ -61,10 +87,10 @@ describe('app.routes', () => {
 describe('app.routes — /admin', () => {
   const adminRoute = () => routes.find((route) => route.path === 'admin');
 
-  it('guards the parent /admin route with authGuard and role: ADMINISTRADOR', () => {
+  it('guards the parent /admin route with authGuard and role: [ADMINISTRADOR, ASESOR]', () => {
     const route = adminRoute();
     expect(route?.canActivate).toBeTruthy();
-    expect(route?.data?.['role']).toBe('ADMINISTRADOR');
+    expect(route?.data?.['role']).toEqual(['ADMINISTRADOR', 'ASESOR']);
   });
 
   it('loads AdminShellComponent for the parent /admin route', async () => {
@@ -79,28 +105,66 @@ describe('app.routes — /admin', () => {
     expect(defaultChild?.redirectTo).toBe('products');
   });
 
-  it('loads AdminProductListPage for /admin/products', async () => {
+  it('loads AdminProductListPage for /admin/products, re-restricted to ADMINISTRADOR', async () => {
     const child = adminRoute()?.children?.find((c) => c.path === 'products');
-    expect(child?.loadComponent).toBeTruthy();
+    expect(child?.canActivate).toBeTruthy();
+    expect(child?.data?.['role']).toBe('ADMINISTRADOR');
     const loaded = await child!.loadComponent!();
     expect((loaded as { name: string }).name).toMatch(/^AdminProductListPage/);
   });
 
-  it('loads AdminProductCreatePage for /admin/products/new', async () => {
+  it('loads AdminProductCreatePage for /admin/products/new, re-restricted to ADMINISTRADOR', async () => {
     const child = adminRoute()?.children?.find((c) => c.path === 'products/new');
-    expect(child?.loadComponent).toBeTruthy();
+    expect(child?.canActivate).toBeTruthy();
+    expect(child?.data?.['role']).toBe('ADMINISTRADOR');
     const loaded = await child!.loadComponent!();
     expect((loaded as { name: string }).name).toMatch(/^AdminProductCreatePage/);
   });
 
-  it('loads AdminProductDetailPage for /admin/products/:id', async () => {
+  it('loads AdminProductDetailPage for /admin/products/:id, re-restricted to ADMINISTRADOR', async () => {
     const child = adminRoute()?.children?.find((c) => c.path === 'products/:id');
-    expect(child?.loadComponent).toBeTruthy();
+    expect(child?.canActivate).toBeTruthy();
+    expect(child?.data?.['role']).toBe('ADMINISTRADOR');
     const loaded = await child!.loadComponent!();
     expect((loaded as { name: string }).name).toMatch(/^AdminProductDetailPage/);
   });
 
-  for (const path of ['orders', 'quotations', 'incidents', 'reports', 'users']) {
+  it('loads AdminOrderListPage for /admin/orders, inheriting the parent [ADMINISTRADOR, ASESOR] guard (no extra child guard)', async () => {
+    const child = adminRoute()?.children?.find((c) => c.path === 'orders');
+    expect(child?.canActivate).toBeFalsy();
+    const loaded = await child!.loadComponent!();
+    expect((loaded as { name: string }).name).toMatch(/^AdminOrderListPage/);
+  });
+
+  it('loads AdminRegisterPersonalizedOrderPage for /admin/orders/register-personalized', async () => {
+    const child = adminRoute()?.children?.find((c) => c.path === 'orders/register-personalized');
+    expect(child?.loadComponent).toBeTruthy();
+    const loaded = await child!.loadComponent!();
+    expect((loaded as { name: string }).name).toMatch(/^AdminRegisterPersonalizedOrderPage/);
+  });
+
+  it('loads AdminOrderDetailPage for /admin/orders/:id', async () => {
+    const child = adminRoute()?.children?.find((c) => c.path === 'orders/:id');
+    expect(child?.loadComponent).toBeTruthy();
+    const loaded = await child!.loadComponent!();
+    expect((loaded as { name: string }).name).toMatch(/^AdminOrderDetailPage/);
+  });
+
+  it('loads AdminIncidentListPage for /admin/incidents, inheriting the parent [ADMINISTRADOR, ASESOR] guard (no extra child guard)', async () => {
+    const child = adminRoute()?.children?.find((c) => c.path === 'incidents');
+    expect(child?.canActivate).toBeFalsy();
+    const loaded = await child!.loadComponent!();
+    expect((loaded as { name: string }).name).toMatch(/^AdminIncidentListPage/);
+  });
+
+  it('loads AdminIncidentDetailPage for /admin/incidents/:id', async () => {
+    const child = adminRoute()?.children?.find((c) => c.path === 'incidents/:id');
+    expect(child?.loadComponent).toBeTruthy();
+    const loaded = await child!.loadComponent!();
+    expect((loaded as { name: string }).name).toMatch(/^AdminIncidentDetailPage/);
+  });
+
+  for (const path of ['quotations']) {
     it(`loads the generic AdminPlaceholderPage with title/description data for /admin/${path}`, async () => {
       const child = adminRoute()?.children?.find((c) => c.path === path);
       expect(child?.loadComponent).toBeTruthy();
@@ -109,6 +173,38 @@ describe('app.routes — /admin', () => {
 
       const loaded = await child!.loadComponent!();
       expect((loaded as { name: string }).name).toMatch(/^AdminPlaceholderPage/);
+    });
+  }
+
+  it('loads AdminReportsPage for /admin/reports', async () => {
+    const child = adminRoute()?.children?.find((c) => c.path === 'reports');
+    expect(child?.loadComponent).toBeTruthy();
+
+    const loaded = await child!.loadComponent!();
+    expect((loaded as { name: string }).name).toMatch(/^AdminReportsPage/);
+  });
+
+  it('loads AdminUserListPage for /admin/users, re-restricted to ADMINISTRADOR', async () => {
+    const child = adminRoute()?.children?.find((c) => c.path === 'users');
+    expect(child?.canActivate).toBeTruthy();
+    expect(child?.data?.['role']).toBe('ADMINISTRADOR');
+    const loaded = await child!.loadComponent!();
+    expect((loaded as { name: string }).name).toMatch(/^AdminUserListPage/);
+  });
+
+  it('loads AdminUserDetailPage for /admin/users/:id, re-restricted to ADMINISTRADOR', async () => {
+    const child = adminRoute()?.children?.find((c) => c.path === 'users/:id');
+    expect(child?.canActivate).toBeTruthy();
+    expect(child?.data?.['role']).toBe('ADMINISTRADOR');
+    const loaded = await child!.loadComponent!();
+    expect((loaded as { name: string }).name).toMatch(/^AdminUserDetailPage/);
+  });
+
+  for (const path of ['reports', 'users', 'users/:id']) {
+    it(`re-restricts /admin/${path} to ADMINISTRADOR alone`, () => {
+      const child = adminRoute()?.children?.find((c) => c.path === path);
+      expect(child?.canActivate).toBeTruthy();
+      expect(child?.data?.['role']).toBe('ADMINISTRADOR');
     });
   }
 });

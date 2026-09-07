@@ -82,16 +82,26 @@ export const routes: Routes = [
     ],
   },
   {
-    // Admin panel shell (features/admin/) — visual foundation/layout only, no admin business
-    // screens implemented yet. Guarded exactly like `/account` above, but with `role:
-    // 'ADMINISTRADOR'` — no admin authentication flow exists yet, so this route is deliberately
-    // unreachable in the running preview (no fake "admin session" bypass is introduced; see
-    // `SessionStateService`/`authGuard`). `loadComponent` here supplies the admin-only chrome
-    // (topbar + sidebar) that replaces the public header/footer under this path (see
+    // Admin panel shell (features/admin/) — houses both the Administrador-only screens
+    // (products/reports/users) and the staff screens shared with Asesor (orders — this task's;
+    // incidents, already Administrador/Asesor per RF-16/17/18). Guarded like `/account` above, but
+    // with `role: ['ADMINISTRADOR', 'ASESOR']` — both staff roles may enter the admin shell now
+    // that Asesor has approved capabilities within it (RF-11/RF-13). No admin/advisor
+    // authentication flow exists yet, so this route is deliberately unreachable in the running
+    // preview (no fake "staff session" bypass is introduced; see `SessionStateService`/
+    // `authGuard`). `loadComponent` here supplies the admin-only chrome (topbar + sidebar) that
+    // replaces the public header/footer under this path (see
     // `layout/shell/shell.component.ts`'s `isAdminArea` signal).
+    //
+    // Because the PARENT is now reachable by both staff roles, the three domains confirmed
+    // Administrador-ONLY by their own requirement grounding (products — RF-07; reports — RF-19,
+    // "exclusivos para Administrador"; users — RF-03, role management) each carry their OWN
+    // stricter child-level guard below so Asesor cannot reach them as a side effect of the parent
+    // widening. `orders`/`quotations`/`incidents` need no extra guard — they correctly, and
+    // intentionally, inherit the parent's now-broadened `['ADMINISTRADOR', 'ASESOR']`.
     path: 'admin',
     canActivate: [authGuard],
-    data: { role: 'ADMINISTRADOR' },
+    data: { role: ['ADMINISTRADOR', 'ASESOR'] },
     loadComponent: () =>
       import('./features/admin/layout/admin-shell/admin-shell.component').then(
         (m) => m.AdminShellComponent,
@@ -102,8 +112,11 @@ export const routes: Routes = [
         // The one domain (RF-07/HU06 "Gestionar catálogo de productos") with a real feature
         // implementation — list/detail/create — instead of the generic placeholder used by the
         // other five domains below. See `pages/product-list/admin-product-list.page.ts`'s doc
-        // comment for the full requirement grounding.
+        // comment for the full requirement grounding. Administrador-ONLY — see the parent route's
+        // doc comment above.
         path: 'products',
+        canActivate: [authGuard],
+        data: { role: 'ADMINISTRADOR' },
         loadComponent: () =>
           import('./features/admin/pages/product-list/admin-product-list.page').then(
             (m) => m.AdminProductListPage,
@@ -112,8 +125,10 @@ export const routes: Routes = [
       },
       {
         // Must be registered BEFORE 'products/:id' so the literal segment 'new' does not get
-        // captured by the ':id' param route.
+        // captured by the ':id' param route. Administrador-ONLY, same as 'products' above.
         path: 'products/new',
+        canActivate: [authGuard],
+        data: { role: 'ADMINISTRADOR' },
         loadComponent: () =>
           import('./features/admin/pages/product-create/admin-product-create.page').then(
             (m) => m.AdminProductCreatePage,
@@ -121,7 +136,10 @@ export const routes: Routes = [
         title: 'Nuevo producto — Administración — Ar Makers 3D',
       },
       {
+        // Administrador-ONLY, same as 'products' above.
         path: 'products/:id',
+        canActivate: [authGuard],
+        data: { role: 'ADMINISTRADOR' },
         loadComponent: () =>
           import('./features/admin/pages/product-detail/admin-product-detail.page').then(
             (m) => m.AdminProductDetailPage,
@@ -129,17 +147,34 @@ export const routes: Routes = [
         title: 'Detalle del producto — Administración — Ar Makers 3D',
       },
       {
+        // RF-13 ("Gestión de los estados del pedido") staff order list — actor Administrador/
+        // Asesor, see `pages/order-list/admin-order-list.page.ts`'s doc comment. Inherits the
+        // parent's `['ADMINISTRADOR', 'ASESOR']` — no extra guard needed.
         path: 'orders',
         loadComponent: () =>
-          import('./features/admin/pages/placeholder/admin-placeholder.page').then(
-            (m) => m.AdminPlaceholderPage,
+          import('./features/admin/pages/order-list/admin-order-list.page').then(
+            (m) => m.AdminOrderListPage,
           ),
-        data: {
-          title: 'Pedidos',
-          description:
-            'Gestión de pedidos — Próximamente. Esta sección se implementará cuando el backend de pedidos (RF-13) esté disponible.',
-        },
         title: 'Pedidos — Administración — Ar Makers 3D',
+      },
+      {
+        // Must be registered BEFORE 'orders/:id' so the literal segment does not get captured by
+        // the ':id' param route. RF-11 ("Registro de pedidos", flujo personalizado) advisor
+        // workflow — see `pages/register-personalized-order/`'s doc comment.
+        path: 'orders/register-personalized',
+        loadComponent: () =>
+          import(
+            './features/admin/pages/register-personalized-order/admin-register-personalized-order.page'
+          ).then((m) => m.AdminRegisterPersonalizedOrderPage),
+        title: 'Registrar pedido personalizado — Administración — Ar Makers 3D',
+      },
+      {
+        path: 'orders/:id',
+        loadComponent: () =>
+          import('./features/admin/pages/order-detail/admin-order-detail.page').then(
+            (m) => m.AdminOrderDetailPage,
+          ),
+        title: 'Detalle del pedido — Administración — Ar Makers 3D',
       },
       {
         path: 'quotations',
@@ -155,45 +190,110 @@ export const routes: Routes = [
         title: 'Cotizaciones — Administración — Ar Makers 3D',
       },
       {
+        // RF-16/RF-17/RF-18 ("Gestión de estados de incidencias"/"Clasificación de
+        // prioridad"/"Registro de resolución") staff incident list — actor Administrador/Asesor,
+        // see `pages/incident-list/admin-incident-list.page.ts`'s doc comment. Inherits the
+        // parent's `['ADMINISTRADOR', 'ASESOR']` — no extra guard needed.
         path: 'incidents',
         loadComponent: () =>
-          import('./features/admin/pages/placeholder/admin-placeholder.page').then(
-            (m) => m.AdminPlaceholderPage,
+          import('./features/admin/pages/incident-list/admin-incident-list.page').then(
+            (m) => m.AdminIncidentListPage,
           ),
-        data: {
-          title: 'Incidencias',
-          description:
-            'Gestión de incidencias — Próximamente. Esta sección se implementará cuando el backend de incidencias (RF-16/17/18) esté disponible.',
-        },
         title: 'Incidencias — Administración — Ar Makers 3D',
       },
       {
-        path: 'reports',
+        path: 'incidents/:id',
         loadComponent: () =>
-          import('./features/admin/pages/placeholder/admin-placeholder.page').then(
-            (m) => m.AdminPlaceholderPage,
+          import('./features/admin/pages/incident-detail/admin-incident-detail.page').then(
+            (m) => m.AdminIncidentDetailPage,
+          ),
+        title: 'Detalle de la incidencia — Administración — Ar Makers 3D',
+      },
+      {
+        // Administrador-ONLY — RF-19 (line 209: "Reportes... exclusivos para Administrador"). See
+        // the parent route's doc comment above. Loads `AdminReportsPage` (client-side aggregation
+        // over `AdminOrdersMockService`/`AdminIncidentsMockService` — `Reporte` is not a persisted
+        // entity, see that page's doc comment), replacing the earlier generic placeholder.
+        path: 'reports',
+        canActivate: [authGuard],
+        loadComponent: () =>
+          import('./features/admin/pages/reports/admin-reports.page').then(
+            (m) => m.AdminReportsPage,
           ),
         data: {
-          title: 'Reportes',
-          description:
-            'Generación de reportes — Próximamente. Esta sección se implementará cuando el backend de reportes (RF-19) esté disponible.',
+          role: 'ADMINISTRADOR',
         },
         title: 'Reportes — Administración — Ar Makers 3D',
       },
       {
+        // RF-03 ("Autorización por rol / gestión de roles y permisos") admin user list —
+        // Administrador-ONLY. See the parent route's doc comment above and
+        // `pages/user-list/admin-user-list.page.ts`'s doc comment for the full requirement
+        // grounding.
         path: 'users',
+        canActivate: [authGuard],
+        data: { role: 'ADMINISTRADOR' },
         loadComponent: () =>
-          import('./features/admin/pages/placeholder/admin-placeholder.page').then(
-            (m) => m.AdminPlaceholderPage,
+          import('./features/admin/pages/user-list/admin-user-list.page').then(
+            (m) => m.AdminUserListPage,
           ),
-        data: {
-          title: 'Usuarios y roles',
-          description:
-            'Gestión de usuarios y roles — Próximamente. Esta sección se implementará cuando el backend de autorización por rol (RF-03) esté disponible.',
-        },
-        title: 'Usuarios y roles — Administración — Ar Makers 3D',
+        title: 'Usuarios — Administración — Ar Makers 3D',
+      },
+      {
+        // Administrador-ONLY, same as 'users' above.
+        path: 'users/:id',
+        canActivate: [authGuard],
+        data: { role: 'ADMINISTRADOR' },
+        loadComponent: () =>
+          import('./features/admin/pages/user-detail/admin-user-detail.page').then(
+            (m) => m.AdminUserDetailPage,
+          ),
+        title: 'Detalle del usuario — Administración — Ar Makers 3D',
       },
     ],
+  },
+  {
+    // Public, unauthenticated static content pages (footer "Políticas"/"Información del
+    // contacto" links) — see `features/legal/pages/*` doc comments for the Figma provenance and
+    // the deliberate exclusion of the "Contactanos" form/FAQ CONFLICT pattern. No guard.
+    path: 'legal/privacidad',
+    loadComponent: () =>
+      import('./features/legal/pages/privacy-policy/privacy-policy.page').then(
+        (m) => m.PrivacyPolicyPage,
+      ),
+    title: 'Política de privacidad — Ar Makers 3D',
+  },
+  {
+    path: 'legal/reembolso',
+    loadComponent: () =>
+      import('./features/legal/pages/refund-policy/refund-policy.page').then(
+        (m) => m.RefundPolicyPage,
+      ),
+    title: 'Política de reembolso — Ar Makers 3D',
+  },
+  {
+    path: 'legal/terminos',
+    loadComponent: () =>
+      import('./features/legal/pages/terms-of-service/terms-of-service.page').then(
+        (m) => m.TermsOfServicePage,
+      ),
+    title: 'Términos de servicio — Ar Makers 3D',
+  },
+  {
+    path: 'legal/envio',
+    loadComponent: () =>
+      import('./features/legal/pages/shipping-policy/shipping-policy.page').then(
+        (m) => m.ShippingPolicyPage,
+      ),
+    title: 'Política de envío — Ar Makers 3D',
+  },
+  {
+    path: 'legal/contacto',
+    loadComponent: () =>
+      import('./features/legal/pages/contact-info/contact-info.page').then(
+        (m) => m.ContactInfoPage,
+      ),
+    title: 'Información del contacto — Ar Makers 3D',
   },
   {
     path: 'forbidden',
