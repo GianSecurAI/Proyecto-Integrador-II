@@ -1,0 +1,20 @@
+<div class="ui-order-timeline" [class.ui-order-timeline--cancelled]="isCancelled()">
+  @if (isCancelled()) {
+    <p class="ui-order-timeline__cancelled-note">
+      Este pedido fue cancelado ({{ cancelledLabel() }}) y no continuó su progreso habitual.
+    </p>
+  }
+  <ol class="ui-order-timeline__list" aria-label="Progreso del pedido">
+    @for (step of steps(); track step.status) {
+      <li
+        class="ui-order-timeline__step"
+        [class.ui-order-timeline__step--done]="step.state === 'done'"
+        [class.ui-order-timeline__step--current]="step.state === 'current'"
+        [attr.aria-current]="step.state === 'current' ? 'step' : null"
+      >
+        <span class="ui-order-timeline__marker" aria-hidden="true"></span>
+        <span class="ui-order-timeline__label">{{ step.label }}</span>
+      </li>
+    }
+  </ol>
+</div>

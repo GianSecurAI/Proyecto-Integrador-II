@@ -1,0 +1,70 @@
+@use 'tokens' as *;
+
+// Collapse/off-canvas breakpoint: wider than the $bp-sm (480px / 30rem) mobile breakpoint
+// already used elsewhere in the app (e.g. auth forms), because a sidebar + content layout needs
+// materially more horizontal room than a single-column form before it stops feeling cramped.
+// $bp-md (768px / 48rem) is the next step up in the existing `_tokens.scss` scale, and lines up
+// with a small-tablet-and-up viewport, which is a reasonable place for a persistent sidebar to
+// stop being off-canvas.
+$admin-sidebar-collapse: $bp-md;
+
+:host {
+  display: block;
+}
+
+.admin-sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  top: var(--ar-admin-topbar-height, 3.5rem);
+  width: 16rem;
+  background: var(--ar-color-black);
+  color: var(--ar-color-white);
+  border-right: var(--ar-border-width-thick) solid var(--ar-color-black);
+  transform: translateX(-100%);
+  transition: transform var(--ar-transition-fast);
+  overflow-y: auto;
+  z-index: 20;
+}
+
+.admin-sidebar--open {
+  transform: translateX(0);
+}
+
+.admin-sidebar__list {
+  list-style: none;
+  margin: 0;
+  padding: var(--ar-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ar-space-1);
+}
+
+.admin-sidebar__link {
+  display: block;
+  padding: var(--ar-space-3) var(--ar-space-4);
+  color: var(--ar-color-white);
+  text-decoration: none;
+  border-radius: var(--ar-radius-md);
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: var(--ar-font-size-sm);
+  letter-spacing: var(--ar-letter-spacing-wide);
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.08);
+  }
+}
+
+.admin-sidebar__link--active {
+  background: var(--ar-color-accent);
+  color: var(--ar-color-black);
+}
+
+@media (min-width: $admin-sidebar-collapse) {
+  .admin-sidebar {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    transform: none;
+  }
+}

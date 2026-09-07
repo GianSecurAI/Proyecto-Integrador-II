@@ -1,0 +1,44 @@
+@use 'tokens' as *;
+
+:host {
+  display: contents;
+}
+
+.admin-confirm-dialog__backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--ar-space-4);
+  z-index: 100;
+}
+
+.admin-confirm-dialog {
+  width: 100%;
+  max-width: 28rem;
+  background: var(--ar-color-white);
+  color: var(--ar-color-black);
+  border: var(--ar-border-width) solid var(--ar-color-black);
+  border-radius: var(--ar-radius-lg);
+  box-shadow: var(--ar-shadow-hard);
+  padding: var(--ar-space-5);
+}
+
+.admin-confirm-dialog__title {
+  margin: 0 0 var(--ar-space-3);
+  font-size: var(--ar-font-size-lg);
+}
+
+.admin-confirm-dialog__description {
+  margin: 0 0 var(--ar-space-5);
+  color: var(--ar-color-muted-on-light);
+}
+
+.admin-confirm-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--ar-space-3);
+  flex-wrap: wrap;
+}

@@ -1,12 +1,16 @@
 <a class="skip-link" href="#main-content">Saltar al contenido principal</a>
 
-<app-header></app-header>
+@if (!isAdminArea()) {
+  <app-header></app-header>
+}
 
 <!-- A plain div, not <main>: every routed page already renders its own <main> landmark
-     (e.g. auth-shared pages, status pages), and HTML forbids nesting two <main> elements. This
-     is only the skip-link target. -->
+     (e.g. auth-shared pages, status pages, and the admin shell's own content region), and HTML
+     forbids nesting two <main> elements. This is only the skip-link target. -->
 <div id="main-content" class="app-shell__main" tabindex="-1">
   <router-outlet></router-outlet>
 </div>
 
-<app-footer></app-footer>
+@if (!isAdminArea()) {
+  <app-footer></app-footer>
+}

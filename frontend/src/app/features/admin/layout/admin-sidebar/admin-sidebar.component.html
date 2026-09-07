@@ -1,0 +1,22 @@
+<nav
+  id="admin-sidebar"
+  class="admin-sidebar"
+  [class.admin-sidebar--open]="open()"
+  aria-label="Administración"
+>
+  <ul class="admin-sidebar__list">
+    @for (item of navItems; track item.path) {
+      <li>
+        <a
+          [routerLink]="item.path"
+          routerLinkActive="admin-sidebar__link--active"
+          #rla="routerLinkActive"
+          [attr.aria-current]="rla.isActive ? 'page' : null"
+          class="admin-sidebar__link"
+        >
+          {{ item.label }}
+        </a>
+      </li>
+    }
+  </ul>
+</nav>

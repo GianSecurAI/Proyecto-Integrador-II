@@ -1,0 +1,101 @@
+<main class="profile-page">
+  <div class="profile-page__container">
+    <h1>Tu perfil</h1>
+    <app-account-nav />
+    @if (loading()) {
+      <p role="status">Cargando tu perfil…</p>
+    } @else {
+      <app-card>
+        @if (!editing()) {
+          <div class="profile-page__view">
+            <app-profile-field-row label="Correo electrónico" [value]="profile().email" />
+            <p class="profile-page__hint">
+              Tu correo es tu identidad de acceso y no se puede editar aquí.
+            </p>
+            <app-profile-field-row label="Cliente desde" [value]="memberSinceLabel()" />
+            <app-profile-field-row
+              label="Nombre"
+              [value]="profile().firstName || 'No registrado'"
+            />
+            <app-profile-field-row
+              label="Apellido"
+              [value]="profile().lastName || 'No registrado'"
+            />
+            <app-profile-field-row label="Teléfono" [value]="profile().phone || 'No registrado'" />
+          </div>
+          @if (successMessage()) {
+            <p role="status" class="profile-page__success">{{ successMessage() }}</p>
+          }
+          <app-button (clicked)="startEditing()">Editar perfil</app-button>
+        } @else {
+          <form [formGroup]="form" (ngSubmit)="save()" novalidate [attr.aria-busy]="submitting()">
+            <app-form-field #firstNameField="appFormField" label="Nombre">
+              <input
+                class="ui-input"
+                [id]="firstNameField.inputId()"
+                type="text"
+                formControlName="firstName"
+                autocomplete="given-name"
+                placeholder="Ej. María"
+                [readonly]="submitting()"
+              />
+            </app-form-field>
+            <app-form-field #lastNameField="appFormField" label="Apellido">
+              <input
+                class="ui-input"
+                [id]="lastNameField.inputId()"
+                type="text"
+                formControlName="lastName"
+                autocomplete="family-name"
+                placeholder="Ej. Gómez"
+                [readonly]="submitting()"
+              />
+            </app-form-field>
+            <app-form-field
+              #phoneField="appFormField"
+              label="Teléfono"
+              [error]="
+                phoneControl.invalid && phoneControl.touched
+                  ? 'Ingresa un teléfono válido o deja el campo vacío.'
+                  : null
+              "
+            >
+              <input
+                class="ui-input"
+                [id]="phoneField.inputId()"
+                type="tel"
+                formControlName="phone"
+                autocomplete="tel"
+                inputmode="tel"
+                placeholder="Ej. 987 654 321"
+                [readonly]="submitting()"
+                [attr.aria-invalid]="phoneField.hasError()"
+                [attr.aria-describedby]="phoneField.describedBy()"
+              />
+            </app-form-field>
+            <div class="profile-page__actions">
+              <app-button type="submit" [loading]="submitting()" [disabled]="submitting()">
+                {{ submitting() ? 'Guardando…' : 'Guardar cambios' }}
+              </app-button>
+              <app-button
+                type="button"
+                variant="ghost"
+                [disabled]="submitting()"
+                (clicked)="cancel()"
+              >
+                Cancelar
+              </app-button>
+            </div>
+          </form>
+          @if (errorMessage()) {
+            <p role="alert" class="profile-page__error">{{ errorMessage() }}</p>
+          }
+        }
+      </app-card>
+      <p class="profile-page__notice">
+        Vista de demostración: los cambios no se guardan en un servidor real. Para simular un
+        error al guardar, escribe "000-000-000" en el campo Teléfono.
+      </p>
+    }
+  </div>
+</main>

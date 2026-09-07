@@ -1,0 +1,34 @@
+@use 'tokens' as *;
+
+:host {
+  display: block;
+}
+
+.admin-page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ar-space-4);
+  margin-bottom: var(--ar-space-5);
+}
+
+.admin-page-header__title {
+  font-size: var(--ar-font-size-xl);
+  text-transform: uppercase;
+  letter-spacing: var(--ar-letter-spacing-wide);
+  margin: 0;
+}
+
+.admin-page-header__description {
+  margin: var(--ar-space-2) 0 0;
+  color: var(--ar-color-muted-on-light);
+  max-width: 60ch;
+}
+
+.admin-page-header__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--ar-space-3);
+  flex-shrink: 0;
+}

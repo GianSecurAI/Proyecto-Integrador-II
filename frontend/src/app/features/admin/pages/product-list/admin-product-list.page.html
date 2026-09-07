@@ -1,0 +1,155 @@
+<div class="admin-product-list-page">
+  <app-admin-page-header
+    title="Productos"
+    description="Gestiona el catálogo de productos: crea, edita y activa o desactiva su disponibilidad."
+  >
+    <a
+      adminPageHeaderActions
+      routerLink="/admin/products/new"
+      class="ui-btn ui-btn--primary ui-btn--md"
+    >
+      + Nuevo producto
+    </a>
+  </app-admin-page-header>
+
+  @switch (status()) {
+    @case ('loading') {
+      <app-loading-state message="Cargando productos…" />
+    }
+    @case ('error') {
+      <app-error-state
+        title="No se pudieron cargar los productos"
+        description="Ocurrió un problema al conectar con el catálogo administrativo. Inténtalo de nuevo."
+      >
+        <app-button errorStateAction variant="secondary" (clicked)="retry()">
+          Reintentar
+        </app-button>
+      </app-error-state>
+    }
+    @default {
+      @if (products().length === 0) {
+        <app-empty-state
+          title="Todavía no hay productos"
+          description="Cuando crees el primer producto del catálogo, lo verás aquí."
+        >
+          <a emptyStateAction routerLink="/admin/products/new" class="ui-btn ui-btn--primary ui-btn--sm">
+            + Nuevo producto
+          </a>
+        </app-empty-state>
+      } @else {
+        <div class="admin-product-list-page__filters">
+          <label class="admin-product-list-page__filter">
+            <span>Buscar por nombre</span>
+            <input
+              class="ui-input"
+              type="search"
+              placeholder="Ej. llavero"
+              [value]="search()"
+              (input)="updateSearch($any($event.target).value)"
+            />
+          </label>
+          <label class="admin-product-list-page__filter">
+            <span>Categoría</span>
+            <select
+              class="ui-select"
+              [value]="categoryFilter()"
+              (change)="updateCategoryFilter($any($event.target).value)"
+            >
+              @for (cat of categories; track cat) {
+                <option [value]="cat">{{ categoryLabels[cat] }}</option>
+              }
+            </select>
+          </label>
+        </div>
+
+        @if (availabilityError()) {
+          <p role="alert" class="admin-product-list-page__error">{{ availabilityError() }}</p>
+        }
+
+        @if (filteredProducts().length === 0) {
+          <app-empty-state
+            title="Ningún producto coincide con los filtros"
+            description="Ajusta la búsqueda o la categoría seleccionada."
+          />
+        } @else {
+          <app-admin-data-table>
+            <thead>
+              <tr>
+                <th scope="col">Producto</th>
+                <th scope="col">Categoría</th>
+                <th scope="col">Precio</th>
+                <th scope="col">Estado</th>
+                <th scope="col">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (product of filteredProducts(); track product.id) {
+                <tr>
+                  <td>
+                    <a [routerLink]="['/admin/products', product.id]">{{ product.title }}</a>
+                  </td>
+                  <td>{{ categoryLabel(product.category) }}</td>
+                  <td>S/ {{ product.price.toFixed(2) }}</td>
+                  <td>
+                    <app-status-badge
+                      [label]="product.available ? 'Activo' : 'Inactivo'"
+                      [tone]="product.available ? 'success' : 'neutral'"
+                    />
+                  </td>
+                  <td>
+                    <div class="admin-product-list-page__row-actions">
+                      <a
+                        [routerLink]="['/admin/products', product.id]"
+                        class="ui-btn ui-btn--ghost ui-btn--sm"
+                      >
+                        Ver / Editar
+                      </a>
+                      @if (product.available) {
+                        <button
+                          type="button"
+                          class="ui-btn ui-btn--danger ui-btn--sm"
+                          (click)="requestDeactivate(product)"
+                        >
+                          Desactivar
+                        </button>
+                      } @else {
+                        <button
+                          type="button"
+                          class="ui-btn ui-btn--secondary ui-btn--sm"
+                          (click)="activate(product)"
+                        >
+                          Activar
+                        </button>
+                      }
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </app-admin-data-table>
+        }
+      }
+    }
+  }
+
+  <p class="admin-product-list-page__notice">
+    Vista de demostración: estos productos no provienen de un servidor real. Para previsualizar
+    otros estados desde el navegador, añade <code>?mockState=empty</code> o
+    <code>?mockState=error</code> a esta URL.
+  </p>
+
+  <app-admin-confirm-dialog
+    [open]="pendingDeactivation() !== null"
+    title="¿Desactivar este producto?"
+    [description]="
+      pendingDeactivation()
+        ? 'El producto «' + pendingDeactivation()!.title + '» dejará de mostrarse en el catálogo público.'
+        : null
+    "
+    confirmLabel="Desactivar"
+    cancelLabel="Cancelar"
+    [danger]="true"
+    (confirmed)="confirmDeactivate()"
+    (cancelled)="cancelDeactivate()"
+  />
+</div>

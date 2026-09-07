@@ -1,0 +1,16 @@
+<nav class="account-nav" aria-label="Cuenta">
+  <a
+    routerLink="/account"
+    routerLinkActive="account-nav__link--active"
+    [routerLinkActiveOptions]="{ exact: true }"
+    class="account-nav__link"
+  >
+    Perfil
+  </a>
+  <a routerLink="/account/orders" routerLinkActive="account-nav__link--active" class="account-nav__link">
+    Mis pedidos
+  </a>
+  <a routerLink="/account/incidents" routerLinkActive="account-nav__link--active" class="account-nav__link">
+    Incidencias
+  </a>
+</nav>

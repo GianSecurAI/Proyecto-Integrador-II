@@ -1,0 +1,43 @@
+@use 'tokens' as *;
+
+:host {
+  display: block;
+}
+
+.admin-product-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ar-space-4);
+  max-width: 40rem;
+}
+
+.admin-product-form__price-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--ar-space-4);
+
+  @media (min-width: $bp-sm) {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.admin-product-form__textarea {
+  resize: vertical;
+  min-height: 4.5rem;
+}
+
+.admin-product-form__checkbox {
+  display: flex;
+  align-items: center;
+  gap: var(--ar-space-2);
+}
+
+.admin-product-form__actions {
+  display: flex;
+  gap: var(--ar-space-3);
+  flex-wrap: wrap;
+}
+
+.admin-product-form__error {
+  color: var(--ar-color-danger);
+}

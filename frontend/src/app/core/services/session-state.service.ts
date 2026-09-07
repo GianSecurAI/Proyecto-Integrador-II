@@ -21,13 +21,18 @@ import { Injectable, computed, signal } from '@angular/core';
 @Injectable({ providedIn: 'root' })
 export class SessionStateService {
   private readonly authenticated = signal(false);
-  private readonly role = signal<'CLIENTE' | null>(null);
+  // Widened to include 'ADMINISTRADOR' so the `/admin` route tree (features/admin/) can declare
+  // `data: { role: 'ADMINISTRADOR' }` the same way `/account` already declares `role: 'CLIENTE'`
+  // (see `app.routes.ts`). No admin authentication flow exists yet — this is purely a type-level
+  // widening so `authGuard` can express the future role check; `markAuthenticated`'s default
+  // stays 'CLIENTE' and every existing CLIENTE flow is unchanged.
+  private readonly role = signal<'CLIENTE' | 'ADMINISTRADOR' | null>(null);
 
   readonly isAuthenticated = computed(() => this.authenticated());
   readonly currentRole = computed(() => this.role());
 
   /** Called after a successful `/api/auth/otp/verify` response (FR-015: session carries CLIENTE). */
-  markAuthenticated(role: 'CLIENTE' = 'CLIENTE'): void {
+  markAuthenticated(role: 'CLIENTE' | 'ADMINISTRADOR' = 'CLIENTE'): void {
     this.authenticated.set(true);
     this.role.set(role);
   }

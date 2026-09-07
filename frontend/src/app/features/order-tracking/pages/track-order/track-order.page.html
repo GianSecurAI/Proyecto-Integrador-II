@@ -1,0 +1,120 @@
+<main class="track-order-page">
+  <div class="track-order-page__container">
+    <section class="track-order-page__card" aria-labelledby="track-order-heading">
+      @switch (status()) {
+        @case ('loading') {
+          <h1 id="track-order-heading">Rastrea tu pedido</h1>
+          <app-loading-state message="Buscando tu pedido…" />
+        }
+        @case ('error') {
+          <h1 id="track-order-heading">Rastrea tu pedido</h1>
+          <app-error-state
+            title="No se pudo consultar el pedido"
+            description="Ocurrió un problema al conectar con el seguimiento de pedidos. Inténtalo de nuevo."
+          >
+            <app-button errorStateAction variant="secondary" [onDark]="true" (clicked)="retry()">
+              Reintentar
+            </app-button>
+          </app-error-state>
+          <app-button variant="ghost" [onDark]="true" [fullWidth]="true" (clicked)="reset()">
+            Buscar otro pedido
+          </app-button>
+        }
+        @case ('not-found') {
+          <h1 id="track-order-heading">Rastrea tu pedido</h1>
+          <app-empty-state
+            title="No encontramos ese pedido"
+            description="Revisa que el ID esté completo y vuelve a intentarlo."
+          >
+            <app-button emptyStateAction [onDark]="true" (clicked)="reset()">
+              Buscar otro pedido
+            </app-button>
+          </app-empty-state>
+        }
+        @case ('found') {
+          @if (order(); as order) {
+            <div>
+              <p class="track-order-page__id">{{ order.id }}</p>
+              <p class="track-order-page__date">Realizado el {{ formatDate(order.placedAt) }}</p>
+            </div>
+            <div class="track-order-page__meta">
+              <app-status-badge [label]="badgeFor(order.status).label" [tone]="badgeFor(order.status).tone" />
+              <span class="track-order-page__kind">
+                {{ order.kind === 'personalizado' ? 'Pedido personalizado' : 'Pedido estándar' }}
+              </span>
+            </div>
+            <p class="track-order-page__summary">{{ order.summary }}</p>
+
+            <app-order-status-timeline [status]="order.status" />
+
+            <section aria-labelledby="track-history-title" class="track-order-page__history">
+              <h2 id="track-history-title">Historial de estado</h2>
+              <ol class="track-order-page__timeline">
+                @for (entry of order.statusHistory; track entry.changedAt.toISOString()) {
+                  <li class="track-order-page__timeline-entry">
+                    <p class="track-order-page__timeline-transition">
+                      @if (entry.previousStatus) {
+                        {{ statusLabel(entry.previousStatus) }} → {{ statusLabel(entry.newStatus) }}
+                      } @else {
+                        Pedido registrado ({{ statusLabel(entry.newStatus) }})
+                      }
+                    </p>
+                    <p class="track-order-page__timeline-date">{{ formatDate(entry.changedAt) }}</p>
+                    <p class="track-order-page__timeline-responsible">{{ entry.responsible }}</p>
+                    @if (entry.note) {
+                      <p class="track-order-page__timeline-note">{{ entry.note }}</p>
+                    }
+                  </li>
+                }
+              </ol>
+            </section>
+
+            <app-button variant="secondary" [onDark]="true" [fullWidth]="true" (clicked)="reset()">
+              Buscar otro pedido
+            </app-button>
+          }
+        }
+        @default {
+          <h1 id="track-order-heading">Rastrea tu pedido</h1>
+          <p class="track-order-page__description">
+            Ingresa el ID de tu pedido para conocer su estado actual.
+          </p>
+          <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+            <app-form-field
+              #idField="appFormField"
+              label="ID de pedido"
+              [required]="true"
+              [error]="
+                orderIdControl.invalid && orderIdControl.touched
+                  ? 'Ingresa el ID de tu pedido.'
+                  : null
+              "
+            >
+              <input
+                class="ui-input"
+                [id]="idField.inputId()"
+                type="text"
+                formControlName="orderId"
+                autocomplete="off"
+                autocapitalize="characters"
+                placeholder="#ABC12"
+                required
+                [attr.aria-invalid]="idField.hasError()"
+                [attr.aria-describedby]="idField.describedBy()"
+              />
+            </app-form-field>
+            <app-button type="submit" [fullWidth]="true" [onDark]="true">
+              Estado del seguimiento
+            </app-button>
+          </form>
+        }
+      }
+    </section>
+
+    <p class="track-order-page__notice">
+      Vista de demostración: este seguimiento no proviene de un servidor real. Prueba con un ID
+      como <code>PED-2031</code>. Añade <code>?mockState=error</code> a esta URL para
+      previsualizar el estado de error genérico.
+    </p>
+  </div>
+</main>

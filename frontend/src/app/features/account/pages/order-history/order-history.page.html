@@ -1,0 +1,70 @@
+<main class="order-history-page">
+  <div class="order-history-page__container">
+    <h1>Tus pedidos</h1>
+    <app-account-nav />
+
+    @switch (status()) {
+      @case ('loading') {
+        <app-loading-state message="Cargando tus pedidos…" />
+      }
+      @case ('error') {
+        <app-error-state
+          title="No se pudieron cargar tus pedidos"
+          description="Ocurrió un problema al conectar con el historial de pedidos. Inténtalo de nuevo."
+        >
+          <app-button errorStateAction variant="secondary" (clicked)="retry()">
+            Reintentar
+          </app-button>
+        </app-error-state>
+      }
+      @default {
+        @if (orders().length === 0) {
+          <app-empty-state
+            title="Todavía no tienes pedidos"
+            description="Cuando realices tu primera compra, la verás aquí."
+          >
+            <a emptyStateAction routerLink="/catalog" class="ui-btn ui-btn--primary ui-btn--sm">
+              Ir al catálogo
+            </a>
+          </app-empty-state>
+        } @else {
+          <ul class="order-history-page__list">
+            @for (order of orders(); track order.id) {
+              <li>
+                <a
+                  [routerLink]="['/account/orders', order.id]"
+                  class="order-history-page__item"
+                  [attr.aria-label]="'Ver detalle del pedido ' + order.id"
+                >
+                  <app-card padding="sm">
+                    <div class="order-history-page__row">
+                      <div class="order-history-page__main">
+                        <p class="order-history-page__id">{{ order.id }}</p>
+                        <p class="order-history-page__date">{{ formatDate(order.placedAt) }}</p>
+                        <p class="order-history-page__summary">{{ order.summary }}</p>
+                      </div>
+                      <div class="order-history-page__meta">
+                        <app-order-status-badge [status]="order.status" />
+                        <span class="order-history-page__kind">
+                          {{
+                            order.kind === 'personalizado' ? 'Pedido personalizado' : 'Pedido estándar'
+                          }}
+                        </span>
+                      </div>
+                    </div>
+                  </app-card>
+                </a>
+              </li>
+            }
+          </ul>
+        }
+      }
+    }
+
+    <p class="order-history-page__notice">
+      Vista de demostración: estos pedidos no provienen de un servidor real. Para previsualizar
+      otros estados desde el navegador, añade <code>?mockState=empty</code> o
+      <code>?mockState=error</code> a esta URL.
+    </p>
+  </div>
+</main>

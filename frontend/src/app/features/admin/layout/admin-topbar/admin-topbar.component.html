@@ -1,0 +1,16 @@
+<header class="admin-topbar">
+  <button
+    type="button"
+    class="admin-topbar__toggle"
+    aria-controls="admin-sidebar"
+    [attr.aria-expanded]="sidebarOpen()"
+    aria-label="Mostrar u ocultar la navegación de administración"
+    (click)="toggleSidebar.emit()"
+  >
+    <span aria-hidden="true">☰</span>
+  </button>
+
+  <span class="admin-topbar__title">Panel de administración</span>
+
+  <span class="admin-topbar__user">Administrador</span>
+</header>

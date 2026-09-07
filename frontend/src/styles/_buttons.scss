@@ -100,6 +100,14 @@
     color: var(--ar-color-white);
     border-color: var(--ar-color-white);
   }
+
+  // --secondary is a *filled* variant (white bg/black text on a light surface) — its on-dark
+  // pairing must invert the fill too, or it stays white-on-white (invisible) against a dark
+  // surface. --ghost has no fill to invert (background: transparent already works on any
+  // surface), so this only applies to --secondary.
+  &.ui-btn--secondary {
+    background: var(--ar-color-black);
+  }
 }
 
 .ui-btn__spinner {

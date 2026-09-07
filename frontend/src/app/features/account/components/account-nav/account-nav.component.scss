@@ -1,0 +1,28 @@
+@use 'tokens' as *;
+
+:host {
+  display: block;
+}
+
+.account-nav {
+  display: flex;
+  gap: var(--ar-space-3);
+  flex-wrap: wrap;
+}
+
+.account-nav__link {
+  padding: var(--ar-space-2) var(--ar-space-3);
+  font-size: var(--ar-font-size-sm);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--ar-letter-spacing-wide);
+  text-decoration: none;
+  color: var(--ar-color-text-on-light);
+  border: var(--ar-border-width) solid var(--ar-color-border-on-light);
+  border-radius: var(--ar-radius-sm);
+}
+
+.account-nav__link--active {
+  background: var(--ar-color-accent);
+  border-color: var(--ar-color-black);
+}

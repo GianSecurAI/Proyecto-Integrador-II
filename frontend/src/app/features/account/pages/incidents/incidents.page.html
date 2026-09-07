@@ -1,0 +1,162 @@
+<main class="incidents-page">
+  <div class="incidents-page__container">
+    <h1>Incidencias</h1>
+    <app-account-nav />
+
+    <app-card>
+      <h2 class="incidents-page__section-title">Registrar una incidencia</h2>
+      <p class="incidents-page__hint">
+        Cuéntanos qué ocurrió con uno de tus pedidos. Un asesor revisará tu reporte y lo verás
+        reflejado aquí a medida que avance.
+      </p>
+
+      @switch (ordersStatus()) {
+        @case ('loading') {
+          <p role="status">Cargando tus pedidos…</p>
+        }
+        @case ('error') {
+          <app-error-state
+            title="No se pudieron cargar tus pedidos"
+            description="Necesitamos la lista de tus pedidos para poder asociar la incidencia. Inténtalo de nuevo."
+          >
+            <app-button errorStateAction variant="secondary" (clicked)="retryOrders()">
+              Reintentar
+            </app-button>
+          </app-error-state>
+        }
+        @default {
+          <form
+            [formGroup]="form"
+            (ngSubmit)="submit()"
+            novalidate
+            [attr.aria-busy]="submitting()"
+          >
+            <app-form-field
+              #orderField="appFormField"
+              label="Pedido relacionado"
+              [error]="
+                orderIdControl.invalid && orderIdControl.touched
+                  ? 'Selecciona el pedido relacionado con la incidencia.'
+                  : null
+              "
+            >
+              <select
+                class="ui-select"
+                [id]="orderField.inputId()"
+                formControlName="orderId"
+                [attr.aria-invalid]="orderField.hasError()"
+                [attr.aria-describedby]="orderField.describedBy()"
+                [disabled]="submitting() || orders().length === 0"
+              >
+                <option value="" disabled>Selecciona un pedido</option>
+                @for (order of orders(); track order.id) {
+                  <option [value]="order.id">{{ order.id }} — {{ order.summary }}</option>
+                }
+              </select>
+            </app-form-field>
+
+            <app-form-field
+              #descriptionField="appFormField"
+              label="Descripción"
+              hint="Describe brevemente qué ocurrió (mínimo 20 caracteres)."
+              [error]="
+                descriptionControl.invalid && descriptionControl.touched
+                  ? 'Ingresa una descripción de al menos 20 caracteres.'
+                  : null
+              "
+            >
+              <textarea
+                class="ui-input incidents-page__textarea"
+                [id]="descriptionField.inputId()"
+                formControlName="description"
+                rows="4"
+                placeholder="Ej. El producto llegó con un defecto de impresión en la base…"
+                [readonly]="submitting()"
+                [attr.aria-invalid]="descriptionField.hasError()"
+                [attr.aria-describedby]="descriptionField.describedBy()"
+              ></textarea>
+            </app-form-field>
+
+            <app-button type="submit" [loading]="submitting()" [disabled]="submitting()">
+              {{ submitting() ? 'Enviando…' : 'Registrar incidencia' }}
+            </app-button>
+          </form>
+
+          @if (submitSuccess()) {
+            <p role="status" class="incidents-page__success">{{ submitSuccess() }}</p>
+          }
+          @if (submitError()) {
+            <p role="alert" class="incidents-page__error">{{ submitError() }}</p>
+          }
+        }
+      }
+    </app-card>
+
+    <section class="incidents-page__history">
+      <h2 class="incidents-page__section-title">Tus incidencias</h2>
+
+      @switch (incidentsStatus()) {
+        @case ('loading') {
+          <app-loading-state message="Cargando tus incidencias…" />
+        }
+        @case ('error') {
+          <app-error-state
+            title="No se pudieron cargar tus incidencias"
+            description="Ocurrió un problema al conectar con tu historial de incidencias. Inténtalo de nuevo."
+          >
+            <app-button errorStateAction variant="secondary" (clicked)="retryIncidents()">
+              Reintentar
+            </app-button>
+          </app-error-state>
+        }
+        @default {
+          @if (incidents().length === 0) {
+            <app-empty-state
+              title="Todavía no registraste incidencias"
+              description="Cuando reportes un problema con un pedido, lo verás aquí junto con su estado y resolución."
+            />
+          } @else {
+            <ul class="incidents-page__list">
+              @for (incident of incidents(); track incident.id) {
+                <li>
+                  <app-card padding="sm">
+                    <div class="incidents-page__row">
+                      <div class="incidents-page__main">
+                        <p class="incidents-page__order">
+                          {{ incident.orderId }} — {{ incident.orderSummary }}
+                        </p>
+                        <p class="incidents-page__description">{{ incident.description }}</p>
+                        <p class="incidents-page__date">
+                          Reportada el {{ formatDate(incident.reportedAt) }}
+                        </p>
+                        @if (incident.resolution) {
+                          <p class="incidents-page__resolution">
+                            <strong>Resolución:</strong> {{ incident.resolution }}
+                          </p>
+                        } @else {
+                          <p class="incidents-page__resolution incidents-page__resolution--pending">
+                            Aún sin resolución.
+                          </p>
+                        }
+                      </div>
+                      <app-status-badge
+                        [label]="describeStatus(incident.status).label"
+                        [tone]="describeStatus(incident.status).tone"
+                      />
+                    </div>
+                  </app-card>
+                </li>
+              }
+            </ul>
+          }
+        }
+      }
+    </section>
+
+    <p class="incidents-page__notice">
+      Vista de demostración: estas incidencias no provienen de un servidor real. Para
+      previsualizar otros estados desde el navegador, añade <code>?mockState=empty</code> o
+      <code>?mockState=error</code> a esta URL.
+    </p>
+  </div>
+</main>

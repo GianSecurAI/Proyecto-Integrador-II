@@ -1,0 +1,92 @@
+<main class="order-detail-page">
+  <div class="order-detail-page__container">
+    <nav aria-label="Ruta de navegación" class="order-detail-page__breadcrumb">
+      <a routerLink="/account/orders">Mis pedidos</a>
+    </nav>
+    <app-account-nav />
+
+    @switch (status()) {
+      @case ('loading') {
+        <app-loading-state message="Cargando el pedido…" />
+      }
+      @case ('error') {
+        <app-error-state
+          title="No se pudo cargar el pedido"
+          description="Ocurrió un problema al conectar con el detalle del pedido. Inténtalo de nuevo."
+        >
+          <app-button errorStateAction variant="secondary" (clicked)="retry()">
+            Reintentar
+          </app-button>
+        </app-error-state>
+      }
+      @case ('not-found') {
+        <h1>Pedido no encontrado</h1>
+        <app-empty-state
+          title="No encontramos este pedido"
+          description="Revisa tu historial de pedidos para ver los pedidos disponibles."
+        >
+          <a emptyStateAction class="ui-btn ui-btn--primary ui-btn--md" routerLink="/account/orders">
+            Volver a mis pedidos
+          </a>
+        </app-empty-state>
+      }
+      @default {
+        @if (order(); as order) {
+          <app-card>
+            <div class="order-detail-page__header">
+              <div>
+                <p class="order-detail-page__id">{{ order.id }}</p>
+                <p class="order-detail-page__date">Realizado el {{ formatDate(order.placedAt) }}</p>
+              </div>
+              <div class="order-detail-page__meta">
+                <app-order-status-badge [status]="order.status" />
+                <span class="order-detail-page__kind">
+                  {{ order.kind === 'personalizado' ? 'Pedido personalizado' : 'Pedido estándar' }}
+                </span>
+              </div>
+            </div>
+            <p class="order-detail-page__summary">{{ order.summary }}</p>
+
+            @if (order.kind === 'estandar') {
+              <div class="order-detail-page__repurchase">
+                <app-button variant="secondary" (clicked)="requestRepurchase()">
+                  Volver a comprar
+                </app-button>
+                <p role="status" class="order-detail-page__feedback">{{ repurchaseMessage() }}</p>
+              </div>
+            }
+          </app-card>
+
+          <app-order-status-timeline [status]="order.status" />
+
+          <section aria-labelledby="history-title" class="order-detail-page__history">
+            <h2 id="history-title">Historial de estado</h2>
+            <ol class="order-detail-page__timeline">
+              @for (entry of order.statusHistory; track entry.changedAt.toISOString()) {
+                <li class="order-detail-page__timeline-entry">
+                  <p class="order-detail-page__timeline-transition">
+                    @if (entry.previousStatus) {
+                      {{ statusLabel(entry.previousStatus) }} → {{ statusLabel(entry.newStatus) }}
+                    } @else {
+                      Pedido registrado ({{ statusLabel(entry.newStatus) }})
+                    }
+                  </p>
+                  <p class="order-detail-page__timeline-date">{{ formatDate(entry.changedAt) }}</p>
+                  <p class="order-detail-page__timeline-responsible">{{ entry.responsible }}</p>
+                  @if (entry.note) {
+                    <p class="order-detail-page__timeline-note">{{ entry.note }}</p>
+                  }
+                </li>
+              }
+            </ol>
+          </section>
+        }
+      }
+    }
+
+    <p class="order-detail-page__notice">
+      Vista de demostración: este pedido no proviene de un servidor real. Añade
+      <code>?mockState=error</code> a esta URL para previsualizar el estado de error.
+    </p>
+  </div>
+</main>

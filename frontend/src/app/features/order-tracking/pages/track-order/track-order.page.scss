@@ -1,0 +1,136 @@
+@use 'tokens' as *;
+
+// Figma "Seguimiento" (node 2:1993): dark surface, auth-shared.css language via var overrides.
+:host {
+  display: flex;
+  flex: 1;
+  --ar-color-muted-on-light: var(--ar-color-muted-on-dark);
+  --ar-color-border-on-light: var(--ar-color-border-on-dark);
+  --ar-color-focus: var(--ar-color-white);
+  --ar-color-danger: var(--ar-color-white);
+}
+
+.track-order-page {
+  flex: 1;
+  min-width: 0;
+  min-height: 42rem;
+  background: var(--ar-color-black);
+  color: var(--ar-color-text-on-dark);
+  padding-bottom: var(--ar-space-6);
+}
+
+.track-order-page__container {
+  max-width: 32rem;
+  margin-inline: auto;
+  padding: var(--ar-space-6) var(--ar-space-4) 0;
+  display: grid;
+  gap: var(--ar-space-4);
+}
+
+.track-order-page__card {
+  padding: var(--ar-space-5);
+  border: var(--ar-border-width) solid var(--ar-color-border-on-dark);
+  border-radius: var(--ar-radius-md);
+  box-shadow: var(--ar-shadow-hard);
+  display: grid;
+  gap: var(--ar-space-4);
+}
+
+.track-order-page__card h1 {
+  margin: 0;
+  text-align: center;
+  font-size: var(--ar-font-size-xl);
+  text-transform: uppercase;
+}
+
+// Small, muted, dark-surface text used across the description, notice, dates and kind labels.
+.track-order-page__description,
+.track-order-page__notice,
+.track-order-page__date,
+.track-order-page__timeline-date,
+.track-order-page__timeline-responsible,
+.track-order-page__kind {
+  margin: 0;
+  font-size: var(--ar-font-size-sm);
+  color: var(--ar-color-muted-on-dark);
+}
+
+.track-order-page__description,
+.track-order-page__notice {
+  text-align: center;
+}
+
+.track-order-page__notice,
+.track-order-page__kind {
+  font-size: var(--ar-font-size-xs);
+}
+
+// Uppercase, wide-tracking labels (id, kind, sub-headings).
+.track-order-page__id,
+.track-order-page__kind,
+.track-order-page__history h2 {
+  text-transform: uppercase;
+  letter-spacing: var(--ar-letter-spacing-wide);
+}
+
+.track-order-page__card form {
+  display: grid;
+  gap: var(--ar-space-4);
+}
+
+.track-order-page__card .ui-input {
+  background: var(--ar-color-black);
+  color: var(--ar-color-white);
+  border-color: var(--ar-color-border-on-dark);
+  box-shadow: var(--ar-shadow-hard-sm);
+  min-height: 3rem;
+
+  &[aria-invalid='true'] {
+    border-style: dashed;
+  }
+}
+
+.track-order-page__id {
+  margin: 0 0 var(--ar-space-1);
+  font-weight: 700;
+  font-size: var(--ar-font-size-lg);
+}
+
+.track-order-page__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--ar-space-3);
+  flex-wrap: wrap;
+}
+
+.track-order-page__summary {
+  margin: 0;
+}
+
+.track-order-page__history h2 {
+  font-size: var(--ar-font-size-base);
+  margin: 0 0 var(--ar-space-3);
+}
+
+.track-order-page__timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--ar-space-4);
+  border-left: var(--ar-border-width-thick) solid var(--ar-color-border-on-dark);
+}
+
+.track-order-page__timeline-entry {
+  padding-left: var(--ar-space-4);
+}
+
+.track-order-page__timeline-transition {
+  margin: 0;
+  font-weight: 700;
+}
+
+.track-order-page__timeline-note {
+  margin: var(--ar-space-1) 0 0;
+  font-size: var(--ar-font-size-sm);
+}

@@ -1,0 +1,32 @@
+@use 'tokens' as *;
+
+:host {
+  display: block;
+  min-height: 100dvh;
+}
+
+.admin-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+.admin-shell__body {
+  display: flex;
+  flex: 1;
+}
+
+.admin-shell__main {
+  flex: 1;
+  min-width: 0;
+  padding: var(--ar-space-5);
+}
+
+@media (min-width: $bp-md) {
+  // Above the sidebar's collapse breakpoint it participates in normal flow (sticky, not
+  // off-canvas — see admin-sidebar.component.scss), so the content area no longer needs to
+  // reserve space for a toggle-triggered overlay.
+  .admin-shell__main {
+    padding: var(--ar-space-6);
+  }
+}

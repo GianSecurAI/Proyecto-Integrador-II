@@ -1,0 +1,23 @@
+<div class="admin-product-create-page">
+  <nav aria-label="Ruta de navegación" class="admin-product-create-page__breadcrumb">
+    <a routerLink="/admin/products">Productos</a>
+  </nav>
+
+  <h1>Nuevo producto</h1>
+
+  <app-card>
+    <app-admin-product-form
+      [initialValue]="initialValue"
+      [submitting]="submitting()"
+      [errorMessage]="errorMessage()"
+      submitLabel="Crear producto"
+      [showCancel]="true"
+      (submitted)="create($event)"
+      (cancelled)="cancel()"
+    />
+  </app-card>
+
+  <p class="admin-product-create-page__notice">
+    Vista de demostración: este producto no se guardará en un servidor real.
+  </p>
+</div>

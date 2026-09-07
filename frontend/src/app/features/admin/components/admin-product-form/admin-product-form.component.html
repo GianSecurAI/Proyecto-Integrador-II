@@ -1,0 +1,172 @@
+<form
+  class="admin-product-form"
+  [formGroup]="form"
+  (ngSubmit)="submit()"
+  novalidate
+  [attr.aria-busy]="submitting()"
+>
+  <app-form-field
+    #titleField="appFormField"
+    label="Nombre del producto"
+    [required]="true"
+    [error]="
+      titleControl.invalid && titleControl.touched ? 'Ingresa el nombre del producto.' : null
+    "
+  >
+    <input
+      class="ui-input"
+      [id]="titleField.inputId()"
+      type="text"
+      formControlName="title"
+      placeholder="Ej. Llavero con silueta de mascota"
+      [attr.aria-invalid]="titleField.hasError()"
+      [attr.aria-describedby]="titleField.describedBy()"
+    />
+  </app-form-field>
+
+  <app-form-field
+    #categoryField="appFormField"
+    label="Categoría"
+    [required]="true"
+    [error]="
+      categoryControl.invalid && categoryControl.touched ? 'Selecciona una categoría.' : null
+    "
+  >
+    <select
+      class="ui-select"
+      [id]="categoryField.inputId()"
+      formControlName="category"
+      [attr.aria-invalid]="categoryField.hasError()"
+      [attr.aria-describedby]="categoryField.describedBy()"
+    >
+      @for (cat of categories; track cat) {
+        <option [value]="cat">{{ categoryLabels[cat] }}</option>
+      }
+    </select>
+  </app-form-field>
+
+  <app-form-field
+    #subcategoryField="appFormField"
+    label="Subcategoría"
+    [required]="true"
+    [error]="
+      subcategoryControl.invalid && subcategoryControl.touched
+        ? 'Ingresa una subcategoría.'
+        : null
+    "
+  >
+    <input
+      class="ui-input"
+      [id]="subcategoryField.inputId()"
+      type="text"
+      formControlName="subcategory"
+      placeholder="Ej. Llaveros personalizados"
+      [attr.aria-invalid]="subcategoryField.hasError()"
+      [attr.aria-describedby]="subcategoryField.describedBy()"
+    />
+  </app-form-field>
+
+  <app-form-field
+    #descriptionField="appFormField"
+    label="Descripción"
+    [required]="true"
+    [error]="
+      descriptionControl.invalid && descriptionControl.touched
+        ? 'Ingresa una descripción del producto.'
+        : null
+    "
+  >
+    <textarea
+      class="ui-input admin-product-form__textarea"
+      [id]="descriptionField.inputId()"
+      formControlName="description"
+      rows="3"
+      placeholder="Describe brevemente el producto…"
+      [attr.aria-invalid]="descriptionField.hasError()"
+      [attr.aria-describedby]="descriptionField.describedBy()"
+    ></textarea>
+  </app-form-field>
+
+  <div class="admin-product-form__price-row">
+    <app-form-field
+      #priceField="appFormField"
+      label="Precio (S/)"
+      [required]="true"
+      [error]="
+        priceControl.invalid && priceControl.touched
+          ? 'Ingresa un precio mayor a S/ 0.00.'
+          : null
+      "
+    >
+      <input
+        class="ui-input"
+        [id]="priceField.inputId()"
+        type="number"
+        min="0.01"
+        step="0.01"
+        inputmode="decimal"
+        formControlName="price"
+        [attr.aria-invalid]="priceField.hasError()"
+        [attr.aria-describedby]="priceField.describedBy()"
+      />
+    </app-form-field>
+
+    <app-form-field
+      #compareAtPriceField="appFormField"
+      label="Precio antes de descuento (S/, opcional)"
+      hint="Déjalo vacío si el producto no está en oferta."
+      [error]="
+        compareAtPriceControl.invalid && compareAtPriceControl.touched
+          ? 'Debe ser mayor a S/ 0.00.'
+          : null
+      "
+    >
+      <input
+        class="ui-input"
+        [id]="compareAtPriceField.inputId()"
+        type="number"
+        min="0.01"
+        step="0.01"
+        inputmode="decimal"
+        formControlName="compareAtPrice"
+        [attr.aria-invalid]="compareAtPriceField.hasError()"
+        [attr.aria-describedby]="compareAtPriceField.describedBy()"
+      />
+    </app-form-field>
+  </div>
+
+  <label class="admin-product-form__checkbox">
+    <input class="ui-checkbox" type="checkbox" formControlName="personalizable" />
+    Personalizable (elegible para pedido personalizado vía WhatsApp)
+  </label>
+
+  <app-form-field
+    #characteristicsField="appFormField"
+    label="Características (opcional)"
+    hint="Una característica por línea."
+  >
+    <textarea
+      class="ui-input admin-product-form__textarea"
+      [id]="characteristicsField.inputId()"
+      formControlName="characteristics"
+      rows="4"
+      placeholder="Ej. Material: PLA&#10;Alto impacto a la caída"
+      [attr.aria-describedby]="characteristicsField.describedBy()"
+    ></textarea>
+  </app-form-field>
+
+  <div class="admin-product-form__actions">
+    <app-button type="submit" [loading]="submitting()" [disabled]="submitting()">
+      {{ submitting() ? 'Guardando…' : submitLabel() }}
+    </app-button>
+    @if (showCancel()) {
+      <app-button type="button" variant="ghost" [disabled]="submitting()" (clicked)="cancel()">
+        Cancelar
+      </app-button>
+    }
+  </div>
+
+  @if (errorMessage()) {
+    <p role="alert" class="admin-product-form__error">{{ errorMessage() }}</p>
+  }
+</form>

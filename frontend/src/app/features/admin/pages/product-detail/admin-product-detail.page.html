@@ -1,0 +1,116 @@
+<div class="admin-product-detail-page">
+  <nav aria-label="Ruta de navegación" class="admin-product-detail-page__breadcrumb">
+    <a routerLink="/admin/products">Productos</a>
+  </nav>
+
+  @switch (status()) {
+    @case ('loading') {
+      <app-loading-state message="Cargando el producto…" />
+    }
+    @case ('error') {
+      <app-error-state
+        title="No se pudo cargar el producto"
+        description="Ocurrió un problema al conectar con el detalle del producto. Inténtalo de nuevo."
+      >
+        <app-button errorStateAction variant="secondary" (clicked)="retry()">
+          Reintentar
+        </app-button>
+      </app-error-state>
+    }
+    @case ('not-found') {
+      <h1>Producto no encontrado</h1>
+      <app-empty-state
+        title="No encontramos este producto"
+        description="Revisa la lista de productos para ver los productos disponibles."
+      >
+        <a emptyStateAction class="ui-btn ui-btn--primary ui-btn--md" routerLink="/admin/products">
+          Volver a productos
+        </a>
+      </app-empty-state>
+    }
+    @default {
+      @if (product(); as product) {
+        <app-card>
+          @if (!editing()) {
+            <div class="admin-product-detail-page__view">
+              <div class="admin-product-detail-page__header">
+                <h1>{{ product.title }}</h1>
+                <app-status-badge
+                  [label]="product.available ? 'Activo' : 'Inactivo'"
+                  [tone]="product.available ? 'success' : 'neutral'"
+                />
+              </div>
+
+              <dl class="admin-product-detail-page__fields">
+                <div>
+                  <dt>Categoría</dt>
+                  <dd>{{ categoryLabel(product.category) }}</dd>
+                </div>
+                <div>
+                  <dt>Subcategoría</dt>
+                  <dd>{{ product.subcategory }}</dd>
+                </div>
+                <div>
+                  <dt>Precio</dt>
+                  <dd>S/ {{ product.price.toFixed(2) }}</dd>
+                </div>
+                @if (product.compareAtPrice) {
+                  <div>
+                    <dt>Precio antes de descuento</dt>
+                    <dd>S/ {{ product.compareAtPrice.toFixed(2) }}</dd>
+                  </div>
+                }
+                <div>
+                  <dt>Personalizable</dt>
+                  <dd>{{ product.personalizable ? 'Sí' : 'No' }}</dd>
+                </div>
+                <div class="admin-product-detail-page__field--full">
+                  <dt>Descripción</dt>
+                  <dd>{{ product.description }}</dd>
+                </div>
+                @if (product.characteristics.length > 0) {
+                  <div class="admin-product-detail-page__field--full">
+                    <dt>Características</dt>
+                    <dd>
+                      <ul>
+                        @for (item of product.characteristics; track item) {
+                          <li>{{ item }}</li>
+                        }
+                      </ul>
+                    </dd>
+                  </div>
+                }
+              </dl>
+
+              @if (successMessage()) {
+                <p role="status" class="admin-product-detail-page__success">
+                  {{ successMessage() }}
+                </p>
+              }
+              <app-button (clicked)="startEditing()">Editar producto</app-button>
+              <p class="admin-product-detail-page__hint">
+                La disponibilidad de este producto se cambia desde la lista de productos.
+              </p>
+            </div>
+          } @else {
+            <h1>Editar producto</h1>
+            <app-admin-product-form
+              [initialValue]="formInitialValue()"
+              [submitting]="submitting()"
+              [errorMessage]="errorMessage()"
+              submitLabel="Guardar cambios"
+              [showCancel]="true"
+              (submitted)="save($event)"
+              (cancelled)="cancelEditing()"
+            />
+          }
+        </app-card>
+      }
+    }
+  }
+
+  <p class="admin-product-detail-page__notice">
+    Vista de demostración: este producto no proviene de un servidor real. Añade
+    <code>?mockState=error</code> a esta URL para previsualizar el estado de error.
+  </p>
+</div>

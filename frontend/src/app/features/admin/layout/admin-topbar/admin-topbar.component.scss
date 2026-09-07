@@ -1,0 +1,56 @@
+@use 'tokens' as *;
+
+:host {
+  display: block;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+
+.admin-topbar {
+  --ar-color-focus: var(--ar-color-white);
+
+  display: flex;
+  align-items: center;
+  gap: var(--ar-space-4);
+  height: 3.5rem;
+  padding: 0 var(--ar-space-4);
+  background: var(--ar-color-black);
+  color: var(--ar-color-white);
+  border-bottom: var(--ar-border-width-thick) solid var(--ar-color-white);
+}
+
+.admin-topbar__toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  background: transparent;
+  color: var(--ar-color-white);
+  border: var(--ar-border-width) solid var(--ar-color-white);
+  border-radius: var(--ar-radius-md);
+  font-size: var(--ar-font-size-lg);
+  cursor: pointer;
+}
+
+.admin-topbar__title {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--ar-letter-spacing-wide);
+  font-size: var(--ar-font-size-sm);
+}
+
+.admin-topbar__user {
+  margin-left: auto;
+  color: var(--ar-color-muted-on-dark);
+  font-size: var(--ar-font-size-sm);
+}
+
+@media (min-width: $bp-md) {
+  // Above the sidebar's own collapse breakpoint the sidebar is always visible, so the toggle
+  // control has nothing left to do.
+  .admin-topbar__toggle {
+    display: none;
+  }
+}

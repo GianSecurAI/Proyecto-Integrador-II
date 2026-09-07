@@ -1,0 +1,36 @@
+@if (open()) {
+  <div class="admin-confirm-dialog__backdrop" (click)="onBackdropClick()">
+    <div
+      #dialogEl
+      class="admin-confirm-dialog"
+      role="alertdialog"
+      aria-modal="true"
+      [attr.aria-labelledby]="titleId"
+      [attr.aria-describedby]="describedBy()"
+      (click)="$event.stopPropagation()"
+      (keydown)="onKeydown($event)"
+    >
+      <h2 [id]="titleId" class="admin-confirm-dialog__title">{{ title() }}</h2>
+      @if (description()) {
+        <p [id]="descriptionId" class="admin-confirm-dialog__description">{{ description() }}</p>
+      }
+      <div class="admin-confirm-dialog__actions">
+        <button
+          #cancelBtn
+          type="button"
+          class="ui-btn ui-btn--ghost ui-btn--md"
+          (click)="cancel()"
+        >
+          {{ cancelLabel() }}
+        </button>
+        <button
+          type="button"
+          [class]="danger() ? 'ui-btn ui-btn--danger ui-btn--md' : 'ui-btn ui-btn--primary ui-btn--md'"
+          (click)="confirm()"
+        >
+          {{ confirmLabel() }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

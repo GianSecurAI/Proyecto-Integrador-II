@@ -1,0 +1,41 @@
+@use 'tokens' as *;
+
+:host {
+  display: block;
+}
+
+.admin-product-list-page__filters {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--ar-space-4);
+  margin-bottom: var(--ar-space-5);
+  max-width: 36rem;
+
+  @media (min-width: $bp-sm) {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.admin-product-list-page__filter {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ar-space-2);
+  font-size: var(--ar-font-size-sm);
+}
+
+.admin-product-list-page__row-actions {
+  display: flex;
+  gap: var(--ar-space-2);
+  flex-wrap: wrap;
+}
+
+.admin-product-list-page__error {
+  color: var(--ar-color-danger);
+  margin-bottom: var(--ar-space-4);
+}
+
+.admin-product-list-page__notice {
+  margin-top: var(--ar-space-6);
+  color: var(--ar-color-muted-on-light);
+  font-size: var(--ar-font-size-sm);
+}
