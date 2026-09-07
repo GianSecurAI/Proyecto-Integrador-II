@@ -1,0 +1,123 @@
+<div class="admin-register-personalized-order-page">
+  <nav aria-label="Ruta de navegación" class="admin-register-personalized-order-page__breadcrumb">
+    <a routerLink="/admin/orders">Pedidos</a>
+  </nav>
+
+  <app-card>
+    <h1>Registrar pedido personalizado</h1>
+    <p class="admin-register-personalized-order-page__intro">
+      Usa este formulario solo después de coordinar la venta por WhatsApp y de confirmar que el
+      cliente ya realizó el pago externo acordado. Este formulario no procesa ningún pago.
+    </p>
+
+    <form
+      class="admin-register-personalized-order-page__form"
+      [formGroup]="form"
+      (ngSubmit)="submit()"
+      novalidate
+      [attr.aria-busy]="submitting()"
+    >
+      <app-form-field
+        #emailField="appFormField"
+        label="Correo del cliente"
+        [required]="true"
+        [error]="
+          customerEmailControl.invalid && customerEmailControl.touched
+            ? 'Ingresa un correo electrónico válido.'
+            : null
+        "
+      >
+        <input
+          class="ui-input"
+          [id]="emailField.inputId()"
+          type="email"
+          formControlName="customerEmail"
+          placeholder="cliente@correo.com"
+          [attr.aria-invalid]="emailField.hasError()"
+          [attr.aria-describedby]="emailField.describedBy()"
+        />
+      </app-form-field>
+
+      <app-form-field
+        #descriptionField="appFormField"
+        label="Descripción de la cotización"
+        [required]="true"
+        [error]="
+          quotationDescriptionControl.invalid && quotationDescriptionControl.touched
+            ? 'Ingresa una descripción de lo acordado con el cliente.'
+            : null
+        "
+      >
+        <textarea
+          class="ui-input admin-register-personalized-order-page__textarea"
+          [id]="descriptionField.inputId()"
+          formControlName="quotationDescription"
+          rows="3"
+          placeholder="Ej. Réplica personalizada de trofeo, cotizada por WhatsApp"
+          [attr.aria-invalid]="descriptionField.hasError()"
+          [attr.aria-describedby]="descriptionField.describedBy()"
+        ></textarea>
+      </app-form-field>
+
+      <app-form-field
+        #amountField="appFormField"
+        label="Monto acordado (S/)"
+        hint="Monto manual acordado con el cliente. El sistema no calcula precios de impresión personalizada."
+        [required]="true"
+        [error]="
+          quotationAmountControl.invalid && quotationAmountControl.touched
+            ? 'Ingresa un monto mayor a S/ 0.00.'
+            : null
+        "
+      >
+        <input
+          class="ui-input"
+          [id]="amountField.inputId()"
+          type="number"
+          min="0.01"
+          step="0.01"
+          inputmode="decimal"
+          formControlName="quotationAmount"
+          [attr.aria-invalid]="amountField.hasError()"
+          [attr.aria-describedby]="amountField.describedBy()"
+        />
+      </app-form-field>
+
+      <app-form-field
+        #paymentField="appFormField"
+        label="Confirmación de pago externo"
+        [required]="true"
+        [error]="
+          paymentConfirmedControl.invalid && paymentConfirmedControl.touched
+            ? 'Debes confirmar que el pago externo ya fue recibido antes de registrar el pedido.'
+            : null
+        "
+      >
+        <label class="admin-register-personalized-order-page__checkbox">
+          <input
+            class="ui-checkbox"
+            [id]="paymentField.inputId()"
+            type="checkbox"
+            formControlName="paymentConfirmed"
+            [attr.aria-invalid]="paymentField.hasError()"
+            [attr.aria-describedby]="paymentField.describedBy()"
+          />
+          Confirmo que el pago externo ya fue recibido.
+        </label>
+      </app-form-field>
+
+      <div class="admin-register-personalized-order-page__actions">
+        <app-button type="submit" [loading]="submitting()" [disabled]="submitting()">
+          {{ submitting() ? 'Registrando…' : 'Registrar pedido' }}
+        </app-button>
+        <app-button type="button" variant="ghost" [disabled]="submitting()" (clicked)="cancel()">
+          Cancelar
+        </app-button>
+      </div>
+
+      @if (errorMessage()) {
+        <p role="alert" class="admin-register-personalized-order-page__error">{{ errorMessage() }}</p>
+      }
+    </form>
+  </app-card>
+</div>

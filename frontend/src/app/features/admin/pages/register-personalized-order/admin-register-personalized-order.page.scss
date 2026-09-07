@@ -1,0 +1,46 @@
+@use 'tokens' as *;
+
+:host {
+  display: block;
+}
+
+.admin-register-personalized-order-page__breadcrumb {
+  margin-bottom: var(--ar-space-4);
+
+  a {
+    color: var(--ar-color-muted-on-light);
+  }
+}
+
+.admin-register-personalized-order-page__intro {
+  color: var(--ar-color-muted-on-light);
+  max-width: 42rem;
+}
+
+.admin-register-personalized-order-page__form {
+  display: grid;
+  gap: var(--ar-space-4);
+  max-width: 32rem;
+}
+
+.admin-register-personalized-order-page__textarea {
+  resize: vertical;
+}
+
+.admin-register-personalized-order-page__checkbox {
+  display: flex;
+  align-items: center;
+  gap: var(--ar-space-2);
+  font-size: var(--ar-font-size-sm);
+}
+
+.admin-register-personalized-order-page__actions {
+  display: flex;
+  gap: var(--ar-space-3);
+  flex-wrap: wrap;
+}
+
+.admin-register-personalized-order-page__error {
+  margin: 0;
+  color: var(--ar-color-danger);
+}

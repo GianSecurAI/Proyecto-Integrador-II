@@ -1,0 +1,30 @@
+@use 'tokens' as *;
+
+:host {
+  display: block;
+}
+
+.admin-order-list-page__filters {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--ar-space-4);
+  margin-bottom: var(--ar-space-5);
+  max-width: 48rem;
+
+  @media (min-width: $bp-sm) {
+    grid-template-columns: 2fr 1fr 1fr;
+  }
+}
+
+.admin-order-list-page__filter {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ar-space-2);
+  font-size: var(--ar-font-size-sm);
+}
+
+.admin-order-list-page__notice {
+  margin-top: var(--ar-space-6);
+  color: var(--ar-color-muted-on-light);
+  font-size: var(--ar-font-size-sm);
+}

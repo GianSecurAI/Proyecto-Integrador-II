@@ -1,0 +1,129 @@
+<div class="admin-order-list-page">
+  <app-admin-page-header
+    title="Pedidos"
+    description="Consulta los pedidos de todos los clientes y gestiona sus cambios de estado."
+  >
+    <a
+      adminPageHeaderActions
+      routerLink="/admin/orders/register-personalized"
+      class="ui-btn ui-btn--primary ui-btn--md"
+    >
+      + Registrar pedido personalizado
+    </a>
+  </app-admin-page-header>
+
+  @switch (status()) {
+    @case ('loading') {
+      <app-loading-state message="Cargando pedidos…" />
+    }
+    @case ('error') {
+      <app-error-state
+        title="No se pudieron cargar los pedidos"
+        description="Ocurrió un problema al conectar con los pedidos administrativos. Inténtalo de nuevo."
+      >
+        <app-button errorStateAction variant="secondary" (clicked)="retry()">
+          Reintentar
+        </app-button>
+      </app-error-state>
+    }
+    @default {
+      @if (orders().length === 0) {
+        <app-empty-state
+          title="Todavía no hay pedidos"
+          description="Cuando se registre el primer pedido, lo verás aquí."
+        >
+          <a
+            emptyStateAction
+            routerLink="/admin/orders/register-personalized"
+            class="ui-btn ui-btn--primary ui-btn--sm"
+          >
+            + Registrar pedido personalizado
+          </a>
+        </app-empty-state>
+      } @else {
+        <div class="admin-order-list-page__filters">
+          <label class="admin-order-list-page__filter">
+            <span>Buscar por pedido o correo del cliente</span>
+            <input
+              class="ui-input"
+              type="search"
+              placeholder="Ej. PED-3001 o cliente@correo.com"
+              [value]="search()"
+              (input)="updateSearch($any($event.target).value)"
+            />
+          </label>
+          <label class="admin-order-list-page__filter">
+            <span>Estado</span>
+            <select
+              class="ui-select"
+              [value]="statusFilter()"
+              (change)="updateStatusFilter($any($event.target).value)"
+            >
+              @for (opt of statusFilterOptions; track opt) {
+                <option [value]="opt">
+                  {{ opt === 'todos' ? 'Todos' : statusLabel(opt) }}
+                </option>
+              }
+            </select>
+          </label>
+          <label class="admin-order-list-page__filter">
+            <span>Tipo</span>
+            <select
+              class="ui-select"
+              [value]="kindFilter()"
+              (change)="updateKindFilter($any($event.target).value)"
+            >
+              <option value="todos">{{ kindFilterLabels.todos }}</option>
+              <option value="estandar">{{ kindFilterLabels.estandar }}</option>
+              <option value="personalizado">{{ kindFilterLabels.personalizado }}</option>
+            </select>
+          </label>
+        </div>
+
+        @if (filteredOrders().length === 0) {
+          <app-empty-state
+            title="Ningún pedido coincide con los filtros"
+            description="Ajusta la búsqueda, el estado o el tipo seleccionado."
+          />
+        } @else {
+          <app-admin-data-table>
+            <thead>
+              <tr>
+                <th scope="col">Pedido</th>
+                <th scope="col">Cliente</th>
+                <th scope="col">Tipo</th>
+                <th scope="col">Estado</th>
+                <th scope="col">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (order of filteredOrders(); track order.id) {
+                <tr>
+                  <td>
+                    <a [routerLink]="['/admin/orders', order.id]">{{ order.id }}</a>
+                  </td>
+                  <td>{{ order.customerEmail }}</td>
+                  <td>{{ order.kind === 'personalizado' ? 'Personalizado' : 'Estándar' }}</td>
+                  <td>
+                    <app-status-badge [label]="statusLabel(order.status)" [tone]="statusTone(order.status)" />
+                  </td>
+                  <td>
+                    <a [routerLink]="['/admin/orders', order.id]" class="ui-btn ui-btn--ghost ui-btn--sm">
+                      Ver detalle
+                    </a>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </app-admin-data-table>
+        }
+      }
+    }
+  }
+
+  <p class="admin-order-list-page__notice">
+    Vista de demostración: estos pedidos no provienen de un servidor real. Para previsualizar
+    otros estados desde el navegador, añade <code>?mockState=empty</code> o
+    <code>?mockState=error</code> a esta URL.
+  </p>
+</div>

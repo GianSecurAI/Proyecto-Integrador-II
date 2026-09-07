@@ -1,0 +1,151 @@
+<div class="admin-order-detail-page">
+  <nav aria-label="Ruta de navegación" class="admin-order-detail-page__breadcrumb">
+    <a routerLink="/admin/orders">Pedidos</a>
+  </nav>
+
+  @switch (status()) {
+    @case ('loading') {
+      <app-loading-state message="Cargando el pedido…" />
+    }
+    @case ('error') {
+      <app-error-state
+        title="No se pudo cargar el pedido"
+        description="Ocurrió un problema al conectar con el detalle del pedido. Inténtalo de nuevo."
+      >
+        <app-button errorStateAction variant="secondary" (clicked)="retry()">
+          Reintentar
+        </app-button>
+      </app-error-state>
+    }
+    @case ('not-found') {
+      <h1>Pedido no encontrado</h1>
+      <app-empty-state
+        title="No encontramos este pedido"
+        description="Revisa la lista de pedidos para ver los pedidos disponibles."
+      >
+        <a emptyStateAction class="ui-btn ui-btn--primary ui-btn--md" routerLink="/admin/orders">
+          Volver a pedidos
+        </a>
+      </app-empty-state>
+    }
+    @default {
+      @if (order(); as order) {
+        <app-card>
+          <div class="admin-order-detail-page__header">
+            <div>
+              <p class="admin-order-detail-page__id">{{ order.id }}</p>
+              <p class="admin-order-detail-page__date">Realizado el {{ formatDate(order.placedAt) }}</p>
+            </div>
+            <div class="admin-order-detail-page__meta">
+              <app-status-badge [label]="statusLabel(order.status)" [tone]="statusTone(order.status)" />
+              <span class="admin-order-detail-page__kind">
+                {{ order.kind === 'personalizado' ? 'Pedido personalizado' : 'Pedido estándar' }}
+              </span>
+            </div>
+          </div>
+
+          <p class="admin-order-detail-page__summary">{{ order.summary }}</p>
+
+          <dl class="admin-order-detail-page__customer">
+            <div>
+              <dt>Correo del cliente</dt>
+              <dd>{{ order.customerEmail }}</dd>
+            </div>
+            @if (order.customerName) {
+              <div>
+                <dt>Nombre</dt>
+                <dd>{{ order.customerName }}</dd>
+              </div>
+            }
+            @if (order.customerPhone) {
+              <div>
+                <dt>Teléfono</dt>
+                <dd>{{ order.customerPhone }}</dd>
+              </div>
+            }
+          </dl>
+        </app-card>
+
+        <app-order-status-timeline [status]="order.status" />
+
+        <app-card>
+          <h2>Cambiar estado</h2>
+          @if (canTransition()) {
+            <form class="admin-order-detail-page__transition" (ngSubmit)="submitTransition()">
+              <label class="admin-order-detail-page__field">
+                <span>Nuevo estado</span>
+                <select
+                  class="ui-select"
+                  [value]="selectedNextStatus() ?? ''"
+                  (change)="updateSelectedNextStatus($any($event.target).value)"
+                  [disabled]="transitioning()"
+                >
+                  <option value="" disabled>Selecciona un estado…</option>
+                  @for (next of allowedNextStatuses(); track next) {
+                    <option [value]="next">{{ statusLabel(next) }}</option>
+                  }
+                </select>
+              </label>
+              <label class="admin-order-detail-page__field">
+                <span>Nota (opcional)</span>
+                <textarea
+                  class="ui-input admin-order-detail-page__textarea"
+                  rows="2"
+                  [value]="transitionNote()"
+                  (input)="updateTransitionNote($any($event.target).value)"
+                  [disabled]="transitioning()"
+                  placeholder="Ej. Entregado a la empresa de courier."
+                ></textarea>
+              </label>
+              <app-button
+                type="submit"
+                [loading]="transitioning()"
+                [disabled]="transitioning() || !selectedNextStatus()"
+              >
+                {{ transitioning() ? 'Actualizando…' : 'Actualizar estado' }}
+              </app-button>
+              @if (transitionError()) {
+                <p role="alert" class="admin-order-detail-page__error">{{ transitionError() }}</p>
+              }
+              @if (transitionSuccess()) {
+                <p role="status" class="admin-order-detail-page__success">{{ transitionSuccess() }}</p>
+              }
+            </form>
+          } @else {
+            <p class="admin-order-detail-page__terminal">
+              Este pedido está en un estado final ({{ statusLabel(order.status) }}) y no admite más
+              cambios de estado.
+            </p>
+          }
+        </app-card>
+
+        <section aria-labelledby="history-title" class="admin-order-detail-page__history">
+          <h2 id="history-title">Historial de estado</h2>
+          <ol class="admin-order-detail-page__timeline">
+            @for (entry of order.statusHistory; track entry.changedAt.toISOString()) {
+              <li class="admin-order-detail-page__timeline-entry">
+                <p class="admin-order-detail-page__timeline-transition">
+                  @if (entry.previousStatus) {
+                    {{ statusLabel(entry.previousStatus) }} → {{ statusLabel(entry.newStatus) }}
+                  } @else {
+                    Pedido registrado ({{ statusLabel(entry.newStatus) }})
+                  }
+                </p>
+                <p class="admin-order-detail-page__timeline-date">{{ formatDate(entry.changedAt) }}</p>
+                <p class="admin-order-detail-page__timeline-responsible">{{ entry.responsible }}</p>
+                @if (entry.note) {
+                  <p class="admin-order-detail-page__timeline-note">{{ entry.note }}</p>
+                }
+              </li>
+            }
+          </ol>
+        </section>
+      }
+    }
+  }
+
+  <p class="admin-order-detail-page__notice">
+    Vista de demostración: este pedido no proviene de un servidor real. Añade
+    <code>?mockState=error</code> a esta URL para previsualizar el estado de error.
+  </p>
+</div>
