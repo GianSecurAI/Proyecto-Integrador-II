@@ -3,14 +3,28 @@
     routerLink="/account"
     routerLinkActive="account-nav__link--active"
     [routerLinkActiveOptions]="{ exact: true }"
+    #profileLink="routerLinkActive"
+    [attr.aria-current]="profileLink.isActive ? 'page' : null"
     class="account-nav__link"
   >
     Perfil
   </a>
-  <a routerLink="/account/orders" routerLinkActive="account-nav__link--active" class="account-nav__link">
+  <a
+    routerLink="/account/orders"
+    routerLinkActive="account-nav__link--active"
+    #ordersLink="routerLinkActive"
+    [attr.aria-current]="ordersLink.isActive ? 'page' : null"
+    class="account-nav__link"
+  >
     Mis pedidos
   </a>
-  <a routerLink="/account/incidents" routerLinkActive="account-nav__link--active" class="account-nav__link">
+  <a
+    routerLink="/account/incidents"
+    routerLinkActive="account-nav__link--active"
+    #incidentsLink="routerLinkActive"
+    [attr.aria-current]="incidentsLink.isActive ? 'page' : null"
+    class="account-nav__link"
+  >
     Incidencias
   </a>
 </nav>
