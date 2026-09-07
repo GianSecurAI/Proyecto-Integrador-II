@@ -89,6 +89,18 @@ export class TrackOrderPage {
     return this.form.controls.orderId;
   }
 
+  constructor() {
+    // Convenience pre-fill only, never auto-submitted — a visitor arriving from
+    // `features/checkout/pages/confirmation/checkout-confirmation.page.ts`'s "Rastrear mi
+    // pedido" link still has to press the lookup button themselves, same as anyone typing an id
+    // by hand. `orderId` here is a non-secret order identifier, not the kind of sensitive data
+    // the "avoid sensitive data in URL/query parameters" rule is about.
+    const prefillId = this.route.snapshot.queryParamMap.get('orderId');
+    if (prefillId) {
+      this.orderIdControl.setValue(prefillId);
+    }
+  }
+
   submit(): void {
     if (this.status() === 'loading') return;
     this.orderIdControl.setValue(this.orderIdControl.value.trim());
