@@ -33,6 +33,12 @@
   max-width: 32ch;
 }
 
+.app-footer__columns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ar-space-6);
+}
+
 .app-footer__links {
   display: flex;
   flex-direction: column;
@@ -42,6 +48,14 @@
     text-decoration: underline;
     color: var(--ar-color-black);
   }
+}
+
+.app-footer__links-heading {
+  margin: 0 0 var(--ar-space-1);
+  font-size: var(--ar-font-size-sm);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--ar-letter-spacing-wide);
 }
 
 .app-footer__legal {

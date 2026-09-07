@@ -1,0 +1,60 @@
+@use 'tokens' as *;
+
+// Shared dark-surface page shell for the 5 static `features/legal` pages (4 policy pages +
+// contact-info). Matches the dark, numbered-card visual language already established for
+// Login/OTP (`features/auth/auth-shared.css`) and, more relevantly since neither of those is an
+// auth screen, `features/order-tracking/pages/track-order/track-order.page.scss` — reproduced
+// here via the same `_tokens.scss` custom properties and shared `ui-btn` classes rather than by
+// importing `auth-shared.css` directly, for the same "wrong dependency, different feature"
+// reasoning documented on `track-order.page.ts`.
+//
+// Referenced from each page's `styleUrls` (not `@use`d into a component) so every legal page
+// composes it the same way `auth-shared.css` is composed across the auth pages.
+:host {
+  display: flex;
+  flex: 1;
+}
+
+.legal-page {
+  flex: 1;
+  min-width: 0;
+  min-height: 42rem;
+  background: var(--ar-color-black);
+  color: var(--ar-color-text-on-dark);
+  padding-bottom: var(--ar-space-6);
+}
+
+.legal-page__container {
+  max-width: 48rem;
+  margin-inline: auto;
+  padding: var(--ar-space-6) var(--ar-space-4) 0;
+  display: grid;
+  gap: var(--ar-space-5);
+}
+
+.legal-page__header {
+  display: grid;
+  gap: var(--ar-space-2);
+  text-align: center;
+}
+
+.legal-page__header h1 {
+  margin: 0;
+  font-size: var(--ar-font-size-2xl);
+  text-transform: uppercase;
+  letter-spacing: var(--ar-letter-spacing-wide);
+}
+
+.legal-page__subtitle {
+  margin: 0;
+  color: var(--ar-color-muted-on-dark);
+}
+
+.legal-page__notice {
+  margin: 0;
+  padding-top: var(--ar-space-4);
+  border-top: var(--ar-border-width) solid var(--ar-color-border-on-dark);
+  font-size: var(--ar-font-size-xs);
+  color: var(--ar-color-muted-on-dark);
+  text-align: center;
+}

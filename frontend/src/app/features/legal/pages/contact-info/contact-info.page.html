@@ -1,0 +1,45 @@
+<main class="legal-page">
+  <div class="legal-page__container">
+    <header class="legal-page__header">
+      <h1>Información del contacto</h1>
+      <p class="legal-page__subtitle">Distintas formas de comunicarte con Ar Makers 3D.</p>
+    </header>
+
+    <section class="contact-info-card" aria-labelledby="contact-info-heading">
+      <h2 id="contact-info-heading">Datos de contacto</h2>
+
+      <dl class="contact-info-card__list">
+        <div class="contact-info-card__item">
+          <dt>Correo electrónico</dt>
+          <dd><a [href]="'mailto:' + email">{{ email }}</a></dd>
+        </div>
+        <div class="contact-info-card__item">
+          <dt>Teléfono / WhatsApp</dt>
+          <dd>{{ phoneDisplay }}</dd>
+        </div>
+        <div class="contact-info-card__item">
+          <dt>Horario de atención</dt>
+          <dd>{{ hours }}</dd>
+        </div>
+        <div class="contact-info-card__item">
+          <dt>Dirección</dt>
+          <dd>{{ address }}</dd>
+        </div>
+      </dl>
+
+      <a
+        class="ui-btn ui-btn--whatsapp ui-btn--lg contact-info-card__whatsapp"
+        [href]="whatsappHref()"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        Chatea con nosotros
+      </a>
+    </section>
+
+    <p class="legal-page__notice">
+      Los datos de contacto de esta página son ilustrativos, con fines académicos del proyecto Ar
+      Makers 3D.
+    </p>
+  </div>
+</main>

@@ -1,0 +1,22 @@
+<ol class="policy-section-list">
+  @for (section of sections(); track section.heading; let i = $index) {
+    <li class="policy-section-list__item">
+      <article class="policy-section-list__card">
+        <h2 class="policy-section-list__heading">
+          <span class="policy-section-list__index" aria-hidden="true">{{ i + 1 }}</span>
+          {{ section.heading }}
+        </h2>
+        @for (paragraph of section.body; track paragraph) {
+          <p class="policy-section-list__paragraph">{{ paragraph }}</p>
+        }
+        @if (section.list?.length) {
+          <ul class="policy-section-list__list">
+            @for (item of section.list; track item) {
+              <li>{{ item }}</li>
+            }
+          </ul>
+        }
+      </article>
+    </li>
+  }
+</ol>

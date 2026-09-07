@@ -5,11 +5,23 @@
       <p class="app-footer__tagline">Impresión 3D personalizada, hecha a tu medida.</p>
     </div>
 
-    <nav class="app-footer__links" aria-label="Enlaces">
-      <a routerLink="/">Inicio</a>
-      <a routerLink="/auth/request-code">Iniciar sesión</a>
-      <a routerLink="/track-order">Seguimiento del pedido</a>
-    </nav>
+    <div class="app-footer__columns">
+      <nav class="app-footer__links" aria-labelledby="footer-quick-links-heading">
+        <h2 id="footer-quick-links-heading" class="app-footer__links-heading">Enlaces rápidos</h2>
+        <a routerLink="/">Inicio</a>
+        <a routerLink="/auth/request-code">Iniciar sesión</a>
+        <a routerLink="/track-order">Seguimiento del pedido</a>
+      </nav>
+
+      <nav class="app-footer__links" aria-labelledby="footer-policies-heading">
+        <h2 id="footer-policies-heading" class="app-footer__links-heading">Políticas</h2>
+        <a routerLink="/legal/privacidad">Política de privacidad</a>
+        <a routerLink="/legal/reembolso">Política de reembolso</a>
+        <a routerLink="/legal/terminos">Términos de servicio</a>
+        <a routerLink="/legal/envio">Política de envío</a>
+        <a routerLink="/legal/contacto">Información del contacto</a>
+      </nav>
+    </div>
   </div>
 
   <div class="app-footer__legal">
