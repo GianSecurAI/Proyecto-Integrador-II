@@ -115,7 +115,12 @@ describe('OrderReviewStepComponent', () => {
     expect(deliveryInfo).toEqual(DELIVERY_INFO);
 
     expect(cart.isEmpty()).toBe(true);
-    expect(checkoutState.placedOrder()).toEqual({ id: 'PED-MOCK-1', status: 'pendiente' });
+    expect(checkoutState.placedOrder()).toEqual({
+      id: 'PED-MOCK-1',
+      status: 'pendiente',
+      placedAt: CREATED_ORDER.placedAt,
+      summary: CREATED_ORDER.summary,
+    });
     expect(navigateSpy).toHaveBeenCalledWith('/checkout/confirmacion');
   }));
 

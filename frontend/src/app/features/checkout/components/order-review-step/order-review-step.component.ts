@@ -67,7 +67,12 @@ export class OrderReviewStepComponent {
       .subscribe({
         next: (order) => {
           this.submitting.set(false);
-          this.checkoutState.setPlacedOrder({ id: order.id, status: order.status });
+          this.checkoutState.setPlacedOrder({
+            id: order.id,
+            status: order.status,
+            placedAt: order.placedAt,
+            summary: order.summary,
+          });
           // Cleared ONLY after the mock order-creation call has actually succeeded — see class
           // doc comment.
           this.cart.clearCart();

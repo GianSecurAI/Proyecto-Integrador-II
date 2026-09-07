@@ -28,7 +28,13 @@ describe('CheckoutStateService', () => {
   });
 
   it('retains the placed order reference once set', () => {
-    service.setPlacedOrder({ id: 'PED-MOCK-1', status: 'pendiente' });
-    expect(service.placedOrder()).toEqual({ id: 'PED-MOCK-1', status: 'pendiente' });
+    const placedAt = new Date('2026-09-07T00:00:00Z');
+    service.setPlacedOrder({ id: 'PED-MOCK-1', status: 'pendiente', placedAt, summary: '1 unidad: Llavero A' });
+    expect(service.placedOrder()).toEqual({
+      id: 'PED-MOCK-1',
+      status: 'pendiente',
+      placedAt,
+      summary: '1 unidad: Llavero A',
+    });
   });
 });

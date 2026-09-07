@@ -2,14 +2,19 @@ import { Injectable, signal } from '@angular/core';
 import { OrderStatus } from '../../account/models/order.model';
 import { CustomerInfoFormValue, DeliveryInfoFormValue } from '../models/checkout-form.model';
 
-/** Non-sensitive reference to a just-placed order — only an id and its (mock) initial status, set
- * once by `OrderReviewStepComponent` right after a successful `createStandardOrder(...)` call and
- * read by both the confirmation page and its route guard
- * (`../guards/checkout-confirmation.guard.ts`). Never carries customer/delivery data (see that
- * guard/page's own doc comments on why an order id alone is not sensitive). */
+/** Non-sensitive reference to a just-placed order — an id, its (mock) initial status, when it was
+ * placed, and its short presentation `summary` string (see `OrderSummaryViewModel`'s doc comment —
+ * NOT an itemized line-item breakdown), set once by `OrderReviewStepComponent` right after a
+ * successful `createStandardOrder(...)` call and read by both the confirmation page and its route
+ * guard (`../guards/checkout-confirmation.guard.ts`). Deliberately still never carries
+ * customer/delivery data (see that guard/page's own doc comments on why an order id alone is not
+ * sensitive — the same reasoning applies to `placedAt`/`summary`, both purely order-facing, never
+ * customer-identifying). */
 export interface PlacedOrderRef {
   readonly id: string;
   readonly status: OrderStatus;
+  readonly placedAt: Date;
+  readonly summary: string;
 }
 
 /**

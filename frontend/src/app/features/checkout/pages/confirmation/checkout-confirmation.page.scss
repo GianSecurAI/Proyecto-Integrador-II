@@ -25,9 +25,19 @@ h1 {
   margin: 0;
 }
 
+.checkout-confirmation-page__date {
+  margin: 0;
+  color: var(--ar-color-muted-on-light);
+}
+
 .checkout-confirmation-page__message {
   margin: 0;
   color: var(--ar-color-muted-on-light);
+}
+
+.checkout-confirmation-page__summary {
+  margin: 0;
+  font-weight: 700;
 }
 
 .checkout-confirmation-page__actions {

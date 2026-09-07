@@ -1,29 +1,39 @@
 <main class="checkout-confirmation-page">
   <div class="checkout-confirmation-page__container">
     @if (placedOrder(); as order) {
-      <h1>¡Pedido registrado!</h1>
-      <p class="checkout-confirmation-page__id">Número de pedido: <strong>{{ order.id }}</strong></p>
+      <app-card role="status">
+        <h1>¡Pedido registrado!</h1>
+        <p class="checkout-confirmation-page__id">Número de pedido: <strong>{{ order.id }}</strong></p>
+        <p class="checkout-confirmation-page__date">Realizado el {{ formatDate(order.placedAt) }}</p>
 
-      @if (badge(); as badge) {
-        <app-status-badge [label]="badge.label" [tone]="badge.tone" />
-      }
+        @if (badge(); as badge) {
+          <app-status-badge [label]="badge.label" [tone]="badge.tone" />
+        }
 
-      <p class="checkout-confirmation-page__message">
-        Tu pedido fue registrado correctamente y quedó con estado
-        <strong>{{ badge()?.label }}</strong>. Aún no se ha procesado ningún pago — nuestro equipo
-        revisará y confirmará tu pedido, y te avisaremos por correo cuando cambie de estado.
-      </p>
+        <p class="checkout-confirmation-page__message">
+          Tu pedido fue registrado correctamente y quedó con estado
+          <strong>{{ badge()?.label }}</strong>. Aún no se ha procesado ningún pago — nuestro equipo
+          revisará y confirmará tu pedido, y te avisaremos por correo cuando cambie de estado.
+        </p>
 
-      <div class="checkout-confirmation-page__actions">
-        <a
-          class="ui-btn ui-btn--primary ui-btn--md"
-          [routerLink]="['/track-order']"
-          [queryParams]="{ orderId: order.id }"
-        >
-          Rastrear mi pedido
-        </a>
-        <a class="ui-btn ui-btn--ghost ui-btn--md" routerLink="/catalog">Seguir comprando</a>
-      </div>
+        <p class="checkout-confirmation-page__summary">{{ order.summary }}</p>
+
+        <div class="checkout-confirmation-page__actions">
+          <a
+            class="ui-btn ui-btn--primary ui-btn--md"
+            [routerLink]="['/track-order']"
+            [queryParams]="{ orderId: order.id }"
+          >
+            Rastrear mi pedido
+          </a>
+          @if (canViewOwnOrder()) {
+            <a class="ui-btn ui-btn--secondary ui-btn--md" [routerLink]="['/account/orders', order.id]">
+              Ver mi pedido
+            </a>
+          }
+          <a class="ui-btn ui-btn--ghost ui-btn--md" routerLink="/catalog">Seguir comprando</a>
+        </div>
+      </app-card>
     }
   </div>
 </main>
