@@ -1,7 +1,31 @@
 import { Injectable, signal } from '@angular/core';
 import { Observable, map, of, switchMap, throwError, timer } from 'rxjs';
+import { CartItem } from '../../cart/models/cart-item.model';
 import { CUSTOMER_ORDERS_EMPTY, CUSTOMER_ORDERS_SEED, CustomerOrderSeed } from '../mocks/customer-orders.mock';
 import { OrderDetailViewModel, OrderKind, OrderStatus, OrderSummaryViewModel } from '../models/order.model';
+
+/**
+ * TEMPORARY PREVIEW-ONLY MAGIC VALUE — lets a reviewer preview `createStandardOrder`'s failure
+ * state from the checkout UI alone (documented on-screen in the delivery-info step, mirroring
+ * `MOCK_SAVE_FAILURE_PHONE`/`MOCK_SUBMIT_FAILURE_MARKER`/`MOCK_ORDER_SAVE_FAILURE_MARKER`
+ * elsewhere in this codebase). Carries no security/validation meaning. A future integrator
+ * replacing this mock with a real order-creation endpoint MUST delete this block entirely rather
+ * than adapt it.
+ */
+export const MOCK_ORDER_SUBMIT_FAILURE_MARKER = '__mock_fail__';
+
+let nextStandardOrderSequence = 1;
+
+/** Builds the short `summary` string (see `OrderSummaryViewModel`'s doc comment — a plain short
+ * string, NOT an itemized line-item breakdown; `PedidoItem` is not modeled yet). Purely a
+ * presentation label, not a business decision. */
+function buildStandardOrderSummary(items: readonly CartItem[]): string {
+  const totalUnits = items.reduce((total, item) => total + item.quantity, 0);
+  const firstTitle = items[0]?.title ?? 'Producto';
+  const extraLines = items.length - 1;
+  const extra = extraLines > 0 ? ` y ${extraLines} producto${extraLines === 1 ? '' : 's'} más` : '';
+  return `${totalUnits} unidad${totalUnits === 1 ? '' : 'es'}: ${firstTitle}${extra}`;
+}
 
 /**
  * Deterministic preview states, driven by the `?mockState=` route query param documented on
@@ -96,6 +120,75 @@ export class CustomerOrdersMockService {
         return found
           ? of(found)
           : throwError(() => new OrdersMockError(`Mock order "${id}" not found`));
+      }),
+    );
+  }
+
+  /**
+   * Registers a new `estandar` (standard catalog, self-service) order — the customer-facing
+   * counterpart to `AdminOrdersMockService.registerPersonalizedOrder()`, following that method's
+   * exact "build a view model, push it into the signal so it's immediately visible wherever that
+   * signal is read" structure. Called by `features/checkout/components/order-review-step/
+   * order-review-step.component.ts` after the visitor confirms their order on the final checkout
+   * review step.
+   *
+   * `customerInfo`/`deliveryInfo` are typed STRUCTURALLY here (an inline shape matching
+   * `CustomerInfoFormValue`/`DeliveryInfoFormValue`, `features/checkout/models/
+   * checkout-form.model.ts`) rather than by importing those types directly — `features/account/`
+   * is a foundational domain that predates and is depended on by `features/checkout/`
+   * (`OrderStatus`/`OrderKind` already flow the other direction, account -> admin); this method
+   * accepts the checkout feature's form values without account depending back on checkout.
+   *
+   * INITIAL STATUS IS `pendiente`, NOT `confirmado` — this is the key distinction from
+   * `registerPersonalizedOrder()`'s `confirmado` initial status. A personalized order is only ever
+   * registered AFTER an advisor has already attested the external payment was received, so nothing
+   * is left pending at registration time. A standard catalog order created by THIS method, by
+   * contrast, is created at the moment the visitor submits the checkout form — CLAUDE.md's
+   * payment-gateway step (checkout flow step 4) is explicitly NOT implemented by this frontend-only
+   * mock (no payment gateway is chosen yet), so this order has not been paid for by any mechanism
+   * this application can attest to. `pendiente` honestly represents "registered, not yet
+   * confirmed" — never `confirmado`, and no status-history note here ever claims a payment was
+   * processed, charged, or accepted (contrast the seeded `CUSTOMER_ORDERS_SEED` notes'
+   * "tras el pago en línea" wording, which predates this method and is not touched by it).
+   *
+   * Fails deterministically when `deliveryInfo.address` contains `MOCK_ORDER_SUBMIT_FAILURE_MARKER`
+   * (see that constant's doc comment) so the checkout UI's error/retry path can be previewed
+   * without a real backend.
+   */
+  createStandardOrder(
+    items: readonly CartItem[],
+    customerInfo: { readonly fullName: string; readonly email: string; readonly phone: string },
+    deliveryInfo: { readonly address: string; readonly district: string; readonly notes: string },
+  ): Observable<OrderDetailViewModel> {
+    void customerInfo; // Never persisted beyond this mock's in-memory order record; kept as an
+    // explicit parameter (rather than dropped) so a future real integration has an obvious place
+    // to forward it to a real backend DTO.
+    if (deliveryInfo.address.includes(MOCK_ORDER_SUBMIT_FAILURE_MARKER)) {
+      return timer(500).pipe(
+        switchMap(() => throwError(() => new OrdersMockError('Mock standard order creation failure'))),
+      );
+    }
+    const now = new Date();
+    const created: OrderDetailViewModel = {
+      id: `PED-MOCK-${nextStandardOrderSequence++}`,
+      placedAt: now,
+      status: 'pendiente',
+      kind: 'estandar',
+      summary: buildStandardOrderSummary(items),
+      statusHistory: [
+        {
+          previousStatus: null,
+          newStatus: 'pendiente',
+          changedAt: now,
+          responsible: 'Sistema',
+          note: 'Pedido registrado. Pendiente de confirmación.',
+        },
+      ],
+    };
+    return timer(500).pipe(
+      map(() => {
+        this.orders.update((current) => [created, ...current]);
+        return created;
       }),
     );
   }
