@@ -1,55 +1,78 @@
-<main class="auth-page">
+﻿<main class="auth-page">
+  <div class="auth-toolbar">
+    <a
+      class="ui-btn ui-btn--secondary ui-btn--on-dark auth-back"
+      routerLink="/auth/request-code"
+      aria-label="Volver al ingreso de correo"
+    >
+      <img src="/images/auth/back.svg" alt="" width="16" height="16" />
+    </a>
+    <h1>Verificar código</h1>
+  </div>
   <section class="auth-card" aria-labelledby="verify-code-heading">
-    <h1 id="verify-code-heading">Ingresa tu código</h1>
-    <p class="auth-card__description">
-      @if (email) {
-        Escribe el código de 6 dígitos que enviamos a <strong>{{ email }}</strong
-        >.
-      } @else {
-        Necesitamos tu correo para verificar un código. Te redirigiremos para solicitarlo.
-      }
-    </p>
-
-    <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
-      <div class="form-field">
-        <label for="code">Código de verificación</label>
-        <input
-          id="code"
-          type="text"
-          formControlName="code"
-          inputmode="numeric"
-          autocomplete="one-time-code"
-          maxlength="6"
-          pattern="[0-9]*"
-          required
-          [attr.aria-invalid]="codeControl.invalid && codeControl.touched ? true : null"
-          [attr.aria-describedby]="codeControl.invalid && codeControl.touched ? 'code-error' : null"
-        />
-        @if (codeControl.invalid && codeControl.touched) {
-          <p id="code-error" class="form-field__error" role="alert">
-            Ingresa el código de 6 dígitos que recibiste por correo.
-          </p>
-        }
+    @if (completed()) {
+      <div role="status">
+        <h2 id="verify-code-heading">¡Bienvenido!</h2>
+        <p class="auth-card__description">Has completado la demostración de acceso.</p>
       </div>
-
-      <button type="submit" [disabled]="submitting() || !email">
-        {{ submitting() ? 'Verificando…' : 'Verificar código' }}
-      </button>
-    </form>
-
-    <div aria-live="polite">
-      @if (successMessage()) {
-        <p class="auth-card__success">{{ successMessage() }}</p>
-      }
+      <p class="auth-card__notice">
+        Esta sesión es simulada: no has accedido a ninguna cuenta real.
+      </p>
+      <a
+        class="ui-btn ui-btn--primary ui-btn--on-dark ui-btn--full ui-btn--md"
+        routerLink="/catalog"
+        >Explorar catálogo</a
+      >
+    } @else {
+      <h2 id="verify-code-heading">Revisa tu correo</h2>
+      <p class="auth-card__description">
+        Si el correo puede recibir mensajes, recibirás un código temporal para continuar.
+      </p>
+      <p class="auth-card__notice" id="preview-instructions">
+        Demostración: no enviamos correos. Introduce cualquier combinación de 6 dígitos para probar
+        este paso.
+      </p>
+      <form [formGroup]="form" (ngSubmit)="submit()" novalidate [attr.aria-busy]="submitting()">
+        <app-form-field
+          #codeField="appFormField"
+          label="Código temporal"
+          [required]="true"
+          [error]="
+            codeControl.invalid && codeControl.touched ? 'Ingresa un código de 6 dígitos.' : null
+          "
+        >
+          <input
+            class="ui-input auth-code-input"
+            [id]="codeField.inputId()"
+            type="text"
+            formControlName="code"
+            autocomplete="one-time-code"
+            inputmode="numeric"
+            pattern="[0-9]{6}"
+            maxlength="6"
+            required
+            placeholder="000000"
+            [readonly]="submitting()"
+            [attr.aria-invalid]="codeField.hasError()"
+            [attr.aria-describedby]="codeField.describedBy() || 'preview-instructions'"
+          />
+        </app-form-field>
+        <app-button type="submit" [fullWidth]="true" [onDark]="true" [loading]="submitting()">
+          {{ submitting() ? 'Verificando…' : 'Verificar código' }}
+        </app-button>
+      </form>
       @if (errorMessage()) {
         <p class="auth-card__error" role="alert">{{ errorMessage() }}</p>
       }
-    </div>
-
-    <p class="auth-card__meta">
-      <button type="button" class="link-button" (click)="requestNewCode()">
-        ¿No recibiste el código? Solicitar uno nuevo
-      </button>
-    </p>
+      <div class="auth-card__meta">
+        <app-button
+          variant="ghost"
+          [onDark]="true"
+          [disabled]="submitting()"
+          (clicked)="requestNewCode()"
+          >Solicitar otro código</app-button
+        >
+      </div>
+    }
   </section>
 </main>

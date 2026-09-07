@@ -1,85 +1,85 @@
-import { provideHttpClient } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+﻿import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
-import { environment } from '../../../../../environments/environment';
+import { Subject, of, throwError } from 'rxjs';
+import { AUTH_PREVIEW, AuthPreview } from '../../services/auth-preview.service';
 import { RequestCodePage } from './request-code.page';
 
 describe('RequestCodePage', () => {
   let fixture: ComponentFixture<RequestCodePage>;
   let component: RequestCodePage;
-  let httpMock: HttpTestingController;
+  let auth: jasmine.SpyObj<AuthPreview>;
   let router: Router;
-  const requestUrl = `${environment.apiBaseUrl}/auth/otp/request`;
-
   beforeEach(async () => {
+    auth = jasmine.createSpyObj<AuthPreview>('AuthPreview', [
+      'requestOtp',
+      'verifyOtp',
+      'reset',
+      'hasPendingRequest',
+    ]);
+    auth.requestOtp.and.returnValue(of(undefined));
     await TestBed.configureTestingModule({
       imports: [RequestCodePage],
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
+      providers: [provideRouter([]), { provide: AUTH_PREVIEW, useValue: auth }],
     }).compileComponents();
-
     fixture = TestBed.createComponent(RequestCodePage);
     component = fixture.componentInstance;
-    httpMock = TestBed.inject(HttpTestingController);
     router = TestBed.inject(Router);
     spyOn(router, 'navigate').and.resolveTo(true);
     fixture.detectChanges();
   });
-
-  afterEach(() => httpMock.verify());
-
-  it('has no password field anywhere on this screen (Constitution Principle VI)', () => {
-    const inputs: HTMLInputElement[] = Array.from(fixture.nativeElement.querySelectorAll('input'));
-    expect(inputs.some((el) => el.type === 'password')).toBe(false);
+  it('uses shared controls with accessible email labeling and no password', () => {
+    const input: HTMLInputElement = fixture.nativeElement.querySelector('input');
+    expect(input.type).toBe('email');
+    expect(fixture.nativeElement.querySelector(`label[for="${input.id}"]`)).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('app-button button[type="submit"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('input[type="password"]')).toBeNull();
   });
-
-  it('does not call the API when the email is invalid', () => {
-    component.emailControl.setValue('not-an-email');
+  it('shows an associated validation error and does not request invalid email', () => {
+    component.emailControl.setValue('invalid');
     component.submit();
-
-    httpMock.expectNone(requestUrl);
-    expect(component.emailControl.touched).toBe(true);
+    fixture.detectChanges();
+    expect(auth.requestOtp).not.toHaveBeenCalled();
+    const input: HTMLInputElement = fixture.nativeElement.querySelector('input');
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    expect(
+      fixture.nativeElement.querySelector(`[id="${input.getAttribute('aria-describedby')}"]`)
+        .textContent,
+    ).toContain('válido');
   });
-
-  it('shows the backend-provided generic acknowledgment and navigates to verify-code on 202, carrying the email', () => {
+  it('trims email, navigates without sensitive state and clears the form', () => {
+    component.emailControl.setValue('  customer@example.com  ');
+    component.submit();
+    expect(auth.requestOtp).toHaveBeenCalledWith('customer@example.com');
+    expect(router.navigate).toHaveBeenCalledWith(['/auth/verify-code']);
+    expect(component.emailControl.value).toBe('');
+  });
+  it('shows loading and prevents duplicate submits', () => {
+    auth.requestOtp.and.returnValue(new Subject<void>());
     component.emailControl.setValue('customer@example.com');
     component.submit();
-
-    httpMock
-      .expectOne(requestUrl)
-      .flush({ message: 'If this email is valid, a code has been sent.' });
-
-    expect(component.successMessage()).toBe('If this email is valid, a code has been sent.');
-    expect(router.navigate).toHaveBeenCalledWith(['/auth/verify-code'], {
-      state: { email: 'customer@example.com' },
-    });
+    component.submit();
+    fixture.detectChanges();
+    expect(auth.requestOtp).toHaveBeenCalledTimes(1);
+    expect(fixture.nativeElement.querySelector('button[type="submit"]').disabled).toBeTrue();
+    expect(component.submitting()).toBeTrue();
   });
-
-  it('shows an inline error on 400 using the backend message', () => {
+  it('never displays error details that could disclose account existence', () => {
+    auth.requestOtp.and.returnValue(throwError(() => new Error('Account does not exist')));
     component.emailControl.setValue('customer@example.com');
     component.submit();
-
-    httpMock
-      .expectOne(requestUrl)
-      .flush(
-        { code: 'VALIDATION_ERROR', message: 'Correo inválido.', timestamp: 'x' },
-        { status: 400, statusText: 'Bad Request' },
-      );
-
-    expect(component.errorMessage()).toBe('Correo inválido.');
+    fixture.detectChanges();
+    expect(component.errorMessage()).toBe('No pudimos continuar. Inténtalo de nuevo más tarde.');
+    expect(component.submitting()).toBeFalse();
+    expect(fixture.nativeElement.textContent).not.toContain('Account does not exist');
   });
-
-  it('shows a generic retry-later message on 429 without hinting at the reason', () => {
+  it('cancels pending behavior and clears email when leaving the screen', () => {
+    const pending = new Subject<void>();
+    auth.requestOtp.and.returnValue(pending);
     component.emailControl.setValue('customer@example.com');
     component.submit();
-
-    httpMock
-      .expectOne(requestUrl)
-      .flush(
-        { code: 'RATE_LIMITED', message: 'Too many requests, try again later.', timestamp: 'x' },
-        { status: 429, statusText: 'Too Many Requests' },
-      );
-
-    expect(component.errorMessage()).toBe('Too many requests, try again later.');
+    fixture.destroy();
+    pending.next();
+    expect(router.navigate).not.toHaveBeenCalled();
+    expect(component.emailControl.value).toBe('');
   });
 });

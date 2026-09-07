@@ -1,111 +1,93 @@
-import { provideHttpClient } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+﻿import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
-import { environment } from '../../../../../environments/environment';
+import { Subject, of, throwError } from 'rxjs';
+import { AUTH_PREVIEW, AuthPreview } from '../../services/auth-preview.service';
 import { VerifyCodePage } from './verify-code.page';
 
 describe('VerifyCodePage', () => {
   let fixture: ComponentFixture<VerifyCodePage>;
   let component: VerifyCodePage;
-  let httpMock: HttpTestingController;
+  let auth: jasmine.SpyObj<AuthPreview>;
   let router: Router;
-  const verifyUrl = `${environment.apiBaseUrl}/auth/otp/verify`;
-
-  function createWithState(state: { email?: string } | null) {
-    history.replaceState(state, '');
-    TestBed.configureTestingModule({
+  beforeEach(async () => {
+    auth = jasmine.createSpyObj<AuthPreview>('AuthPreview', [
+      'requestOtp',
+      'verifyOtp',
+      'reset',
+      'hasPendingRequest',
+    ]);
+    auth.hasPendingRequest.and.returnValue(true);
+    auth.verifyOtp.and.returnValue(of(undefined));
+    await TestBed.configureTestingModule({
       imports: [VerifyCodePage],
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
-    });
+      providers: [provideRouter([]), { provide: AUTH_PREVIEW, useValue: auth }],
+    }).compileComponents();
     fixture = TestBed.createComponent(VerifyCodePage);
     component = fixture.componentInstance;
-    httpMock = TestBed.inject(HttpTestingController);
     router = TestBed.inject(Router);
     spyOn(router, 'navigate').and.resolveTo(true);
+  });
+  it('returns direct or refreshed visits to the email step', () => {
+    auth.hasPendingRequest.and.returnValue(false);
     fixture.detectChanges();
-  }
-
-  afterEach(() => {
-    httpMock.verify();
-    history.replaceState(null, '');
-  });
-
-  it('has no password field anywhere on this screen (Constitution Principle VI)', () => {
-    createWithState({ email: 'customer@example.com' });
-    const inputs: HTMLInputElement[] = Array.from(fixture.nativeElement.querySelectorAll('input'));
-    expect(inputs.some((el) => el.type === 'password')).toBe(false);
-  });
-
-  it('redirects back to request-code when reached without a known email', () => {
-    createWithState(null);
-
     expect(router.navigate).toHaveBeenCalledWith(['/auth/request-code']);
   });
-
-  it('shows "account created" wording only when accountStatus is created, and navigates to /account', () => {
-    createWithState({ email: 'new@example.com' });
+  it('rejects malformed input with accessible feedback', () => {
+    fixture.detectChanges();
+    component.codeControl.setValue('12ab');
+    component.submit();
+    fixture.detectChanges();
+    expect(auth.verifyOtp).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.querySelector('input').getAttribute('aria-invalid')).toBe('true');
+  });
+  it('clears the OTP immediately, shows loading, prevents duplicate submits', () => {
+    auth.verifyOtp.and.returnValue(new Subject<void>());
+    fixture.detectChanges();
     component.codeControl.setValue('123456');
     component.submit();
-
-    httpMock.expectOne(verifyUrl).flush({ accountStatus: 'created' });
-
-    expect(component.successMessage()).toContain('Cuenta creada');
-    expect(router.navigate).toHaveBeenCalledWith(['/account']);
+    component.submit();
+    fixture.detectChanges();
+    expect(auth.verifyOtp).toHaveBeenCalledOnceWith('123456');
+    expect(component.codeControl.value).toBe('');
+    expect(fixture.nativeElement.querySelector('button[type="submit"]').disabled).toBeTrue();
   });
-
-  it('shows "welcome back" wording when accountStatus is existing', () => {
-    createWithState({ email: 'returning@example.com' });
+  it('announces mock completion without routing to a protected account', () => {
+    fixture.detectChanges();
     component.codeControl.setValue('123456');
     component.submit();
-
-    httpMock.expectOne(verifyUrl).flush({ accountStatus: 'existing' });
-
-    expect(component.successMessage()).toContain('Bienvenido de nuevo');
+    fixture.detectChanges();
+    expect(component.completed()).toBeTrue();
+    expect(fixture.nativeElement.querySelector('[role="status"]').textContent).toContain(
+      'demostración',
+    );
+    expect(router.navigate).not.toHaveBeenCalled();
+    expect(component.codeControl.value).toBe('');
   });
-
-  it('surfaces a rejection message on 401 (wrong code)', () => {
-    createWithState({ email: 'customer@example.com' });
-    component.codeControl.setValue('000000');
-    component.submit();
-
-    httpMock
-      .expectOne(verifyUrl)
-      .flush(
-        { code: 'OTP_INVALID', message: 'Código incorrecto.', timestamp: 'x' },
-        { status: 401, statusText: 'Unauthorized' },
-      );
-
-    expect(component.errorMessage()).toBe('Código incorrecto.');
-  });
-
-  it('surfaces a rejection message on 410 (expired or already used)', () => {
-    createWithState({ email: 'customer@example.com' });
+  it('shows a generic error and clears the code on failure', () => {
+    auth.verifyOtp.and.returnValue(throwError(() => new Error('Secret detail')));
+    fixture.detectChanges();
     component.codeControl.setValue('123456');
     component.submit();
-
-    httpMock
-      .expectOne(verifyUrl)
-      .flush(
-        { code: 'OTP_EXPIRED', message: 'Código expirado.', timestamp: 'x' },
-        { status: 410, statusText: 'Gone' },
-      );
-
-    expect(component.errorMessage()).toBe('Código expirado.');
+    fixture.detectChanges();
+    expect(component.errorMessage()).toContain('No pudimos verificar');
+    expect(component.codeControl.value).toBe('');
+    expect(fixture.nativeElement.textContent).not.toContain('Secret detail');
   });
-
-  it('surfaces a rejection message on 429 (attempt limit reached)', () => {
-    createWithState({ email: 'customer@example.com' });
+  it('cancels verification and resets preview on leaving', () => {
+    const pending = new Subject<void>();
+    auth.verifyOtp.and.returnValue(pending);
+    fixture.detectChanges();
     component.codeControl.setValue('123456');
     component.submit();
-
-    httpMock
-      .expectOne(verifyUrl)
-      .flush(
-        { code: 'RATE_LIMITED', message: 'Demasiados intentos.', timestamp: 'x' },
-        { status: 429, statusText: 'Too Many Requests' },
-      );
-
-    expect(component.errorMessage()).toBe('Demasiados intentos.');
+    fixture.destroy();
+    pending.next();
+    expect(component.completed()).toBeFalse();
+    expect(auth.reset).toHaveBeenCalled();
+    expect(component.codeControl.value).toBe('');
+  });
+  it('offers another code through the request step', () => {
+    fixture.detectChanges();
+    component.requestNewCode();
+    expect(router.navigate).toHaveBeenCalledWith(['/auth/request-code']);
   });
 });

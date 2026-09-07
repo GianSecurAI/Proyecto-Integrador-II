@@ -1,115 +1,72 @@
-import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, inject, signal } from '@angular/core';
+﻿import { Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
-import { ApiError } from '../../../../core/models/api-error.model';
-import { AuthService } from '../../services/auth.service';
+import { Router, RouterLink } from '@angular/router';
+import { ButtonComponent } from '../../../../shared/ui/button/button.component';
+import { FormFieldComponent } from '../../../../shared/ui/form-field/form-field.component';
+import { AUTH_PREVIEW } from '../../services/auth-preview.service';
 
-/**
- * "Enter code" screen (spec User Story 1 Scenarios 2 & 4; FR-003, FR-004a, FR-005–FR-011).
- *
- * T029 (US1): base verify flow + success redirect to the authenticated placeholder page.
- * T038 (US2): the 401/410 inline rejection messages below.
- *
- * The `accountStatus` field is the *only* place in this whole flow allowed to say "created" vs.
- * "existing" (FR-004a) — it is rendered verbatim from what the backend decided, never inferred
- * or guessed client-side.
- */
+/** FR-003 visual step only: no OTP validity/expiry rules or real session permissions. */
 @Component({
   selector: 'app-verify-code-page',
   standalone: true,
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, RouterLink, ButtonComponent, FormFieldComponent],
   templateUrl: './verify-code.page.html',
   styleUrls: ['../../auth-shared.css'],
 })
 export class VerifyCodePage implements OnInit {
-  private readonly authService = inject(AuthService);
+  private readonly auth = inject(AUTH_PREVIEW);
   private readonly router = inject(Router);
-
-  // Populated from router navigation state set by RequestCodePage on success. Verifying a code
-  // is meaningless without knowing which email it was issued for, so if this screen is reached
-  // directly (e.g. a bookmarked URL, or a hard refresh that lost navigation state) there is no
-  // safe action other than sending the user back to request a fresh code.
-  email: string | null = null;
-
+  private readonly destroyRef = inject(DestroyRef);
   readonly form = new FormGroup({
-    // Format-only UX validation (6 numeric digits) — mirrors, but never replaces, the backend's
-    // own authoritative check of the code's validity/expiry/attempt count (Prohibited Practice
-    // #6). A malformed code is still submitted to and rejected by the backend the same way any
-    // other incorrect code is (spec Edge Cases), so this is purely to save the user a round
-    // trip for an obviously-wrong format, not a security control.
     code: new FormControl('', {
       nonNullable: true,
       validators: [Validators.required, Validators.pattern(/^\d{6}$/)],
     }),
   });
-
   readonly submitting = signal(false);
-  readonly successMessage = signal<string | null>(null);
+  readonly completed = signal(false);
   readonly errorMessage = signal<string | null>(null);
-
   get codeControl() {
     return this.form.controls.code;
   }
 
-  ngOnInit(): void {
-    const state = history.state as { email?: string } | null;
-    this.email = state?.email ?? null;
+  constructor() {
+    this.destroyRef.onDestroy(() => {
+      this.form.reset();
+      this.auth.reset();
+    });
+  }
 
-    if (!this.email) {
-      this.router.navigate(['/auth/request-code']);
-    }
+  ngOnInit(): void {
+    if (!this.auth.hasPendingRequest()) void this.router.navigate(['/auth/request-code']);
   }
 
   submit(): void {
-    if (this.form.invalid || this.submitting() || !this.email) {
+    if (this.submitting() || this.completed()) return;
+    if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
     }
-
-    const code = this.codeControl.value.trim();
-    const email = this.email;
     this.submitting.set(true);
-    this.successMessage.set(null);
     this.errorMessage.set(null);
-
-    this.authService.verifyOtp(email, code).subscribe({
-      next: (response) => {
+    const response = this.auth.verifyOtp(this.codeControl.value);
+    this.form.reset();
+    response.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => {
         this.submitting.set(false);
-        this.successMessage.set(
-          response.accountStatus === 'created'
-            ? '¡Cuenta creada! Bienvenido a Ar Makers 3D.'
-            : '¡Bienvenido de nuevo!',
-        );
-        this.router.navigate(['/account']);
+        this.completed.set(true);
       },
-      error: (err: HttpErrorResponse) => {
+      error: () => {
         this.submitting.set(false);
-        const apiError = err.error as ApiError | undefined;
-
-        if (err.status === 401) {
-          this.errorMessage.set(
-            apiError?.message ??
-              'El código ingresado es incorrecto. Verifica e inténtalo de nuevo.',
-          );
-        } else if (err.status === 410) {
-          this.errorMessage.set(
-            apiError?.message ?? 'Este código no es válido o ha expirado. Solicita uno nuevo.',
-          );
-        } else if (err.status === 429) {
-          this.errorMessage.set(
-            apiError?.message ?? 'Has alcanzado el límite de intentos. Solicita un nuevo código.',
-          );
-        } else if (err.status === 400) {
-          this.errorMessage.set(apiError?.message ?? 'Ingresa un código válido de 6 dígitos.');
-        } else {
-          this.errorMessage.set('Ocurrió un error. Inténtalo de nuevo.');
-        }
+        this.errorMessage.set(
+          'No pudimos verificar el código. Inténtalo de nuevo o solicita otro.',
+        );
       },
     });
   }
 
   requestNewCode(): void {
-    this.router.navigate(['/auth/request-code']);
+    if (!this.submitting()) void this.router.navigate(['/auth/request-code']);
   }
 }

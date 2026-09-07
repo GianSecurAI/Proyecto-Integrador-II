@@ -1,133 +1,121 @@
-/* Shared visual treatment for the two OTP auth screens (request-code, verify-code).
-   Mobile-first responsive layout (Constitution Principle XVII): a single column that grows
-   into a centered card on wider viewports, since the current Figma file only provides a fixed
-   desktop width with no responsive variants (05-figma-analysis.md §15) and this behavior had
-   to be designed from scratch during implementation.
-   Colors were chosen for verified contrast (Constitution Principle XVI) rather than reused
-   from Figma's neo-brutalist palette, which has not been contrast-checked. */
-
-.auth-page {
-  /* `flex: 1` (not `min-height: 100dvh`) — this page now renders inside the app shell's
-     header/footer (docs/architecture/frontend-foundation.md), so claiming the full viewport
-     height itself would push the footer below the fold. The shell's <div id="main-content">
-     is already a flex column, so this just fills whatever space the shell leaves it. */
+﻿/* Figma Login 2:672: password/OAuth replaced by the approved OTP preview. */
+:host {
+  display: flex;
   flex: 1;
-  display: flex;
+  --ar-color-focus: var(--ar-color-white);
+  --ar-color-muted-on-light: var(--ar-color-muted-on-dark);
+  /* Error text on black needs more contrast than the light-surface danger token. */
+  --ar-color-danger: var(--ar-color-white);
+}
+.auth-page {
+  flex: 1;
+  min-width: 0;
+  min-height: 42rem;
+  background: var(--ar-color-black);
+  color: var(--ar-color-text-on-dark);
+  padding-bottom: var(--ar-space-6);
+}
+.auth-toolbar {
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr) 3rem;
   align-items: center;
-  justify-content: center;
-  padding: 1.5rem;
-  box-sizing: border-box;
-  background: #f5f5f7;
+  gap: var(--ar-space-3);
+  padding: var(--ar-space-4);
+  border-bottom: var(--ar-border-width) solid var(--ar-color-border-on-dark);
 }
-
-.auth-card {
-  width: 100%;
-  max-width: 26rem;
-  background: #ffffff;
-  border: 1px solid #d8d8dd;
-  border-radius: 0.75rem;
-  padding: 2rem;
-  box-sizing: border-box;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-}
-
-@media (min-width: 48rem) {
-  .auth-card {
-    padding: 2.5rem;
-  }
-}
-
-.auth-card h1 {
-  font-size: 1.375rem;
-  margin: 0 0 0.5rem;
-  color: #1a1a1a;
-}
-
-.auth-card__description {
-  color: #4a4a4f;
-  margin: 0 0 1.5rem;
-  line-height: 1.5;
-}
-
-.form-field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.375rem;
-  margin-bottom: 1.25rem;
-}
-
-.form-field label {
-  font-weight: 600;
-  color: #1a1a1a;
-}
-
-.form-field input {
-  font-size: 1rem;
-  padding: 0.625rem 0.75rem;
-  border: 1px solid #8a8a90;
-  border-radius: 0.5rem;
-  box-sizing: border-box;
-}
-
-.form-field input:focus-visible {
-  outline: 3px solid #0b5fff;
-  outline-offset: 1px;
-}
-
-.form-field input[aria-invalid='true'] {
-  border-color: #b3261e;
-}
-
-.form-field__error {
-  color: #b3261e;
-  font-size: 0.875rem;
+.auth-toolbar h1 {
   margin: 0;
-}
-
-button[type='submit'] {
-  width: 100%;
-  padding: 0.75rem 1rem;
-  font-size: 1rem;
-  font-weight: 600;
-  color: #ffffff;
-  background: #0b5fff;
-  border: none;
-  border-radius: 0.5rem;
-  cursor: pointer;
-}
-
-button[type='submit']:disabled {
-  background: #8fb4ff;
-  cursor: not-allowed;
-}
-
-button[type='submit']:focus-visible {
-  outline: 3px solid #1a1a1a;
-  outline-offset: 2px;
-}
-
-.link-button {
-  background: none;
-  border: none;
-  color: #0b5fff;
-  font-weight: 600;
-  text-decoration: underline;
-  cursor: pointer;
-  padding: 0;
-  font-size: 0.9375rem;
-}
-
-.auth-card__success {
-  color: #1a6b3a;
-  margin-top: 1rem;
-}
-
-.auth-card__error {
-  color: #b3261e;
-  margin-top: 1rem;
-}
-
-.auth-card__meta {
-  margin-top: 1.5rem;
   text-align: center;
+  font-size: var(--ar-font-size-base);
+  text-transform: uppercase;
+  letter-spacing: var(--ar-letter-spacing-wide);
+}
+.auth-back {
+  background: var(--ar-color-black);
+  padding: 0;
+  min-height: 3rem;
+}
+.auth-back img {
+  width: 1rem;
+  height: 1rem;
+}
+.auth-card {
+  width: calc(100% - 2 * var(--ar-space-4));
+  max-width: 28rem;
+  margin: var(--ar-space-6) auto 0;
+  padding: var(--ar-space-5);
+  border: var(--ar-border-width) solid var(--ar-color-border-on-dark);
+  border-radius: var(--ar-radius-md);
+  box-shadow: var(--ar-shadow-hard);
+}
+.auth-card h2 {
+  margin: 0 0 var(--ar-space-2);
+  text-align: center;
+  font-size: var(--ar-font-size-xl);
+  line-height: var(--ar-line-height-tight);
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+.auth-card__description,
+.auth-card__meta,
+.auth-card__notice {
+  text-align: center;
+  color: var(--ar-color-muted-on-dark);
+  font-size: var(--ar-font-size-sm);
+  line-height: var(--ar-line-height-base);
+}
+.auth-card__description {
+  margin: 0 0 var(--ar-space-5);
+}
+.auth-card__meta {
+  margin: var(--ar-space-5) 0 0;
+}
+.auth-card__notice {
+  margin: var(--ar-space-5) 0;
+  font-size: var(--ar-font-size-xs);
+}
+.auth-card__notice:last-child {
+  margin-bottom: 0;
+}
+.auth-card__error {
+  margin: var(--ar-space-4) 0 0;
+  color: var(--ar-color-white);
+  font-size: var(--ar-font-size-sm);
+}
+.auth-card .ui-input {
+  background: var(--ar-color-black);
+  color: var(--ar-color-white);
+  border-color: var(--ar-color-border-on-dark);
+  box-shadow: var(--ar-shadow-hard-sm);
+  min-height: 3rem;
+}
+.auth-card .ui-input[aria-invalid='true'] {
+  border-style: dashed;
+}
+.auth-input-wrap {
+  position: relative;
+}
+.auth-email-icon {
+  position: absolute;
+  left: var(--ar-space-4);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1.25rem;
+  height: 1.25rem;
+}
+.auth-card .auth-email-input {
+  padding-left: 3.5rem;
+}
+.auth-code-input {
+  text-align: center;
+  letter-spacing: 0.5em;
+}
+@media (max-width: 30rem) {
+  .auth-card {
+    padding: var(--ar-space-4);
+  }
+  .auth-card h2 {
+    font-size: var(--ar-font-size-lg);
+  }
 }

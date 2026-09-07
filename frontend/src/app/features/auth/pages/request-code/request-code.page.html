@@ -1,44 +1,59 @@
-<main class="auth-page">
+﻿<main class="auth-page">
+  <div class="auth-toolbar">
+    <a
+      class="ui-btn ui-btn--secondary ui-btn--on-dark auth-back"
+      routerLink="/"
+      aria-label="Volver al inicio"
+    >
+      <img src="/images/auth/back.svg" alt="" width="16" height="16" />
+    </a>
+    <h1>Iniciar sesión</h1>
+  </div>
   <section class="auth-card" aria-labelledby="request-code-heading">
-    <h1 id="request-code-heading">Ingresa con tu correo electrónico</h1>
+    <h2 id="request-code-heading">Bienvenido de nuevo</h2>
     <p class="auth-card__description">
-      Te enviaremos un código de acceso a tu correo. No necesitas una contraseña.
+      Accede con tu correo y un código temporal. No necesitas contraseña.
     </p>
-
-    <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
-      <div class="form-field">
-        <label for="email">Correo electrónico</label>
-        <input
-          id="email"
-          type="email"
-          formControlName="email"
-          autocomplete="email"
-          inputmode="email"
-          required
-          [attr.aria-invalid]="emailControl.invalid && emailControl.touched ? true : null"
-          [attr.aria-describedby]="
-            emailControl.invalid && emailControl.touched ? 'email-error' : null
-          "
-        />
-        @if (emailControl.invalid && emailControl.touched) {
-          <p id="email-error" class="form-field__error" role="alert">
-            Ingresa un correo electrónico válido.
-          </p>
-        }
-      </div>
-
-      <button type="submit" [disabled]="submitting()">
+    <form [formGroup]="form" (ngSubmit)="submit()" novalidate [attr.aria-busy]="submitting()">
+      <app-form-field
+        #emailField="appFormField"
+        label="Correo electrónico"
+        [required]="true"
+        [error]="
+          emailControl.invalid && emailControl.touched
+            ? 'Ingresa un correo electrónico válido.'
+            : null
+        "
+      >
+        <div class="auth-input-wrap">
+          <img class="auth-email-icon" src="/images/auth/email.svg" alt="" width="20" height="20" />
+          <input
+            class="ui-input auth-email-input"
+            [id]="emailField.inputId()"
+            type="email"
+            formControlName="email"
+            autocomplete="email"
+            inputmode="email"
+            autocapitalize="none"
+            spellcheck="false"
+            placeholder="tu@correo.com"
+            required
+            [readonly]="submitting()"
+            [attr.aria-invalid]="emailField.hasError()"
+            [attr.aria-describedby]="emailField.describedBy()"
+          />
+        </div>
+      </app-form-field>
+      <app-button type="submit" [fullWidth]="true" [onDark]="true" [loading]="submitting()">
         {{ submitting() ? 'Enviando…' : 'Enviar código' }}
-      </button>
+      </app-button>
     </form>
-
-    <div aria-live="polite">
-      @if (successMessage()) {
-        <p class="auth-card__success">{{ successMessage() }}</p>
-      }
-      @if (errorMessage()) {
-        <p class="auth-card__error" role="alert">{{ errorMessage() }}</p>
-      }
-    </div>
+    @if (errorMessage()) {
+      <p class="auth-card__error" role="alert">{{ errorMessage() }}</p>
+    }
+    <p class="auth-card__meta">El mismo acceso para clientes nuevos y registrados.</p>
+    <p class="auth-card__notice">
+      Vista de demostración: no se enviará ningún correo ni se iniciará una sesión real.
+    </p>
   </section>
 </main>
