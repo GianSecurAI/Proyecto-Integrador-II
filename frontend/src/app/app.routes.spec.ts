@@ -1,3 +1,6 @@
+import { TestBed } from '@angular/core/testing';
+import { Router, provideRouter } from '@angular/router';
+import { SessionStateService } from './core/services/session-state.service';
 import { routes } from './app.routes';
 
 /**
@@ -73,7 +76,7 @@ describe('app.routes', () => {
   it('keeps the same guard and role on the parent /account route', () => {
     const route = accountRoute();
     expect(route?.canActivate).toBeTruthy();
-    expect(route?.data?.['role']).toBe('CLIENTE');
+    expect(route?.data?.['role']).toEqual(['CLIENTE']);
   });
 });
 
@@ -100,15 +103,20 @@ describe('app.routes — /admin', () => {
     expect((loaded as { name: string }).name).toMatch(/^AdminShellComponent/);
   });
 
-  it('redirects the default /admin child to products', () => {
+  it('redirects the default /admin child to orders (reachable by both ADMINISTRADOR and ASESOR — regression check for the bare-/admin bug)', () => {
     const defaultChild = adminRoute()?.children?.find((child) => child.path === '');
-    expect(defaultChild?.redirectTo).toBe('products');
+    expect(defaultChild?.redirectTo).toBe('orders');
+    // The redirect target itself must NOT be Administrador-only, otherwise an Asesor landing on
+    // bare /admin would still bounce to /forbidden.
+    const ordersChild = adminRoute()?.children?.find((c) => c.path === 'orders');
+    expect(ordersChild?.data?.['role']).toBeFalsy();
+    expect(ordersChild?.canActivate).toBeFalsy();
   });
 
   it('loads AdminProductListPage for /admin/products, re-restricted to ADMINISTRADOR', async () => {
     const child = adminRoute()?.children?.find((c) => c.path === 'products');
     expect(child?.canActivate).toBeTruthy();
-    expect(child?.data?.['role']).toBe('ADMINISTRADOR');
+    expect(child?.data?.['role']).toEqual(['ADMINISTRADOR']);
     const loaded = await child!.loadComponent!();
     expect((loaded as { name: string }).name).toMatch(/^AdminProductListPage/);
   });
@@ -116,7 +124,7 @@ describe('app.routes — /admin', () => {
   it('loads AdminProductCreatePage for /admin/products/new, re-restricted to ADMINISTRADOR', async () => {
     const child = adminRoute()?.children?.find((c) => c.path === 'products/new');
     expect(child?.canActivate).toBeTruthy();
-    expect(child?.data?.['role']).toBe('ADMINISTRADOR');
+    expect(child?.data?.['role']).toEqual(['ADMINISTRADOR']);
     const loaded = await child!.loadComponent!();
     expect((loaded as { name: string }).name).toMatch(/^AdminProductCreatePage/);
   });
@@ -124,7 +132,7 @@ describe('app.routes — /admin', () => {
   it('loads AdminProductDetailPage for /admin/products/:id, re-restricted to ADMINISTRADOR', async () => {
     const child = adminRoute()?.children?.find((c) => c.path === 'products/:id');
     expect(child?.canActivate).toBeTruthy();
-    expect(child?.data?.['role']).toBe('ADMINISTRADOR');
+    expect(child?.data?.['role']).toEqual(['ADMINISTRADOR']);
     const loaded = await child!.loadComponent!();
     expect((loaded as { name: string }).name).toMatch(/^AdminProductDetailPage/);
   });
@@ -187,7 +195,7 @@ describe('app.routes — /admin', () => {
   it('loads AdminUserListPage for /admin/users, re-restricted to ADMINISTRADOR', async () => {
     const child = adminRoute()?.children?.find((c) => c.path === 'users');
     expect(child?.canActivate).toBeTruthy();
-    expect(child?.data?.['role']).toBe('ADMINISTRADOR');
+    expect(child?.data?.['role']).toEqual(['ADMINISTRADOR']);
     const loaded = await child!.loadComponent!();
     expect((loaded as { name: string }).name).toMatch(/^AdminUserListPage/);
   });
@@ -195,7 +203,7 @@ describe('app.routes — /admin', () => {
   it('loads AdminUserDetailPage for /admin/users/:id, re-restricted to ADMINISTRADOR', async () => {
     const child = adminRoute()?.children?.find((c) => c.path === 'users/:id');
     expect(child?.canActivate).toBeTruthy();
-    expect(child?.data?.['role']).toBe('ADMINISTRADOR');
+    expect(child?.data?.['role']).toEqual(['ADMINISTRADOR']);
     const loaded = await child!.loadComponent!();
     expect((loaded as { name: string }).name).toMatch(/^AdminUserDetailPage/);
   });
@@ -204,7 +212,50 @@ describe('app.routes — /admin', () => {
     it(`re-restricts /admin/${path} to ADMINISTRADOR alone`, () => {
       const child = adminRoute()?.children?.find((c) => c.path === path);
       expect(child?.canActivate).toBeTruthy();
-      expect(child?.data?.['role']).toBe('ADMINISTRADOR');
+      expect(child?.data?.['role']).toEqual(['ADMINISTRADOR']);
     });
   }
+});
+
+/**
+ * End-to-end (real `Router` + real `routes` array, not just the guard in isolation) regression
+ * coverage for the bare-`/admin` default-redirect bug: before staff OTP login existed, nothing
+ * could ever reach this path as ASESOR, so the fact that `redirectTo: 'products'` sent an Asesor
+ * straight into an Administrador-only route was never observable. `core/guards/auth.guard.spec.ts`
+ * already covers the guard's role-check logic generically; this instead proves the FULL bare
+ * `/admin` navigation now lands somewhere each staff role can actually reach.
+ */
+describe('app.routes — /admin default redirect (staff auth integration)', () => {
+  let router: Router;
+  let session: SessionStateService;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({ providers: [provideRouter(routes)] });
+    router = TestBed.inject(Router);
+    session = TestBed.inject(SessionStateService);
+  });
+
+  it('lets an ASESOR session land on /admin/orders via the bare /admin redirect', async () => {
+    session.markAuthenticated('ASESOR', 'asesor.andrea@armakers3d.com');
+
+    await router.navigateByUrl('/admin');
+
+    expect(router.url).toBe('/admin/orders');
+  });
+
+  it('lets an ADMINISTRADOR session land on /admin/orders via the bare /admin redirect', async () => {
+    session.markAuthenticated('ADMINISTRADOR', 'admin.principal@armakers3d.com');
+
+    await router.navigateByUrl('/admin');
+
+    expect(router.url).toBe('/admin/orders');
+  });
+
+  it('still redirects a CLIENTE session away from /admin to /forbidden (not a staff route)', async () => {
+    session.markAuthenticated('CLIENTE', 'customer@example.com');
+
+    await router.navigateByUrl('/admin');
+
+    expect(router.url).toBe('/forbidden');
+  });
 });

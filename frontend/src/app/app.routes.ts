@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { ADMIN_ONLY_ROLES, CUSTOMER_ROLES, STAFF_ROLES } from './core/auth/roles';
 import { authGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
@@ -23,6 +24,15 @@ export const routes: Routes = [
     title: 'Detalle del producto — Ar Makers 3D',
   },
   {
+    // Standard-catalog self-service cart (CLAUDE.md's "Business clarification: purchasing
+    // flows") — public, unguarded: a guest may build a cart before ever signing in, consistent
+    // with the real-world flow (add to cart -> checkout -> pay, login relevant only at/after
+    // that point). Never reached by the advisor-mediated WhatsApp custom-order flow.
+    path: 'cart',
+    loadComponent: () => import('./features/cart/pages/cart/cart.page').then((m) => m.CartPage),
+    title: 'Carrito de compras — Ar Makers 3D',
+  },
+  {
     path: 'auth',
     loadChildren: () => import('./features/auth/auth.routes').then((m) => m.AUTH_ROUTES),
   },
@@ -44,7 +54,7 @@ export const routes: Routes = [
     // recommends grouping profile + order history as sub-routes of one `account` feature).
     path: 'account',
     canActivate: [authGuard],
-    data: { role: 'CLIENTE' },
+    data: { role: CUSTOMER_ROLES },
     children: [
       {
         path: '',
@@ -83,31 +93,39 @@ export const routes: Routes = [
   },
   {
     // Admin panel shell (features/admin/) — houses both the Administrador-only screens
-    // (products/reports/users) and the staff screens shared with Asesor (orders — this task's;
-    // incidents, already Administrador/Asesor per RF-16/17/18). Guarded like `/account` above, but
-    // with `role: ['ADMINISTRADOR', 'ASESOR']` — both staff roles may enter the admin shell now
-    // that Asesor has approved capabilities within it (RF-11/RF-13). No admin/advisor
-    // authentication flow exists yet, so this route is deliberately unreachable in the running
-    // preview (no fake "staff session" bypass is introduced; see `SessionStateService`/
-    // `authGuard`). `loadComponent` here supplies the admin-only chrome (topbar + sidebar) that
-    // replaces the public header/footer under this path (see
-    // `layout/shell/shell.component.ts`'s `isAdminArea` signal).
+    // (products/reports/users) and the staff screens shared with Asesor (orders — RF-13;
+    // incidents — RF-16/17/18). Guarded like `/account` above, but with `role: STAFF_ROLES`
+    // (`['ADMINISTRADOR', 'ASESOR']`, `core/auth/roles.ts`) — both staff roles may enter the admin
+    // shell now that Asesor has approved capabilities within it (RF-11/RF-13). The same OTP flow
+    // used by customers now resolves a staff role after verification (see
+    // `features/auth/pages/verify-code/verify-code.page.ts`), so this route is genuinely
+    // reachable in the running preview (still no fake "staff session" bypass — role is only ever
+    // discovered from a real, if mocked, OTP verification; see `SessionStateService`/`authGuard`).
+    // `loadComponent` here supplies the admin-only chrome (topbar + sidebar) that replaces the
+    // public header/footer under this path (see `layout/shell/shell.component.ts`'s
+    // `isAdminArea` signal).
     //
-    // Because the PARENT is now reachable by both staff roles, the three domains confirmed
+    // Because the PARENT is reachable by both staff roles, the three domains confirmed
     // Administrador-ONLY by their own requirement grounding (products — RF-07; reports — RF-19,
     // "exclusivos para Administrador"; users — RF-03, role management) each carry their OWN
-    // stricter child-level guard below so Asesor cannot reach them as a side effect of the parent
-    // widening. `orders`/`quotations`/`incidents` need no extra guard — they correctly, and
-    // intentionally, inherit the parent's now-broadened `['ADMINISTRADOR', 'ASESOR']`.
+    // stricter child-level guard below (`role: ADMIN_ONLY_ROLES`) so Asesor cannot reach them as a
+    // side effect of the parent widening. `orders`/`quotations`/`incidents` need no extra guard —
+    // they correctly, and intentionally, inherit the parent's broader `STAFF_ROLES`.
     path: 'admin',
     canActivate: [authGuard],
-    data: { role: ['ADMINISTRADOR', 'ASESOR'] },
+    data: { role: STAFF_ROLES },
     loadComponent: () =>
       import('./features/admin/layout/admin-shell/admin-shell.component').then(
         (m) => m.AdminShellComponent,
       ),
     children: [
-      { path: '', pathMatch: 'full', redirectTo: 'products' },
+      // Bare `/admin` must redirect to a domain BOTH staff roles can reach — `orders` (RF-13),
+      // not `products` (Administrador-ONLY, RF-07). This was a latent bug before any admin/advisor
+      // authentication flow existed to reach it: an Asesor landing on bare `/admin` would have
+      // been redirected straight into a route they cannot access and immediately bounced to
+      // `/forbidden`. Now that staff OTP login makes `/admin` genuinely reachable
+      // (`features/auth/pages/verify-code/verify-code.page.ts`), this is fixed.
+      { path: '', pathMatch: 'full', redirectTo: 'orders' },
       {
         // The one domain (RF-07/HU06 "Gestionar catálogo de productos") with a real feature
         // implementation — list/detail/create — instead of the generic placeholder used by the
@@ -116,7 +134,7 @@ export const routes: Routes = [
         // doc comment above.
         path: 'products',
         canActivate: [authGuard],
-        data: { role: 'ADMINISTRADOR' },
+        data: { role: ADMIN_ONLY_ROLES },
         loadComponent: () =>
           import('./features/admin/pages/product-list/admin-product-list.page').then(
             (m) => m.AdminProductListPage,
@@ -128,7 +146,7 @@ export const routes: Routes = [
         // captured by the ':id' param route. Administrador-ONLY, same as 'products' above.
         path: 'products/new',
         canActivate: [authGuard],
-        data: { role: 'ADMINISTRADOR' },
+        data: { role: ADMIN_ONLY_ROLES },
         loadComponent: () =>
           import('./features/admin/pages/product-create/admin-product-create.page').then(
             (m) => m.AdminProductCreatePage,
@@ -139,7 +157,7 @@ export const routes: Routes = [
         // Administrador-ONLY, same as 'products' above.
         path: 'products/:id',
         canActivate: [authGuard],
-        data: { role: 'ADMINISTRADOR' },
+        data: { role: ADMIN_ONLY_ROLES },
         loadComponent: () =>
           import('./features/admin/pages/product-detail/admin-product-detail.page').then(
             (m) => m.AdminProductDetailPage,
@@ -221,7 +239,7 @@ export const routes: Routes = [
             (m) => m.AdminReportsPage,
           ),
         data: {
-          role: 'ADMINISTRADOR',
+          role: ADMIN_ONLY_ROLES,
         },
         title: 'Reportes — Administración — Ar Makers 3D',
       },
@@ -232,7 +250,7 @@ export const routes: Routes = [
         // grounding.
         path: 'users',
         canActivate: [authGuard],
-        data: { role: 'ADMINISTRADOR' },
+        data: { role: ADMIN_ONLY_ROLES },
         loadComponent: () =>
           import('./features/admin/pages/user-list/admin-user-list.page').then(
             (m) => m.AdminUserListPage,
@@ -243,7 +261,7 @@ export const routes: Routes = [
         // Administrador-ONLY, same as 'users' above.
         path: 'users/:id',
         canActivate: [authGuard],
-        data: { role: 'ADMINISTRADOR' },
+        data: { role: ADMIN_ONLY_ROLES },
         loadComponent: () =>
           import('./features/admin/pages/user-detail/admin-user-detail.page').then(
             (m) => m.AdminUserDetailPage,

@@ -9,10 +9,34 @@
         Catálogo
       </a>
 
+      <a
+        class="ui-btn ui-btn--ghost ui-btn--on-dark ui-btn--sm app-header__cart-link"
+        routerLink="/cart"
+        [attr.aria-label]="'Carrito, ' + cartItemCount() + ' productos'"
+      >
+        Carrito
+        @if (cartItemCount() > 0) {
+          <span class="app-header__cart-badge" aria-hidden="true">{{ cartItemCount() }}</span>
+        }
+      </a>
+
       @if (isAuthenticated()) {
-        <a class="ui-btn ui-btn--ghost ui-btn--on-dark ui-btn--sm" routerLink="/account">
-          Mi cuenta
-        </a>
+        @if (isStaff()) {
+          <a class="ui-btn ui-btn--ghost ui-btn--on-dark ui-btn--sm" routerLink="/admin">
+            Panel de administración
+          </a>
+        } @else {
+          <a class="ui-btn ui-btn--ghost ui-btn--on-dark ui-btn--sm" routerLink="/account">
+            Mi cuenta
+          </a>
+        }
+        <button
+          type="button"
+          class="ui-btn ui-btn--ghost ui-btn--on-dark ui-btn--sm"
+          (click)="logout()"
+        >
+          Cerrar sesión
+        </button>
       } @else {
         <a class="ui-btn ui-btn--ghost ui-btn--on-dark ui-btn--sm" routerLink="/auth/request-code">
           Acceder

@@ -43,3 +43,21 @@
   align-items: center;
   gap: var(--ar-space-3);
 }
+
+.app-header__cart-link {
+  position: relative;
+}
+
+.app-header__cart-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 var(--ar-space-1);
+  border-radius: var(--ar-radius-lg);
+  background: var(--ar-color-accent);
+  color: var(--ar-color-black);
+  font-size: var(--ar-font-size-xs);
+  font-weight: 700;
+}
