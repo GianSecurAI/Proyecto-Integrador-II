@@ -1,0 +1,233 @@
+<div class="admin-reports-page">
+  <app-admin-page-header
+    title="Reportes"
+    description="Reportes básicos de pedidos, cotizaciones e incidencias, con filtro de rango de fechas (RF-19)."
+  />
+
+  @switch (status()) {
+    @case ('loading') {
+      <app-loading-state message="Cargando datos para el reporte…" />
+    }
+    @case ('error') {
+      <app-error-state
+        title="No se pudo generar el reporte"
+        description="Ocurrió un problema al conectar con los pedidos o las incidencias administrativas. Inténtalo de nuevo."
+      >
+        <app-button errorStateAction variant="secondary" (clicked)="retry()">
+          Reintentar
+        </app-button>
+      </app-error-state>
+    }
+    @default {
+      <div class="admin-reports-page__filters">
+        <label class="admin-reports-page__filter">
+          <span>Fecha desde</span>
+          <input
+            class="ui-input"
+            type="date"
+            [value]="startDate() ?? ''"
+            (change)="updateStartDate($any($event.target).value)"
+          />
+        </label>
+        <label class="admin-reports-page__filter">
+          <span>Fecha hasta</span>
+          <input
+            class="ui-input"
+            type="date"
+            [value]="endDate() ?? ''"
+            (change)="updateEndDate($any($event.target).value)"
+          />
+        </label>
+        <label class="admin-reports-page__filter">
+          <span>Estado del pedido</span>
+          <select
+            class="ui-select"
+            [value]="orderStatusFilter()"
+            (change)="updateOrderStatusFilter($any($event.target).value)"
+          >
+            @for (opt of orderStatusFilterOptions; track opt) {
+              <option [value]="opt">{{ opt === 'todos' ? 'Todos' : orderStatusLabel(opt) }}</option>
+            }
+          </select>
+        </label>
+        <label class="admin-reports-page__filter">
+          <span>Estado de la incidencia</span>
+          <select
+            class="ui-select"
+            [value]="incidentStatusFilter()"
+            (change)="updateIncidentStatusFilter($any($event.target).value)"
+          >
+            @for (opt of incidentStatusFilterOptions; track opt) {
+              <option [value]="opt">
+                {{ opt === 'todos' ? 'Todas' : incidentStatusLabel(opt) }}
+              </option>
+            }
+          </select>
+        </label>
+      </div>
+
+      <section class="admin-reports-page__section" aria-labelledby="reports-orders-heading">
+        <h2 id="reports-orders-heading">Pedidos</h2>
+        @if (ordersFiltered().length === 0) {
+          <app-empty-state
+            title="Ningún pedido coincide con los filtros"
+            description="Ajusta el rango de fechas o el estado del pedido seleccionado."
+          />
+        } @else {
+          <div class="admin-reports-page__cards">
+            <app-admin-summary-card
+              label="Total de pedidos"
+              [value]="totalOrders()"
+              caption="En el rango y estado seleccionados"
+            />
+            <app-admin-summary-card
+              label="Estándar"
+              [value]="standardOrdersCount()"
+              tone="info"
+              caption="Compra directa de catálogo"
+            />
+            <app-admin-summary-card
+              label="Personalizados"
+              [value]="quotations().length"
+              tone="success"
+              caption="Registrados por un asesor"
+            />
+          </div>
+
+          <app-admin-data-table>
+            <thead>
+              <tr>
+                <th scope="col">Estado</th>
+                <th scope="col">Cantidad</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of ordersByStatus(); track row.status) {
+                <tr>
+                  <td><app-status-badge [label]="row.label" [tone]="row.tone" /></td>
+                  <td>{{ row.count }}</td>
+                </tr>
+              }
+            </tbody>
+          </app-admin-data-table>
+        }
+      </section>
+
+      <section class="admin-reports-page__section" aria-labelledby="reports-quotations-heading">
+        <h2 id="reports-quotations-heading">Cotizaciones</h2>
+        <p class="admin-reports-page__note">
+          No existe todavía una entidad <code>Cotización</code> independiente — cada pedido
+          <strong>personalizado</strong> corresponde a una cotización ya aceptada y pagada. Este
+          reporte cuenta y lista esos pedidos; no calcula ni suma montos.
+        </p>
+        @if (quotations().length === 0) {
+          <app-empty-state
+            title="Ninguna cotización coincide con los filtros"
+            description="Ajusta el rango de fechas o el estado del pedido seleccionado."
+          />
+        } @else {
+          <div class="admin-reports-page__cards">
+            <app-admin-summary-card
+              label="Cotizaciones registradas"
+              [value]="quotations().length"
+              tone="success"
+              caption="Pedidos personalizados en el rango y estado seleccionados"
+            />
+          </div>
+
+          <app-admin-data-table>
+            <thead>
+              <tr>
+                <th scope="col">Pedido</th>
+                <th scope="col">Fecha</th>
+                <th scope="col">Cliente</th>
+                <th scope="col">Descripción</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (quotation of quotations(); track quotation.id) {
+                <tr>
+                  <td>{{ quotation.id }}</td>
+                  <td>{{ formatDate(quotation.placedAt) }}</td>
+                  <td>{{ quotation.customerEmail }}</td>
+                  <td>{{ quotation.summary }}</td>
+                </tr>
+              }
+            </tbody>
+          </app-admin-data-table>
+        }
+      </section>
+
+      <section class="admin-reports-page__section" aria-labelledby="reports-incidents-heading">
+        <h2 id="reports-incidents-heading">Incidencias</h2>
+        @if (incidentsFiltered().length === 0) {
+          <app-empty-state
+            title="Ninguna incidencia coincide con los filtros"
+            description="Ajusta el rango de fechas o el estado de la incidencia seleccionado."
+          />
+        } @else {
+          <div class="admin-reports-page__cards">
+            <app-admin-summary-card
+              label="Total de incidencias"
+              [value]="totalIncidents()"
+              caption="En el rango y estado seleccionados"
+            />
+            <app-admin-summary-card
+              label="Abiertas"
+              [value]="openIncidentsCount()"
+              tone="info"
+              caption="Abierta o en revisión"
+            />
+            <app-admin-summary-card
+              label="Resueltas"
+              [value]="resolvedIncidentsCount()"
+              tone="success"
+            />
+          </div>
+
+          <div class="admin-reports-page__tables">
+            <app-admin-data-table>
+              <thead>
+                <tr>
+                  <th scope="col">Estado</th>
+                  <th scope="col">Cantidad</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of incidentsByStatus(); track row.status) {
+                  <tr>
+                    <td><app-status-badge [label]="row.label" [tone]="row.tone" /></td>
+                    <td>{{ row.count }}</td>
+                  </tr>
+                }
+              </tbody>
+            </app-admin-data-table>
+
+            <app-admin-data-table>
+              <thead>
+                <tr>
+                  <th scope="col">Prioridad</th>
+                  <th scope="col">Cantidad</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of incidentsByPriority(); track row.priority) {
+                  <tr>
+                    <td><app-status-badge [label]="row.label" [tone]="row.tone" /></td>
+                    <td>{{ row.count }}</td>
+                  </tr>
+                }
+              </tbody>
+            </app-admin-data-table>
+          </div>
+        }
+      </section>
+    }
+  }
+
+  <p class="admin-reports-page__notice">
+    Vista de demostración: este reporte se calcula localmente a partir de datos de pedidos e
+    incidencias que no provienen de un servidor real. Para previsualizar otros estados desde el
+    navegador, añade <code>?mockState=empty</code> o <code>?mockState=error</code> a esta URL.
+  </p>
+</div>

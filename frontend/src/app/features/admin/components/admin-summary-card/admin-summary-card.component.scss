@@ -1,0 +1,44 @@
+@use 'tokens' as *;
+
+:host {
+  display: block;
+  min-width: 10rem;
+}
+
+.admin-summary-card {
+  display: block;
+  border-left: var(--ar-border-width-thick) solid var(--ar-color-border-on-light);
+}
+
+.admin-summary-card--info {
+  border-left-color: var(--ar-color-accent-info);
+}
+
+.admin-summary-card--success {
+  border-left-color: var(--ar-color-accent-success);
+}
+
+.admin-summary-card--danger {
+  border-left-color: var(--ar-color-danger);
+}
+
+.admin-summary-card__label {
+  margin: 0 0 var(--ar-space-2);
+  font-size: var(--ar-font-size-sm);
+  color: var(--ar-color-muted-on-light);
+  text-transform: uppercase;
+  letter-spacing: var(--ar-letter-spacing-wide);
+}
+
+.admin-summary-card__value {
+  margin: 0;
+  font-size: var(--ar-font-size-2xl);
+  font-weight: 700;
+  line-height: var(--ar-line-height-tight);
+}
+
+.admin-summary-card__caption {
+  margin: var(--ar-space-2) 0 0;
+  font-size: var(--ar-font-size-xs);
+  color: var(--ar-color-muted-on-light);
+}

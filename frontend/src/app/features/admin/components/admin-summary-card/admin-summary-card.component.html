@@ -1,0 +1,7 @@
+<app-card padding="sm" [class]="hostClasses()">
+  <p class="admin-summary-card__label">{{ label() }}</p>
+  <p class="admin-summary-card__value">{{ value() }}</p>
+  @if (caption()) {
+    <p class="admin-summary-card__caption">{{ caption() }}</p>
+  }
+</app-card>
