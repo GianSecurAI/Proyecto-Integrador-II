@@ -1,0 +1,106 @@
+<div class="admin-user-list-page">
+  <app-admin-page-header
+    title="Usuarios"
+    description="Consulta las cuentas registradas, su rol y su estado. Cambia el rol o el estado desde el detalle de cada usuario."
+  />
+
+  @switch (status()) {
+    @case ('loading') {
+      <app-loading-state message="Cargando usuarios…" />
+    }
+    @case ('error') {
+      <app-error-state
+        title="No se pudieron cargar los usuarios"
+        description="Ocurrió un problema al conectar con la administración de usuarios. Inténtalo de nuevo."
+      >
+        <app-button errorStateAction variant="secondary" (clicked)="retry()">
+          Reintentar
+        </app-button>
+      </app-error-state>
+    }
+    @default {
+      @if (users().length === 0) {
+        <app-empty-state
+          title="Todavía no hay usuarios"
+          description="Cuando se registre la primera cuenta, la verás aquí."
+        />
+      } @else {
+        <div class="admin-user-list-page__filters">
+          <label class="admin-user-list-page__filter">
+            <span>Buscar por correo</span>
+            <input
+              class="ui-input"
+              type="search"
+              placeholder="Ej. cliente@example.com"
+              [value]="search()"
+              (input)="updateSearch($any($event.target).value)"
+            />
+          </label>
+          <label class="admin-user-list-page__filter">
+            <span>Rol</span>
+            <select
+              class="ui-select"
+              [value]="roleFilter()"
+              (change)="updateRoleFilter($any($event.target).value)"
+            >
+              @for (opt of roleFilterOptions; track opt) {
+                <option [value]="opt">
+                  {{ opt === 'todos' ? 'Todos' : roleLabel(opt) }}
+                </option>
+              }
+            </select>
+          </label>
+        </div>
+
+        @if (filteredUsers().length === 0) {
+          <app-empty-state
+            title="Ningún usuario coincide con los filtros"
+            description="Ajusta la búsqueda o el rol seleccionado."
+          />
+        } @else {
+          <app-admin-data-table>
+            <thead>
+              <tr>
+                <th scope="col">Correo</th>
+                <th scope="col">Rol</th>
+                <th scope="col">Estado</th>
+                <th scope="col">Miembro desde</th>
+                <th scope="col">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (user of filteredUsers(); track user.id) {
+                <tr>
+                  <td>
+                    <a [routerLink]="['/admin/users', user.id]">{{ user.email }}</a>
+                  </td>
+                  <td>
+                    <app-status-badge [label]="roleLabel(user.role)" [tone]="roleTone(user.role)" />
+                  </td>
+                  <td>
+                    <app-status-badge
+                      [label]="user.active ? 'Activo' : 'Inactivo'"
+                      [tone]="user.active ? 'success' : 'neutral'"
+                    />
+                  </td>
+                  <td>{{ formatDate(user.memberSince) }}</td>
+                  <td>
+                    <a [routerLink]="['/admin/users', user.id]" class="ui-btn ui-btn--ghost ui-btn--sm">
+                      Ver detalle
+                    </a>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </app-admin-data-table>
+        }
+      }
+    }
+  }
+
+  <p class="admin-user-list-page__notice">
+    Vista de demostración: estos usuarios no provienen de un servidor real. Para previsualizar
+    otros estados desde el navegador, añade <code>?mockState=empty</code> o
+    <code>?mockState=error</code> a esta URL.
+  </p>
+</div>

@@ -1,0 +1,98 @@
+@use 'tokens' as *;
+
+:host {
+  display: block;
+}
+
+.admin-user-detail-page {
+  display: grid;
+  gap: var(--ar-space-5);
+}
+
+.admin-user-detail-page__breadcrumb a {
+  color: var(--ar-color-muted-on-light);
+}
+
+.admin-user-detail-page__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ar-space-3);
+  margin-bottom: var(--ar-space-4);
+
+  h1 {
+    margin: 0;
+    word-break: break-word;
+  }
+}
+
+.admin-user-detail-page__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--ar-space-3);
+  flex-wrap: wrap;
+}
+
+.admin-user-detail-page__fields {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--ar-space-4);
+  margin: 0;
+
+  @media (min-width: $bp-sm) {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  dt {
+    font-size: var(--ar-font-size-xs);
+    text-transform: uppercase;
+    letter-spacing: var(--ar-letter-spacing-wide);
+    color: var(--ar-color-muted-on-light);
+  }
+
+  dd {
+    margin: var(--ar-space-1) 0 0;
+  }
+}
+
+.admin-user-detail-page__form {
+  display: grid;
+  gap: var(--ar-space-3);
+  max-width: 24rem;
+}
+
+.admin-user-detail-page__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ar-space-2);
+  font-size: var(--ar-font-size-sm);
+}
+
+/** Shared "muted helper text"/status-message treatment, mirroring
+ * `admin-incident-detail.page.scss`'s exact rationale for keeping this file under the
+ * per-component style budget. */
+.admin-user-detail-page__muted {
+  margin: 0 0 var(--ar-space-3);
+  font-size: var(--ar-font-size-sm);
+  color: var(--ar-color-muted-on-light);
+}
+
+.admin-user-detail-page__error,
+.admin-user-detail-page__success {
+  margin: 0;
+  font-size: var(--ar-font-size-sm);
+}
+
+.admin-user-detail-page__error {
+  color: var(--ar-color-danger);
+}
+
+.admin-user-detail-page__success {
+  color: var(--ar-color-accent-success);
+}
+
+.admin-user-detail-page__notice {
+  color: var(--ar-color-muted-on-light);
+  font-size: var(--ar-font-size-sm);
+}

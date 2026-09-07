@@ -1,0 +1,125 @@
+<div class="admin-user-detail-page">
+  <nav aria-label="Ruta de navegación" class="admin-user-detail-page__breadcrumb">
+    <a routerLink="/admin/users">Usuarios</a>
+  </nav>
+
+  @switch (status()) {
+    @case ('loading') {
+      <app-loading-state message="Cargando el usuario…" />
+    }
+    @case ('error') {
+      <app-error-state
+        title="No se pudo cargar el usuario"
+        description="Ocurrió un problema al conectar con el detalle del usuario. Inténtalo de nuevo."
+      >
+        <app-button errorStateAction variant="secondary" (clicked)="retry()">
+          Reintentar
+        </app-button>
+      </app-error-state>
+    }
+    @case ('not-found') {
+      <h1>Usuario no encontrado</h1>
+      <app-empty-state
+        title="No encontramos este usuario"
+        description="Revisa la lista de usuarios para ver las cuentas disponibles."
+      >
+        <a emptyStateAction class="ui-btn ui-btn--primary ui-btn--md" routerLink="/admin/users">
+          Volver a usuarios
+        </a>
+      </app-empty-state>
+    }
+    @default {
+      @if (user(); as user) {
+        <app-card>
+          <div class="admin-user-detail-page__header">
+            <h1>{{ user.email }}</h1>
+            <div class="admin-user-detail-page__meta">
+              <app-status-badge [label]="roleLabel(user.role)" [tone]="roleTone(user.role)" />
+              <app-status-badge
+                [label]="user.active ? 'Activo' : 'Inactivo'"
+                [tone]="user.active ? 'success' : 'neutral'"
+              />
+            </div>
+          </div>
+
+          <dl class="admin-user-detail-page__fields">
+            <div>
+              <dt>Correo</dt>
+              <dd>{{ user.email }}</dd>
+            </div>
+            <div>
+              <dt>Miembro desde</dt>
+              <dd>{{ formatDate(user.memberSince) }}</dd>
+            </div>
+          </dl>
+        </app-card>
+
+        <app-card>
+          <h2>Cambiar rol</h2>
+          <form class="admin-user-detail-page__form" (ngSubmit)="requestRoleChange()">
+            <label class="admin-user-detail-page__field">
+              <span>Rol</span>
+              <select
+                class="ui-select"
+                [value]="selectedRole() ?? user.role"
+                (change)="updateSelectedRole($any($event.target).value)"
+                [disabled]="roleChanging()"
+              >
+                @for (role of allRoles; track role) {
+                  <option [value]="role">{{ roleLabel(role) }}</option>
+                }
+              </select>
+            </label>
+            <app-button
+              type="submit"
+              [loading]="roleChanging()"
+              [disabled]="roleChanging() || (selectedRole() ?? user.role) === user.role"
+            >
+              {{ roleChanging() ? 'Actualizando…' : 'Cambiar rol' }}
+            </app-button>
+            @if (roleError()) {
+              <p role="alert" class="admin-user-detail-page__error">{{ roleError() }}</p>
+            }
+            @if (roleSuccess()) {
+              <p role="status" class="admin-user-detail-page__success">{{ roleSuccess() }}</p>
+            }
+          </form>
+        </app-card>
+
+        <app-card>
+          <h2>Estado de la cuenta</h2>
+          @if (activeError()) {
+            <p role="alert" class="admin-user-detail-page__error">{{ activeError() }}</p>
+          }
+          @if (user.active) {
+            <p class="admin-user-detail-page__muted">Esta cuenta está activa y puede acceder al sistema.</p>
+            <app-button variant="danger" [loading]="activeChanging()" [disabled]="activeChanging()" (clicked)="requestDeactivate()">
+              Desactivar cuenta
+            </app-button>
+          } @else {
+            <p class="admin-user-detail-page__muted">Esta cuenta está desactivada y no puede acceder al sistema.</p>
+            <app-button variant="secondary" [loading]="activeChanging()" [disabled]="activeChanging()" (clicked)="activate()">
+              Reactivar cuenta
+            </app-button>
+          }
+        </app-card>
+      }
+    }
+  }
+
+  <p class="admin-user-detail-page__notice">
+    Vista de demostración: este usuario no proviene de un servidor real. Añade
+    <code>?mockState=error</code> a esta URL para previsualizar el estado de error.
+  </p>
+
+  <app-admin-confirm-dialog
+    [open]="pendingAction() !== null"
+    [title]="dialogTitle()"
+    [description]="dialogDescription()"
+    [confirmLabel]="pendingAction()?.type === 'role-change' ? 'Cambiar rol' : 'Desactivar'"
+    cancelLabel="Cancelar"
+    [danger]="pendingAction()?.type === 'deactivate'"
+    (confirmed)="confirmPendingAction()"
+    (cancelled)="cancelPendingAction()"
+  />
+</div>
