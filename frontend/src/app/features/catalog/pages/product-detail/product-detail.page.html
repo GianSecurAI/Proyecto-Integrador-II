@@ -21,14 +21,14 @@
             <button
               type="button"
               class="ui-btn ui-btn--primary ui-btn--lg ui-btn--full"
-              (click)="previewAction('buy')"
+              (click)="buyNow()"
             >
               Comprar ahora S/ {{ detail.product.price.toFixed(2) }}
             </button>
             <button
               type="button"
               class="ui-btn ui-btn--ghost ui-btn--on-dark ui-btn--md ui-btn--full"
-              (click)="previewAction('basket')"
+              (click)="addToCart()"
             >
               Añadir a la cesta
             </button>

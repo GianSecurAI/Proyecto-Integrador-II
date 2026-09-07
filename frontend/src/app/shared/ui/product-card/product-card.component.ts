@@ -1,5 +1,6 @@
-import { Component, input } from '@angular/core';
+import { Component, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { CartStateService } from '../../../features/cart/services/cart-state.service';
 import { CatalogProduct } from '../../models/catalog-product.model';
 import { CardComponent } from '../card/card.component';
 
@@ -23,6 +24,14 @@ import { CardComponent } from '../card/card.component';
  *   never wired to a real discount calculation here.
  * - "Ver más" navigates to the mock-backed detail route. Custom requests use the detail's
  *   dedicated WhatsApp CTA, never a cart or checkout.
+ *
+ * "Añadir al carrito" (added alongside "Ver más" when the standard-catalog cart was built, see
+ * `features/cart/`) is the ONLY per-product-card action for the standard self-service purchase
+ * path — there is deliberately no per-card "Personalizar" action (CLAUDE.md's UI-placement rule:
+ * that CTA is a single, home-page-scoped section, never repeated per product). Every product
+ * shown by this card uses the same standard add-to-cart flow; there is no per-product branch
+ * between "standard" and "personalizable" here. Adding 1 unit is a UX convenience for the catalog
+ * grid — a customer who wants a different quantity can still open the detail page first.
  */
 @Component({
   selector: 'app-product-card',
@@ -32,5 +41,14 @@ import { CardComponent } from '../card/card.component';
   styleUrl: './product-card.component.scss',
 })
 export class ProductCardComponent {
+  private readonly cart = inject(CartStateService);
+
   readonly product = input.required<CatalogProduct>();
+
+  readonly addedFeedback = signal(false);
+
+  addToCart(): void {
+    this.cart.addItem(this.product(), 1);
+    this.addedFeedback.set(true);
+  }
 }

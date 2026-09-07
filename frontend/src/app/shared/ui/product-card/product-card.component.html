@@ -18,12 +18,27 @@
       }
     </p>
 
-    <a
-      [routerLink]="['/catalog', product().id]"
-      [attr.aria-label]="'Ver más sobre ' + product().title"
-      class="ui-btn ui-btn--primary ui-btn--sm ui-btn--full"
-    >
-      Ver más
-    </a>
+    <div class="product-card__actions">
+      <a
+        [routerLink]="['/catalog', product().id]"
+        [attr.aria-label]="'Ver más sobre ' + product().title"
+        class="ui-btn ui-btn--primary ui-btn--sm ui-btn--full"
+      >
+        Ver más
+      </a>
+      <button
+        type="button"
+        class="ui-btn ui-btn--secondary ui-btn--sm ui-btn--full"
+        [attr.aria-label]="'Añadir ' + product().title + ' al carrito'"
+        (click)="addToCart()"
+      >
+        Añadir al carrito
+      </button>
+    </div>
+    <p class="product-card__feedback" role="status" aria-live="polite">
+      @if (addedFeedback()) {
+        Añadido al carrito
+      }
+    </p>
   </div>
 </app-card>
