@@ -12,6 +12,11 @@ import { SessionStateService } from '../services/session-state.service';
  * T052 (US4): adds the role check — a route may declare `data: { role: 'CLIENTE' }` (or any
  * future role) and is redirected to the forbidden view if the locally known role does not match.
  *
+ * T0xx (admin orders/RBAC widening): `data.role` may now also be an array of allowed roles
+ * (e.g. `data: { role: ['ADMINISTRADOR', 'ASESOR'] }`), so a route reachable by more than one
+ * staff role does not have to pick just one — every existing single-string usage (e.g.
+ * `/account` -> `'CLIENTE'`) keeps working unchanged.
+ *
  * Non-obvious "why": this guard is a UX convenience, not the security boundary itself
  * (Constitution Principle III — the frontend is never authoritative for permissions). It only
  * ever consults `SessionStateService`'s in-memory flag, which mirrors what the backend told us
@@ -34,9 +39,15 @@ export const authGuard: CanActivateFn = (route: ActivatedRouteSnapshot) => {
     });
   }
 
-  const requiredRole = route.data?.['role'] as string | undefined;
-  if (requiredRole && session.currentRole() !== requiredRole) {
-    return router.createUrlTree(['/forbidden']);
+  const requiredRole = route.data?.['role'] as string | readonly string[] | undefined;
+  if (requiredRole) {
+    const currentRole = session.currentRole();
+    const allowed = Array.isArray(requiredRole)
+      ? currentRole !== null && requiredRole.includes(currentRole)
+      : currentRole === requiredRole;
+    if (!allowed) {
+      return router.createUrlTree(['/forbidden']);
+    }
   }
 
   return true;

@@ -58,4 +58,38 @@ describe('authGuard', () => {
     expect(result instanceof UrlTree).toBe(true);
     expect(router.serializeUrl(result)).toContain('/forbidden');
   });
+
+  it('allows a session whose role is included in an array of allowed roles', () => {
+    session.markAuthenticated('ASESOR');
+
+    const result = runGuard({ role: ['ADMINISTRADOR', 'ASESOR'] });
+
+    expect(result).toBe(true);
+  });
+
+  it('allows an ADMINISTRADOR session through the same array-role route', () => {
+    session.markAuthenticated('ADMINISTRADOR');
+
+    const result = runGuard({ role: ['ADMINISTRADOR', 'ASESOR'] });
+
+    expect(result).toBe(true);
+  });
+
+  it('redirects a session whose role is not in the array of allowed roles', () => {
+    session.markAuthenticated('CLIENTE');
+
+    const result = runGuard({ role: ['ADMINISTRADOR', 'ASESOR'] }) as UrlTree;
+
+    expect(result instanceof UrlTree).toBe(true);
+    expect(router.serializeUrl(result)).toContain('/forbidden');
+  });
+
+  it('redirects an ASESOR session on a route that requires ADMINISTRADOR alone', () => {
+    session.markAuthenticated('ASESOR');
+
+    const result = runGuard({ role: 'ADMINISTRADOR' }) as UrlTree;
+
+    expect(result instanceof UrlTree).toBe(true);
+    expect(router.serializeUrl(result)).toContain('/forbidden');
+  });
 });
