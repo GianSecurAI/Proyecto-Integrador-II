@@ -1,8 +1,10 @@
 ﻿import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { take, timer } from 'rxjs';
+import { AppRole, defaultRouteForRole } from '../../../../core/auth/roles';
+import { SessionStateService } from '../../../../core/services/session-state.service';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { FormFieldComponent } from '../../../../shared/ui/form-field/form-field.component';
 import { AUTH_PREVIEW, AuthPreviewError } from '../../services/auth-preview.service';
@@ -21,6 +23,8 @@ const RESEND_COOLDOWN_SECONDS = 30;
 export class VerifyCodePage implements OnInit {
   private readonly auth = inject(AUTH_PREVIEW);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  private readonly session = inject(SessionStateService);
   private readonly destroyRef = inject(DestroyRef);
   readonly form = new FormGroup({
     code: new FormControl('', {
@@ -67,15 +71,33 @@ export class VerifyCodePage implements OnInit {
     const response = this.auth.verifyOtp(this.codeControl.value);
     this.form.reset();
     response.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: () => {
+      next: ({ role, email }) => {
         this.submitting.set(false);
         this.completed.set(true);
+        // Marks the client-side session flag (UX-only — see `SessionStateService`'s doc comment,
+        // the backend remains the real authority) and completes the login by navigating
+        // somewhere real. This used to leave every visitor permanently parked on a static
+        // "welcome" card with no automatic next step; a login must actually finish.
+        this.session.markAuthenticated(role, email);
+        this.navigateAfterLogin(role);
       },
       error: (err: unknown) => {
         this.submitting.set(false);
         this.errorMessage.set(this.resolveErrorMessage(err));
       },
     });
+  }
+
+  /**
+   * Honors an explicit `returnUrl` (set by `authGuard` — `core/guards/auth.guard.ts` — when it
+   * redirected an unauthenticated visitor here) so completing login sends them back to what they
+   * originally tried to reach; otherwise falls back to `defaultRouteForRole`'s sensible per-role
+   * landing page. Pure navigation UX, not an authorization decision: whichever route is navigated
+   * to still independently re-checks access via its own guard.
+   */
+  private navigateAfterLogin(role: AppRole): void {
+    const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
+    void this.router.navigateByUrl(returnUrl || defaultRouteForRole(role));
   }
 
   /**

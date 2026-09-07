@@ -1,4 +1,5 @@
 import { AdminUserRole } from '../models/admin-user.model';
+import { MOCK_ADMIN_ACCOUNT, MOCK_ASESOR_ACCOUNT } from '../../../core/auth/mock-staff-directory';
 
 /**
  * Seed fixture for the RF-03 admin user-management screens (`pages/user-list/`,
@@ -11,7 +12,10 @@ import { AdminUserRole } from '../models/admin-user.model';
  *
  * Deliberately includes:
  * - several `CLIENTE` accounts (the most common seeded role, by far).
- * - at least one `ASESOR` and at least one `ADMINISTRADOR` account.
+ * - at least one `ASESOR` and at least one `ADMINISTRADOR` account — their `email`/`role` are
+ *   pulled from `core/auth/mock-staff-directory.ts`, the SAME canonical list the OTP preview
+ *   flow (`features/auth/services/auth-preview.service.ts`) resolves a signed-in role from, so
+ *   this screen and the login flow can never drift into disagreeing about who is staff.
  * - at least one inactive (`active: false`) account, so the list's status badge/filter and the
  *   detail page's reactivation path are both exercised.
  */
@@ -54,15 +58,15 @@ export const ADMIN_USERS_SEED: readonly AdminUserSeed[] = [
   },
   {
     id: 'usr-5',
-    email: 'asesor.andrea@armakers3d.com',
-    role: 'ASESOR',
+    email: MOCK_ASESOR_ACCOUNT.email,
+    role: MOCK_ASESOR_ACCOUNT.role,
     createdAtIso: '2024-11-05T09:00:00Z',
     active: true,
   },
   {
     id: 'usr-6',
-    email: 'admin.principal@armakers3d.com',
-    role: 'ADMINISTRADOR',
+    email: MOCK_ADMIN_ACCOUNT.email,
+    role: MOCK_ADMIN_ACCOUNT.role,
     createdAtIso: '2024-09-01T09:00:00Z',
     active: true,
   },

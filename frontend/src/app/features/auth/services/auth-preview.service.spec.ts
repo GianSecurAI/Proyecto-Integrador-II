@@ -7,6 +7,7 @@ import {
   AuthPreviewError,
   MOCK_EXPIRED_OTP,
   MOCK_INVALID_OTP,
+  VerifyOtpResult,
 } from './auth-preview.service';
 
 describe('AuthMockService', () => {
@@ -70,5 +71,56 @@ describe('AuthMockService', () => {
     expect(error).toBeInstanceOf(AuthPreviewError);
     expect((error as AuthPreviewError).reason).toBe('invalid');
     expect(mock.hasPendingRequest()).toBeTrue();
+  }));
+  it('resolves an ordinary/unseen email to CLIENTE (FR-005 default preserved)', fakeAsync(() => {
+    const mock = TestBed.inject(AuthMockService);
+    mock.requestOtp('someone.new@example.com').subscribe();
+    tick(500);
+    let result: VerifyOtpResult | undefined;
+    mock.verifyOtp('123456').subscribe((res) => (result = res));
+    tick(500);
+    expect(result).toEqual({ role: 'CLIENTE', email: 'someone.new@example.com' });
+  }));
+  it('resolves the seeded ASESOR email to ASESOR', fakeAsync(() => {
+    const mock = TestBed.inject(AuthMockService);
+    mock.requestOtp('asesor.andrea@armakers3d.com').subscribe();
+    tick(500);
+    let result: VerifyOtpResult | undefined;
+    mock.verifyOtp('123456').subscribe((res) => (result = res));
+    tick(500);
+    expect(result?.role).toBe('ASESOR');
+  }));
+  it('resolves the seeded ADMINISTRADOR email to ADMINISTRADOR', fakeAsync(() => {
+    const mock = TestBed.inject(AuthMockService);
+    mock.requestOtp('admin.principal@armakers3d.com').subscribe();
+    tick(500);
+    let result: VerifyOtpResult | undefined;
+    mock.verifyOtp('123456').subscribe((res) => (result = res));
+    tick(500);
+    expect(result?.role).toBe('ADMINISTRADOR');
+  }));
+  it('resolves role case-insensitively and keeps working for an in-place resend', fakeAsync(() => {
+    const mock = TestBed.inject(AuthMockService);
+    mock.requestOtp('ADMIN.PRINCIPAL@armakers3d.com').subscribe();
+    tick(500);
+    // Resend with no email argument must keep using the previously submitted address.
+    mock.requestOtp().subscribe();
+    tick(500);
+    let result: VerifyOtpResult | undefined;
+    mock.verifyOtp('123456').subscribe((res) => (result = res));
+    tick(500);
+    expect(result?.role).toBe('ADMINISTRADOR');
+  }));
+  it('clears the retained email on reset, defaulting a subsequent verification to CLIENTE', fakeAsync(() => {
+    const mock = TestBed.inject(AuthMockService);
+    mock.requestOtp('admin.principal@armakers3d.com').subscribe();
+    tick(500);
+    mock.reset();
+    mock.requestOtp().subscribe();
+    tick(500);
+    let result: VerifyOtpResult | undefined;
+    mock.verifyOtp('123456').subscribe((res) => (result = res));
+    tick(500);
+    expect(result?.role).toBe('CLIENTE');
   }));
 });

@@ -92,4 +92,24 @@ describe('authGuard', () => {
     expect(result instanceof UrlTree).toBe(true);
     expect(router.serializeUrl(result)).toContain('/forbidden');
   });
+
+  it('treats a never-established session (never marked, never cleared) exactly like anonymous — no crash, redirect to request-code', () => {
+    // Deliberately no `session.clear()`/`markAuthenticated()` call: a fresh service instance's
+    // default state must already behave like "anonymous", not an inconsistent in-between state.
+    const result = runGuard() as UrlTree;
+
+    expect(result instanceof UrlTree).toBe(true);
+    expect(router.serializeUrl(result)).toContain('/auth/request-code');
+  });
+
+  it('denies access to a previously-reachable route after logout (session.clear())', () => {
+    session.markAuthenticated('ADMINISTRADOR');
+    expect(runGuard({ role: ['ADMINISTRADOR', 'ASESOR'] })).toBe(true);
+
+    session.clear();
+
+    const result = runGuard({ role: ['ADMINISTRADOR', 'ASESOR'] }) as UrlTree;
+    expect(result instanceof UrlTree).toBe(true);
+    expect(router.serializeUrl(result)).toContain('/auth/request-code');
+  });
 });

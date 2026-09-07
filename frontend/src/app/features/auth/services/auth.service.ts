@@ -39,6 +39,15 @@ export class AuthService {
    * Verifies a submitted code. On success the backend has already established the session via
    * `Set-Cookie` (httpOnly — not readable here); this method only records the local,
    * non-authoritative "we believe we're signed in" flag used by `authGuard` for routing UX.
+   *
+   * NOTE (staff auth widening, spec.md "Amendment (2026-09-07, Product Owner decision)"): the
+   * same OTP mechanism now covers Administrador/Asesor as well as Cliente — only authorization
+   * differs per role. This method still defaults `markAuthenticated`'s role to `'CLIENTE'` because
+   * there is no real backend response shape here yet to read a role from; once a real
+   * `otp/verify` response carries the account's role, this call site should forward it instead of
+   * the hardcoded default. Until then this service is intentionally left otherwise unused by the
+   * visual screens (see `features/auth/services/auth-preview.service.ts`, which IS wired up and
+   * performs the equivalent mock role resolution).
    */
   verifyOtp(email: string, code: string): Observable<OtpVerifyResponse> {
     const payload: OtpVerifyPayload = { email, code };
