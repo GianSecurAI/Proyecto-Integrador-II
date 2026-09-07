@@ -15,7 +15,7 @@ import { RouterLink } from '@angular/router';
     <main class="status-page">
       <h1>Acceso denegado</h1>
       <p>No tienes permiso para ver esta página.</p>
-      <a routerLink="/">Volver al inicio</a>
+      <a routerLink="/" class="ui-btn ui-btn--primary ui-btn--md">Volver al inicio</a>
     </main>
   `,
   styleUrl: './status-page.css',

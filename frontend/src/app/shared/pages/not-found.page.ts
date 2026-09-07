@@ -13,7 +13,7 @@ import { RouterLink } from '@angular/router';
     <main class="status-page">
       <h1>Página no encontrada</h1>
       <p>La página que buscas no existe o fue movida.</p>
-      <a routerLink="/">Volver al inicio</a>
+      <a routerLink="/" class="ui-btn ui-btn--primary ui-btn--md">Volver al inicio</a>
     </main>
   `,
   styleUrl: './status-page.css',

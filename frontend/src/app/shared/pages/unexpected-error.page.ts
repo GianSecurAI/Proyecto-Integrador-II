@@ -15,7 +15,7 @@ import { RouterLink } from '@angular/router';
     <main class="status-page">
       <h1>Ocurrió un error inesperado</h1>
       <p>Algo salió mal de nuestro lado. Inténtalo de nuevo en unos minutos.</p>
-      <a routerLink="/">Volver al inicio</a>
+      <a routerLink="/" class="ui-btn ui-btn--primary ui-btn--md">Volver al inicio</a>
     </main>
   `,
   styleUrl: './status-page.css',
