@@ -29,8 +29,9 @@
         Si el correo puede recibir mensajes, recibirás un código temporal para continuar.
       </p>
       <p class="auth-card__notice" id="preview-instructions">
-        Demostración: no enviamos correos. Introduce cualquier combinación de 6 dígitos para probar
-        este paso.
+        Demostración: no enviamos correos. Introduce cualquier combinación de 6 dígitos para
+        continuar, 000000 para simular un código expirado o 111111 para simular un código
+        inválido.
       </p>
       <form [formGroup]="form" (ngSubmit)="submit()" novalidate [attr.aria-busy]="submitting()">
         <app-form-field
@@ -68,9 +69,10 @@
         <app-button
           variant="ghost"
           [onDark]="true"
-          [disabled]="submitting()"
+          [disabled]="submitting() || resending() || resendCooldown() > 0"
+          [loading]="resending()"
           (clicked)="requestNewCode()"
-          >Solicitar otro código</app-button
+          >{{ resendLabel() }}</app-button
         >
       </div>
     }

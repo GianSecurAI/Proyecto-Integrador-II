@@ -1,0 +1,107 @@
+<main class="auth-page">
+  <div class="auth-toolbar">
+    <a
+      class="ui-btn ui-btn--secondary ui-btn--on-dark auth-back"
+      routerLink="/auth/request-code"
+      aria-label="Volver al ingreso de correo"
+    >
+      <img src="/images/auth/back.svg" alt="" width="16" height="16" />
+    </a>
+    <h1>Crear cuenta</h1>
+  </div>
+  <section class="auth-card" aria-labelledby="register-heading">
+    <h2 id="register-heading">Crea tu cuenta</h2>
+    <p class="auth-card__description">
+      Accede con tu correo y un código temporal. No necesitas contraseña. Los demás datos son
+      opcionales.
+    </p>
+    <form [formGroup]="form" (ngSubmit)="submit()" novalidate [attr.aria-busy]="submitting()">
+      <app-form-field
+        #emailField="appFormField"
+        label="Correo electrónico"
+        [required]="true"
+        [error]="
+          emailControl.invalid && emailControl.touched
+            ? 'Ingresa un correo electrónico válido.'
+            : null
+        "
+      >
+        <div class="auth-input-wrap">
+          <img class="auth-email-icon" src="/images/auth/email.svg" alt="" width="20" height="20" />
+          <input
+            class="ui-input auth-email-input"
+            [id]="emailField.inputId()"
+            type="email"
+            formControlName="email"
+            autocomplete="email"
+            inputmode="email"
+            autocapitalize="none"
+            spellcheck="false"
+            placeholder="tu@correo.com"
+            required
+            [readonly]="submitting()"
+            [attr.aria-invalid]="emailField.hasError()"
+            [attr.aria-describedby]="emailField.describedBy()"
+          />
+        </div>
+      </app-form-field>
+      <app-form-field #firstNameField="appFormField" label="Nombre (opcional)">
+        <input
+          class="ui-input"
+          [id]="firstNameField.inputId()"
+          type="text"
+          formControlName="firstName"
+          autocomplete="given-name"
+          placeholder="Ej. María"
+          [readonly]="submitting()"
+        />
+      </app-form-field>
+      <app-form-field #lastNameField="appFormField" label="Apellido (opcional)">
+        <input
+          class="ui-input"
+          [id]="lastNameField.inputId()"
+          type="text"
+          formControlName="lastName"
+          autocomplete="family-name"
+          placeholder="Ej. Gómez"
+          [readonly]="submitting()"
+        />
+      </app-form-field>
+      <app-form-field
+        #phoneField="appFormField"
+        label="Teléfono (opcional)"
+        [error]="
+          phoneControl.invalid && phoneControl.touched
+            ? 'Ingresa un teléfono válido o deja el campo vacío.'
+            : null
+        "
+      >
+        <input
+          class="ui-input"
+          [id]="phoneField.inputId()"
+          type="tel"
+          formControlName="phone"
+          autocomplete="tel"
+          inputmode="tel"
+          placeholder="Ej. 987 654 321"
+          [readonly]="submitting()"
+          [attr.aria-invalid]="phoneField.hasError()"
+          [attr.aria-describedby]="phoneField.describedBy()"
+        />
+      </app-form-field>
+      <app-button type="submit" [fullWidth]="true" [onDark]="true" [loading]="submitting()">
+        {{ submitting() ? 'Enviando…' : 'Enviar código' }}
+      </app-button>
+    </form>
+    @if (errorMessage()) {
+      <p class="auth-card__error" role="alert">{{ errorMessage() }}</p>
+    }
+    <p class="auth-card__meta">
+      ¿Ya tienes cuenta? <a routerLink="/auth/request-code">Inicia sesión</a>
+    </p>
+    <p class="auth-card__notice">
+      Vista de demostración: no se enviará ningún correo ni se iniciará una sesión real. El
+      nombre, apellido y teléfono son opcionales y no se almacenan en ningún lugar real.
+    </p>
+  </section>
+</main>

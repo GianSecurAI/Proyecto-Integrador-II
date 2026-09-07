@@ -1,7 +1,13 @@
-﻿import { ComponentFixture, TestBed } from '@angular/core/testing';
+﻿import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { Subject, of, throwError } from 'rxjs';
-import { AUTH_PREVIEW, AuthPreview } from '../../services/auth-preview.service';
+import {
+  AUTH_PREVIEW,
+  AuthPreview,
+  AuthPreviewError,
+  MOCK_EXPIRED_OTP,
+  MOCK_INVALID_OTP,
+} from '../../services/auth-preview.service';
 import { VerifyCodePage } from './verify-code.page';
 
 describe('VerifyCodePage', () => {
@@ -18,6 +24,7 @@ describe('VerifyCodePage', () => {
     ]);
     auth.hasPendingRequest.and.returnValue(true);
     auth.verifyOtp.and.returnValue(of(undefined));
+    auth.requestOtp.and.returnValue(of(undefined));
     await TestBed.configureTestingModule({
       imports: [VerifyCodePage],
       providers: [provideRouter([]), { provide: AUTH_PREVIEW, useValue: auth }],
@@ -85,9 +92,51 @@ describe('VerifyCodePage', () => {
     expect(auth.reset).toHaveBeenCalled();
     expect(component.codeControl.value).toBe('');
   });
-  it('offers another code through the request step', () => {
+  it('shows a distinct message when the mock expired code is used', () => {
+    auth.verifyOtp.and.returnValue(throwError(() => new AuthPreviewError('expired')));
+    fixture.detectChanges();
+    component.codeControl.setValue(MOCK_EXPIRED_OTP);
+    component.submit();
+    fixture.detectChanges();
+    expect(component.errorMessage()).toBe('Este código expiró. Solicita uno nuevo.');
+  });
+  it('shows a distinct message when the mock invalid code is used', () => {
+    auth.verifyOtp.and.returnValue(throwError(() => new AuthPreviewError('invalid')));
+    fixture.detectChanges();
+    component.codeControl.setValue(MOCK_INVALID_OTP);
+    component.submit();
+    fixture.detectChanges();
+    expect(component.errorMessage()).toBe('El código ingresado no es válido.');
+  });
+  it('resends in place without navigating away', () => {
     fixture.detectChanges();
     component.requestNewCode();
-    expect(router.navigate).toHaveBeenCalledWith(['/auth/request-code']);
+    expect(auth.requestOtp).toHaveBeenCalledTimes(1);
+    expect(router.navigate).not.toHaveBeenCalled();
+  });
+  it('disables the resend button during cooldown and re-enables once it elapses', fakeAsync(() => {
+    fixture.detectChanges();
+    component.requestNewCode();
+    fixture.detectChanges();
+    expect(component.resendCooldown()).toBe(30);
+    const resendButton = () =>
+      fixture.nativeElement.querySelectorAll('.auth-card__meta button')[0] as HTMLButtonElement;
+    expect(resendButton().disabled).toBeTrue();
+    expect(fixture.nativeElement.textContent).toContain('Reenviar en 0:30');
+    tick(1000);
+    fixture.detectChanges();
+    expect(component.resendCooldown()).toBe(29);
+    expect(fixture.nativeElement.textContent).toContain('Reenviar en 0:29');
+    tick(29_000);
+    fixture.detectChanges();
+    expect(component.resendCooldown()).toBe(0);
+    expect(resendButton().disabled).toBeFalse();
+    expect(fixture.nativeElement.textContent).toContain('Solicitar otro código');
+  }));
+  it('ignores resend clicks while a cooldown is already running', () => {
+    fixture.detectChanges();
+    component.requestNewCode();
+    component.requestNewCode();
+    expect(auth.requestOtp).toHaveBeenCalledTimes(1);
   });
 });

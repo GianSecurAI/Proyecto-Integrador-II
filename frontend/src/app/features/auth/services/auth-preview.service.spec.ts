@@ -2,7 +2,12 @@
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { fakeAsync, TestBed, tick } from '@angular/core/testing';
 import { SessionStateService } from '../../../core/services/session-state.service';
-import { AuthMockService } from './auth-preview.service';
+import {
+  AuthMockService,
+  AuthPreviewError,
+  MOCK_EXPIRED_OTP,
+  MOCK_INVALID_OTP,
+} from './auth-preview.service';
 
 describe('AuthMockService', () => {
   beforeEach(() =>
@@ -20,7 +25,7 @@ describe('AuthMockService', () => {
     tick(500);
     expect(mock.hasPendingRequest()).toBeTrue();
     let completed = false;
-    mock.verifyOtp().subscribe(() => (completed = true));
+    mock.verifyOtp('123456').subscribe(() => (completed = true));
     tick(500);
     expect(completed).toBeTrue();
     expect(mock.hasPendingRequest()).toBeFalse();
@@ -32,7 +37,7 @@ describe('AuthMockService', () => {
   it('does not simulate verification before a request', () => {
     let failed = false;
     TestBed.inject(AuthMockService)
-      .verifyOtp()
+      .verifyOtp('123456')
       .subscribe({ error: () => (failed = true) });
     expect(failed).toBeTrue();
   });
@@ -42,5 +47,28 @@ describe('AuthMockService', () => {
     subscription.unsubscribe();
     tick(500);
     expect(mock.hasPendingRequest()).toBeFalse();
+  }));
+  it('reports an expired-preview error for the reserved expired code', fakeAsync(() => {
+    const mock = TestBed.inject(AuthMockService);
+    mock.requestOtp().subscribe();
+    tick(500);
+    let error: unknown;
+    mock.verifyOtp(MOCK_EXPIRED_OTP).subscribe({ error: (err) => (error = err) });
+    tick(500);
+    expect(error).toBeInstanceOf(AuthPreviewError);
+    expect((error as AuthPreviewError).reason).toBe('expired');
+    // The reserved code must not silently succeed or leave the pending flag lingering forever.
+    expect(mock.hasPendingRequest()).toBeTrue();
+  }));
+  it('reports an invalid-preview error for the reserved invalid code', fakeAsync(() => {
+    const mock = TestBed.inject(AuthMockService);
+    mock.requestOtp().subscribe();
+    tick(500);
+    let error: unknown;
+    mock.verifyOtp(MOCK_INVALID_OTP).subscribe({ error: (err) => (error = err) });
+    tick(500);
+    expect(error).toBeInstanceOf(AuthPreviewError);
+    expect((error as AuthPreviewError).reason).toBe('invalid');
+    expect(mock.hasPendingRequest()).toBeTrue();
   }));
 });

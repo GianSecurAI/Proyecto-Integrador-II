@@ -1,8 +1,11 @@
 import { Routes } from '@angular/router';
 
 /**
- * The two OTP screens only — no password/login route, no self-service registration form, per
- * Constitution Principle VI (NON-NEGOTIABLE).
+ * OTP-only auth screens: request code, an optional pre-OTP "create account" step (email plus
+ * optional profile fields, per specs/001-customer-otp-auth/spec.md Assumptions Amendment
+ * 2026-09-07), and verify code. No password field or OAuth/social login route exists anywhere
+ * here, per Constitution Principle VI (NON-NEGOTIABLE) — that constraint governs the absence of
+ * password auth, not the number of routes in this file.
  */
 export const AUTH_ROUTES: Routes = [
   {
@@ -10,6 +13,11 @@ export const AUTH_ROUTES: Routes = [
     loadComponent: () =>
       import('./pages/request-code/request-code.page').then((m) => m.RequestCodePage),
     title: 'Ingresar con correo — Ar Makers 3D',
+  },
+  {
+    path: 'register',
+    loadComponent: () => import('./pages/register/register.page').then((m) => m.RegisterPage),
+    title: 'Crear cuenta — Ar Makers 3D',
   },
   {
     path: 'verify-code',

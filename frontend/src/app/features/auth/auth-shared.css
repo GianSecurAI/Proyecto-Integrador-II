@@ -71,6 +71,10 @@
 .auth-card__meta {
   margin: var(--ar-space-5) 0 0;
 }
+.auth-card__meta a {
+  color: var(--ar-color-white);
+  text-decoration: underline;
+}
 .auth-card__notice {
   margin: var(--ar-space-5) 0;
   font-size: var(--ar-font-size-xs);
