@@ -36,6 +36,21 @@ describe('TrackOrderPage', () => {
     expect(fixture.nativeElement.querySelector('input[type="password"]')).toBeNull();
   });
 
+  it('pre-fills the order-id input from a ?orderId= query param without auto-submitting', () => {
+    configure({ orderId: 'PED-MOCK-1' });
+    const getOrderByIdSpy = spyOn(CustomerOrdersMockService.prototype, 'getOrderById');
+    fixture = TestBed.createComponent(TrackOrderPage);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    // Pre-filled (this is the confirmation page's "Rastrear mi pedido" hand-off — see
+    // track-order.page.ts's constructor doc comment).
+    expect(component.orderIdControl.value).toBe('PED-MOCK-1');
+    // But never auto-submitted — the visitor still presses the lookup button themselves.
+    expect(getOrderByIdSpy).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.querySelector('input').value).toBe('PED-MOCK-1');
+  });
+
   it('never calls the lookup service and shows an accessible validation error for an empty submit', () => {
     configure();
     const getOrderByIdSpy = spyOn(CustomerOrdersMockService.prototype, 'getOrderById');
