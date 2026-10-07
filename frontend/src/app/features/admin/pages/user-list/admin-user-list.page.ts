@@ -1,7 +1,7 @@
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
-import { apiErrorCode, httpStatus } from '../../../../core/models/api-error.model';
+import { apiErrorCode, httpStatus, withRateLimit } from '../../../../core/models/api-error.model';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
@@ -167,7 +167,9 @@ export class AdminUserListPage {
         } else if (apiErrorCode(err) === 'VALIDATION_FAILED') {
           this.provisionError.set('El servidor rechazó el correo o el rol. Revísalos e inténtalo de nuevo.');
         } else {
-          this.provisionError.set('No pudimos crear la cuenta. Inténtalo de nuevo más tarde.');
+          this.provisionError.set(
+            withRateLimit(err, 'No pudimos crear la cuenta. Inténtalo de nuevo más tarde.'),
+          );
         }
       },
     });

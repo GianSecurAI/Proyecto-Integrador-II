@@ -54,7 +54,7 @@ describe('FooterComponent', () => {
     expect(links.length).toBe(5);
 
     const byText = (text: string) => links.find((link) => link.textContent?.trim() === text);
-    const expected: Array<[string, string]> = [
+    const expected: [string, string][] = [
       ['Política de privacidad', '/legal/privacidad'],
       ['Política de reembolso', '/legal/reembolso'],
       ['Términos de servicio', '/legal/terminos'],

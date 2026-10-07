@@ -1,6 +1,7 @@
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
+import { withRateLimit } from '../../../../core/models/api-error.model';
 import {
   PRODUCT_CATEGORIES,
   ProductCategory,
@@ -141,9 +142,12 @@ export class AdminProductListPage {
           current.map((product) => (product.id === updated.id ? updated : product)),
         );
       },
-      error: () => {
+      error: (err: unknown) => {
         this.availabilityError.set(
-          'No pudimos actualizar la disponibilidad del producto. Inténtalo de nuevo más tarde.',
+          withRateLimit(
+            err,
+            'No pudimos actualizar la disponibilidad del producto. Inténtalo de nuevo más tarde.',
+          ),
         );
       },
     });

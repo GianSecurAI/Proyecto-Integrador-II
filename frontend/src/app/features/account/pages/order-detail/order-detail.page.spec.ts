@@ -33,20 +33,20 @@ const ORDER = {
   statusHistory: [
     {
       previousStatus: null,
-      newStatus: 'PENDIENTE',
+      newStatus: 'CONFIRMADO',
       changedAt: '2026-10-06T15:30:00Z',
       responsible: 'Sistema',
       note: null,
     },
     {
-      previousStatus: 'PENDIENTE',
-      newStatus: 'CONFIRMADO',
+      previousStatus: 'CONFIRMADO',
+      newStatus: 'EN_PRODUCCION',
       changedAt: '2026-10-06T16:00:00Z',
       responsible: 'asesor@armakers3d.com',
       note: 'Pago verificado',
     },
     {
-      previousStatus: 'CONFIRMADO',
+      previousStatus: 'EN_PRODUCCION',
       newStatus: 'ENVIADO',
       changedAt: '2026-10-07T09:00:00Z',
       responsible: 'asesor@armakers3d.com',
@@ -100,9 +100,9 @@ describe('OrderDetailPage (GET /api/orders/{id})', () => {
     );
     expect(entries.length).toBe(3);
     expect(entries[0].textContent).toContain('Pedido registrado');
-    expect(entries[1].textContent).toContain('Pendiente → Confirmado');
+    expect(entries[1].textContent).toContain('Confirmado → En producción');
     expect(entries[1].textContent).toContain('Pago verificado');
-    expect(entries[2].textContent).toContain('Confirmado → Enviado');
+    expect(entries[2].textContent).toContain('En producción → Enviado');
   });
 
   it('shows not-found on 404 (unknown order or another customer order, indistinguishable)', () => {

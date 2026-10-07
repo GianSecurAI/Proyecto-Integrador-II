@@ -9,7 +9,7 @@ const ORDERS = [
   {
     id: 'PED-9001',
     placedAt: '2026-06-01T10:00:00Z',
-    status: 'PENDIENTE',
+    status: 'CONFIRMADO',
     kind: 'ESTANDAR',
     summary: 'Set de llaveros',
     totalAmount: 25,

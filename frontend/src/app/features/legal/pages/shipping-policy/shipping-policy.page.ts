@@ -45,9 +45,9 @@ export class ShippingPolicyPage {
       ],
     },
     {
-      heading: 'Costos de envío',
+      heading: 'Precio y entrega',
       body: [
-        'El costo de envío se calcula durante el checkout, junto con el resto del pago, a través de la pasarela de pago que se determine para la tienda.',
+        'El precio que ves en la tienda es el precio que pagas. La entrega se realiza por courier dentro de Perú y es coordinada por Ar Makers 3D con la dirección de entrega que registres al comprar.',
       ],
     },
     {

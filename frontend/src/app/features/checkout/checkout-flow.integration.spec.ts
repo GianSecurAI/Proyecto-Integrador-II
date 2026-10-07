@@ -65,7 +65,7 @@ describe('Cart -> Checkout -> POST /api/orders (integration seam)', () => {
       {
         id: 'PED-20261006-0009',
         placedAt: '2026-10-06T15:30:00Z',
-        status: 'PENDIENTE',
+        status: 'CONFIRMADO',
         kind: 'ESTANDAR',
         summary: '3 unidades: Llavero y 1 producto más',
         totalAmount: 31,

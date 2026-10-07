@@ -46,3 +46,26 @@ export function apiErrorCode(err: unknown): string | null {
 export function httpStatus(err: unknown): number | null {
   return err instanceof HttpErrorResponse ? err.status : null;
 }
+
+/** `Retry-After` of a 429, in whole seconds (delta-seconds form only), or `null` when absent or
+ * not exposed to the browser. */
+export function retryAfterSeconds(err: unknown): number | null {
+  if (!(err instanceof HttpErrorResponse)) return null;
+  const raw = err.headers?.get('Retry-After');
+  if (!raw) return null;
+  const seconds = Number(raw);
+  return Number.isFinite(seconds) && seconds > 0 ? Math.ceil(seconds) : null;
+}
+
+/** Friendly copy for `429 RATE_LIMITED`, naming the wait when the server sent `Retry-After`. */
+export function rateLimitMessage(err: unknown): string {
+  const seconds = retryAfterSeconds(err);
+  if (seconds === null) return 'Demasiados intentos. Espera un momento e inténtalo de nuevo.';
+  const wait = seconds >= 120 ? `${Math.ceil(seconds / 60)} minutos` : seconds === 1 ? '1 segundo' : seconds >= 60 ? '1 minuto' : `${seconds} segundos`;
+  return `Demasiados intentos. Espera ${wait} e inténtalo de nuevo.`;
+}
+
+/** Picks the 429 copy when the failure is a rate limit, otherwise the given fallback message. */
+export function withRateLimit(err: unknown, fallback: string): string {
+  return httpStatus(err) === 429 ? rateLimitMessage(err) : fallback;
+}

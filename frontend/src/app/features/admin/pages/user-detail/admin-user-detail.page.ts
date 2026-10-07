@@ -1,7 +1,7 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { apiErrorCode, httpStatus } from '../../../../core/models/api-error.model';
+import { apiErrorCode, httpStatus, withRateLimit } from '../../../../core/models/api-error.model';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { CardComponent } from '../../../../shared/ui/card/card.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
@@ -136,7 +136,7 @@ export class AdminUserDetailPage {
     if (code === 'LAST_ADMINISTRATOR') {
       return 'Debe quedar al menos un administrador activo. Asigna otro administrador primero.';
     }
-    return fallback;
+    return withRateLimit(err, fallback);
   }
 
   roleLabel(role: AdminUserRole): string {

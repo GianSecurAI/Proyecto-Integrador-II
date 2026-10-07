@@ -2,7 +2,7 @@ import { Component, DestroyRef, computed, inject, output, signal } from '@angula
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { SessionStateService } from '../../../../core/services/session-state.service';
-import { apiErrorCode, httpStatus, toApiError } from '../../../../core/models/api-error.model';
+import { apiErrorCode, httpStatus, toApiError, rateLimitMessage } from '../../../../core/models/api-error.model';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { CartStateService } from '../../../cart/services/cart-state.service';
 import { CheckoutStateService } from '../../state/checkout-state.service';
@@ -35,7 +35,7 @@ function labelFor(field: string): string {
  * - The request is built ONLY from `{ productId, quantity }` + delivery + contact
  *   (`buildPlaceOrderRequest`); prices/totals/status are never sent. The amounts shown here are
  *   informational estimates; the confirmation page shows the server-computed total.
- * - NO PAYMENT STEP exists in the backend yet (PD-ORD-01): the order is created `PENDIENTE` and
+ * - NO PAYMENT STEP exists in the backend yet (PD-ORD-01): the order is created `CONFIRMADO` and
  *   the copy never claims a payment was processed.
  * - An `Idempotency-Key` UUID is generated per attempt (`CheckoutStateService.idempotencyKeyFor`):
  *   a retry of the SAME request replays the original order instead of duplicating it.
@@ -127,7 +127,7 @@ export class OrderReviewStepComponent {
       this.checkoutState.resetAttempt();
       this.errorMessage.set('No pudimos completar el envío. Inténtalo de nuevo.');
     } else if (status === 429) {
-      this.errorMessage.set('Demasiados intentos. Espera un momento antes de volver a intentarlo.');
+      this.errorMessage.set(rateLimitMessage(err));
     } else if (status === 401 || status === 403) {
       // Redirect handled by the global error interceptor.
       this.errorMessage.set('Tu sesión no permite registrar este pedido.');

@@ -140,7 +140,7 @@ export const routes: Routes = [
     // Administrador-ONLY by their own requirement grounding (products — RF-07; reports — RF-19,
     // "exclusivos para Administrador"; users — RF-03, role management) each carry their OWN
     // stricter child-level guard below (`role: ADMIN_ONLY_ROLES`) so Asesor cannot reach them as a
-    // side effect of the parent widening. `orders`/`quotations`/`incidents` need no extra guard —
+    // side effect of the parent widening. `orders`/`incidents` need no extra guard —
     // they correctly, and intentionally, inherit the parent's broader `STAFF_ROLES`.
     path: 'admin',
     canActivate: [authGuard],
@@ -224,19 +224,6 @@ export const routes: Routes = [
             (m) => m.AdminOrderDetailPage,
           ),
         title: 'Detalle del pedido — Administración — Ar Makers 3D',
-      },
-      {
-        path: 'quotations',
-        loadComponent: () =>
-          import('./features/admin/pages/placeholder/admin-placeholder.page').then(
-            (m) => m.AdminPlaceholderPage,
-          ),
-        data: {
-          title: 'Cotizaciones',
-          description:
-            'Gestión de cotizaciones — Próximamente. Esta sección se implementará cuando el backend de cotizaciones (RF-10) esté disponible.',
-        },
-        title: 'Cotizaciones — Administración — Ar Makers 3D',
       },
       {
         // RF-16/RF-17/RF-18 ("Gestión de estados de incidencias"/"Clasificación de

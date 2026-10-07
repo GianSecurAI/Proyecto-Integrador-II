@@ -1,7 +1,7 @@
 import { Component, DestroyRef, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
-import { apiErrorCode } from '../../../../core/models/api-error.model';
+import { apiErrorCode, withRateLimit } from '../../../../core/models/api-error.model';
 import { CardComponent } from '../../../../shared/ui/card/card.component';
 import { AdminProductFormComponent } from '../../components/admin-product-form/admin-product-form.component';
 import { EMPTY_PRODUCT_FORM_VALUE, ProductFormValue } from '../../models/admin-product.model';
@@ -60,7 +60,9 @@ export class AdminProductCreatePage {
                 : 'Revisa los campos marcados e inténtalo de nuevo.',
             );
           } else {
-            this.errorMessage.set('No pudimos crear el producto. Inténtalo de nuevo más tarde.');
+            this.errorMessage.set(
+              withRateLimit(err, 'No pudimos crear el producto. Inténtalo de nuevo más tarde.'),
+            );
           }
         },
       });

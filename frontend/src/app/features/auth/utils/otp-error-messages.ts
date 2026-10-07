@@ -1,11 +1,10 @@
-import { apiErrorCode, httpStatus } from '../../../core/models/api-error.model';
+import { apiErrorCode, httpStatus, rateLimitMessage } from '../../../core/models/api-error.model';
 
 /** User-facing copy for the documented outcomes of `POST /api/auth/otp/request` (400, 429). */
 export function requestOtpErrorMessage(err: unknown): string {
   const status = httpStatus(err);
   if (status === 400) return 'Revisa el correo electrónico ingresado.';
-  if (status === 429)
-    return 'Solicitaste demasiados códigos. Espera unos minutos antes de intentarlo otra vez.';
+  if (status === 429) return rateLimitMessage(err);
   return 'No pudimos continuar. Inténtalo de nuevo más tarde.';
 }
 
@@ -22,6 +21,8 @@ export function verifyOtpErrorMessage(err: unknown): string {
       return 'Este código ya fue utilizado. Solicita uno nuevo.';
     case 'OTP_ATTEMPTS_EXCEEDED':
       return 'Superaste el número de intentos. Solicita un código nuevo.';
+    case 'RATE_LIMITED':
+      return rateLimitMessage(err);
     case 'ACCOUNT_DEACTIVATED':
       return 'Esta cuenta no está disponible.';
     default:

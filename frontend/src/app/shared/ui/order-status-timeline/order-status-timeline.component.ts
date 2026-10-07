@@ -12,7 +12,6 @@ export interface OrderStatusStepViewModel {
 /** Happy-path step order. `cancelado` is intentionally excluded — it is a terminal, off-path
  * state handled separately (see `isCancelled`), not a further step along this sequence. */
 const HAPPY_PATH_STEPS: readonly OrderStatus[] = [
-  'PENDIENTE',
   'CONFIRMADO',
   'EN_PRODUCCION',
   'ENVIADO',
@@ -20,7 +19,7 @@ const HAPPY_PATH_STEPS: readonly OrderStatus[] = [
 ];
 
 /**
- * Shared, order-domain visual status timeline: an ordered step list (Pendiente → Confirmado →
+ * Shared, order-domain visual status timeline: an ordered step list (Confirmado →
  * En producción → Enviado → Entregado) with the current position highlighted. Used by both the
  * public order-tracking page (`features/order-tracking/pages/track-order/`) and the
  * authenticated order-detail page (`features/account/pages/order-detail/`) so both screens that

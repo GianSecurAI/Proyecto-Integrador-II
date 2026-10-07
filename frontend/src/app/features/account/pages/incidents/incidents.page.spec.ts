@@ -25,7 +25,7 @@ const SEED_ORDERS: OrderSummaryViewModel[] = [
   {
     id: 'PED-2050',
     placedAt: new Date('2026-08-20T09:30:00Z'),
-    status: 'PENDIENTE',
+    status: 'CONFIRMADO',
     kind: 'ESTANDAR',
     totalAmount: 10,
     summary: 'Organizador de escritorio modular (2 unidades)',

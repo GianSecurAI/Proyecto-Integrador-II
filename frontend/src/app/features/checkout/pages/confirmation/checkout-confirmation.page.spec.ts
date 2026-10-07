@@ -21,7 +21,7 @@ describe('CheckoutConfirmationPage', () => {
   function placeOrder(): void {
     const order: OrderDetailViewModel = {
       id: 'PED-MOCK-1',
-      status: 'PENDIENTE',
+      status: 'CONFIRMADO',
       kind: 'ESTANDAR',
       placedAt: PLACED_AT,
       summary: '2 unidades: Llavero A',
@@ -33,14 +33,14 @@ describe('CheckoutConfirmationPage', () => {
     checkoutState.setPlacedOrder(order);
   }
 
-  it('shows the order id and a "Pendiente" status badge, with no payment-processed claim', () => {
+  it('shows the order id and a "Confirmado" status badge, with no payment-processed claim', () => {
     placeOrder();
     fixture = TestBed.createComponent(CheckoutConfirmationPage);
     fixture.detectChanges();
 
     const text: string = fixture.nativeElement.textContent;
     expect(text).toContain('PED-MOCK-1');
-    expect(text).toContain('Pendiente');
+    expect(text).toContain('Confirmado');
     expect(text.toLowerCase()).not.toContain('pago procesado');
     expect(text.toLowerCase()).not.toContain('pago confirmado');
   });

@@ -117,6 +117,16 @@ describe('VerifyCodePage', () => {
     expect(router.navigateByUrl).toHaveBeenCalledWith('/admin');
   });
 
+  it('ignores an unsafe returnUrl (open-redirect guard) and uses the role default', async () => {
+    TestBed.resetTestingModule();
+    await setup({ returnUrl: 'https://evil.example/x' });
+    fixture.detectChanges();
+    component.codeControl.setValue('123456');
+    component.submit();
+    fixture.detectChanges();
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/account');
+  });
+
   it('honors an explicit returnUrl over the per-role default', async () => {
     TestBed.resetTestingModule();
     await setup({ returnUrl: '/admin/orders' });

@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
-import { Observable, catchError, map, of, switchMap, tap, throwError } from 'rxjs';
+import { Observable, catchError, map, of, tap, throwError } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { AppRole } from '../../../core/auth/roles';
 import { SessionStateService } from '../../../core/services/session-state.service';
@@ -61,23 +61,19 @@ export class AuthService {
 
   /**
    * Verifies a code for the pending email. On success the backend has set the httpOnly session
-   * cookie; the identity (id, email, role) is then read back from `GET /api/auth/me` so the
-   * client state reflects exactly what the server holds.
+   * cookie and the 200 body carries the identity (id, email, role), which marks the client session
+   * directly (no extra `/auth/me` call; `/auth/me` stays for reload restore).
    */
   verifyOtp(code: string): Observable<VerifyOtpResult> {
     if (!this.pendingEmail) return throwError(() => new Error('No pending OTP request'));
     const payload: OtpVerifyPayload = { email: this.pendingEmail, code };
     return this.http.post<OtpVerifyResponse>(`${this.baseUrl}/otp/verify`, payload).pipe(
-      switchMap((verified) =>
-        this.http.get<MeResponse>(`${this.baseUrl}/me`).pipe(
-          tap((me) => this.session.markAuthenticated(me.role, me.email, me.id)),
-          map((me) => ({
-            role: me.role,
-            email: me.email,
-            accountStatus: verified.accountStatus,
-          })),
-        ),
-      ),
+      tap((verified) => this.session.markAuthenticated(verified.role, verified.email, verified.id)),
+      map((verified) => ({
+        role: verified.role,
+        email: verified.email,
+        accountStatus: verified.accountStatus,
+      })),
       tap(() => this.reset()),
     );
   }

@@ -1,7 +1,7 @@
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { apiErrorCode, httpStatus } from '../../../../core/models/api-error.model';
+import { apiErrorCode, httpStatus, rateLimitMessage } from '../../../../core/models/api-error.model';
 import { applyFieldErrors } from '../../../../core/errors/form-errors';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { CardComponent } from '../../../../shared/ui/card/card.component';
@@ -168,7 +168,7 @@ export class IncidentsPage {
         ? 'Revisa los datos ingresados e inténtalo de nuevo.'
         : 'No pudimos registrar tu incidencia.';
     }
-    if (status === 429) return 'Demasiados intentos. Espera un momento e inténtalo de nuevo.';
+    if (status === 429) return rateLimitMessage(err);
     return 'No pudimos registrar tu incidencia. Inténtalo de nuevo más tarde.';
   }
 

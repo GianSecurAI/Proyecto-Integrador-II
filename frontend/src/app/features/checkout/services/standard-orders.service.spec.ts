@@ -15,7 +15,7 @@ const DELIVERY = { address: ' Av. Larco 345 ', district: 'Miraflores', notes: ''
 const CREATED = {
   id: 'PED-20261006-0001',
   placedAt: '2026-10-06T15:30:00Z',
-  status: 'PENDIENTE',
+  status: 'CONFIRMADO',
   kind: 'ESTANDAR',
   summary: '3 unidades: Llavero y 1 producto más',
   totalAmount: 29,
@@ -27,7 +27,7 @@ const CREATED = {
   statusHistory: [
     {
       previousStatus: null,
-      newStatus: 'PENDIENTE',
+      newStatus: 'CONFIRMADO',
       changedAt: '2026-10-06T15:30:00Z',
       responsible: 'Sistema',
       note: null,
@@ -80,7 +80,7 @@ describe('StandardOrdersService (POST /api/orders)', () => {
     expect(req.request.body).toEqual(request);
     req.flush(CREATED, { status: 201, statusText: 'Created' });
     expect(order!.id).toBe('PED-20261006-0001');
-    expect(order!.status).toBe('PENDIENTE');
+    expect(order!.status).toBe('CONFIRMADO');
     expect(order!.totalAmount).toBe(29);
     expect(order!.placedAt instanceof Date).toBeTrue();
     expect(order!.items.length).toBe(2);

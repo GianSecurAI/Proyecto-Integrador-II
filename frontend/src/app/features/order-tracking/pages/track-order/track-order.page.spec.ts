@@ -28,14 +28,14 @@ const ORDER = {
   statusHistory: [
     {
       previousStatus: null,
-      newStatus: 'PENDIENTE',
+      newStatus: 'CONFIRMADO',
       changedAt: '2026-10-06T15:30:00Z',
       responsible: 'Sistema',
       note: null,
     },
     {
-      previousStatus: 'PENDIENTE',
-      newStatus: 'CONFIRMADO',
+      previousStatus: 'CONFIRMADO',
+      newStatus: 'EN_PRODUCCION',
       changedAt: '2026-10-06T16:00:00Z',
       responsible: 'asesor@armakers3d.com',
       note: 'Pago verificado',
@@ -101,7 +101,7 @@ describe('TrackOrderPage (owner lookup, GET /api/orders/{id})', () => {
     const text: string = fixture.nativeElement.textContent;
     expect(text).toContain('PED-20261006-0001');
     expect(text).toContain('Confirmado');
-    expect(text).toContain('Pendiente → Confirmado');
+    expect(text).toContain('Confirmado → En producción');
     expect(text).toContain('Pago verificado');
   });
 

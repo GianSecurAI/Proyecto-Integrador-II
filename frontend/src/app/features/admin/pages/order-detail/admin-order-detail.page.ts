@@ -8,7 +8,7 @@ import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-sta
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state.component';
 import { StatusBadgeComponent } from '../../../../shared/ui/status-badge/status-badge.component';
 import { OrderStatusTimelineComponent } from '../../../../shared/ui/order-status-timeline/order-status-timeline.component';
-import { apiErrorCode, httpStatus } from '../../../../core/models/api-error.model';
+import { apiErrorCode, httpStatus, withRateLimit } from '../../../../core/models/api-error.model';
 import { orderKindLabel } from '../../../../shared/models/wire-enums';
 import { AdminOrderViewModel } from '../../models/admin-order.model';
 import { AdminOrdersService } from '../../services/admin-orders.service';
@@ -152,7 +152,7 @@ export class AdminOrderDetailPage {
             this.transitionError.set('El servidor rechazó el cambio (revisa la nota, máx. 500 caracteres).');
           } else {
             this.transitionError.set(
-              'No pudimos actualizar el estado del pedido. Inténtalo de nuevo más tarde.',
+              withRateLimit(err, 'No pudimos actualizar el estado del pedido. Inténtalo de nuevo más tarde.'),
             );
           }
         },

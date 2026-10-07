@@ -44,7 +44,7 @@ describe('RegisterPage', () => {
       lastName: '',
       phone: '',
     });
-    expect(router.navigate).toHaveBeenCalledWith(['/auth/verify-code']);
+    expect(router.navigate).toHaveBeenCalledWith(['/auth/verify-code'], { queryParamsHandling: 'preserve' });
   });
   it('sends the optional profile fields together with the email (backend OtpRequestDto accepts them)', () => {
     component.emailControl.setValue('customer@example.com');
@@ -57,7 +57,7 @@ describe('RegisterPage', () => {
       lastName: 'Gómez',
       phone: '987 654 321',
     });
-    expect(router.navigate).toHaveBeenCalledWith(['/auth/verify-code']);
+    expect(router.navigate).toHaveBeenCalledWith(['/auth/verify-code'], { queryParamsHandling: 'preserve' });
   });
   it('rejects a missing/invalid email client-side and never calls requestOtp', () => {
     component.emailControl.setValue('invalid');

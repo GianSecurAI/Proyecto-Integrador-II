@@ -1,7 +1,7 @@
 import { Component, DestroyRef, computed, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { apiErrorCode, httpStatus } from '../../../../core/models/api-error.model';
+import { apiErrorCode, httpStatus, withRateLimit } from '../../../../core/models/api-error.model';
 import { categoryLabel } from '../../../../shared/models/wire-enums';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { CardComponent } from '../../../../shared/ui/card/card.component';
@@ -129,7 +129,9 @@ export class AdminProductDetailPage {
           } else if (httpStatus(err) === 404) {
             this.errorMessage.set('El producto ya no existe.');
           } else {
-            this.errorMessage.set('No pudimos guardar los cambios. Inténtalo de nuevo más tarde.');
+            this.errorMessage.set(
+              withRateLimit(err, 'No pudimos guardar los cambios. Inténtalo de nuevo más tarde.'),
+            );
           }
         },
       });

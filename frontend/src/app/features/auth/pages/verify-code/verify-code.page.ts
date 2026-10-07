@@ -4,6 +4,7 @@ import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { take, timer } from 'rxjs';
 import { AppRole, defaultRouteForRole } from '../../../../core/auth/roles';
+import { safeReturnUrl } from '../../../../core/guards/return-url';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { FormFieldComponent } from '../../../../shared/ui/form-field/form-field.component';
 import { AuthService } from '../../services/auth.service';
@@ -93,8 +94,8 @@ export class VerifyCodePage implements OnInit {
    * to still independently re-checks access via its own guard.
    */
   private navigateAfterLogin(role: AppRole): void {
-    const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
-    void this.router.navigateByUrl(returnUrl || defaultRouteForRole(role));
+    const returnUrl = safeReturnUrl(this.route.snapshot.queryParamMap.get('returnUrl'));
+    void this.router.navigateByUrl(returnUrl ?? defaultRouteForRole(role));
   }
 
   /**

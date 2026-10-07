@@ -25,6 +25,8 @@ export interface AdminIncidentDto {
   customerEmail: string;
   customerName: string | null;
   customerPhone: string | null;
+  /** Server-computed next statuses (BE-04); terminal incidents carry an empty list. */
+  allowedNextStatuses?: IncidentStatus[];
 }
 
 export interface AdminIncidentViewModel extends IncidentViewModel {
@@ -33,6 +35,9 @@ export interface AdminIncidentViewModel extends IncidentViewModel {
   readonly customerPhone: string | null;
   readonly priority: IncidentPriority;
   readonly updatedAt: Date;
+  /** Exactly the statuses the backend allows next. `RESUELTA`, when present, is reached only
+   * through the resolution endpoint. */
+  readonly allowedNextStatuses: readonly IncidentStatus[];
 }
 
 export interface RegisterResolutionFormValue {
@@ -57,5 +62,6 @@ export function toAdminIncidentViewModel(dto: AdminIncidentDto): AdminIncidentVi
     customerEmail: dto.customerEmail,
     customerName: dto.customerName,
     customerPhone: dto.customerPhone,
+    allowedNextStatuses: dto.allowedNextStatuses ?? [],
   };
 }

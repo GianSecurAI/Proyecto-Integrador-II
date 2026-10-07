@@ -16,7 +16,7 @@ import { routes } from './app.routes';
  * with no guard.
  */
 describe('app.routes — /legal', () => {
-  const legalRoutes: Array<{ path: string; name: string }> = [
+  const legalRoutes: { path: string; name: string }[] = [
     { path: 'legal/privacidad', name: 'PrivacyPolicyPage' },
     { path: 'legal/reembolso', name: 'RefundPolicyPage' },
     { path: 'legal/terminos', name: 'TermsOfServicePage' },
@@ -172,17 +172,9 @@ describe('app.routes — /admin', () => {
     expect((loaded as { name: string }).name).toMatch(/^AdminIncidentDetailPage/);
   });
 
-  for (const path of ['quotations']) {
-    it(`loads the generic AdminPlaceholderPage with title/description data for /admin/${path}`, async () => {
-      const child = adminRoute()?.children?.find((c) => c.path === path);
-      expect(child?.loadComponent).toBeTruthy();
-      expect(child?.data?.['title']).toBeTruthy();
-      expect(child?.data?.['description']).toBeTruthy();
-
-      const loaded = await child!.loadComponent!();
-      expect((loaded as { name: string }).name).toMatch(/^AdminPlaceholderPage/);
-    });
-  }
+  it('has no /admin/quotations route (D-14: quotations are managed outside the system)', () => {
+    expect(adminRoute()?.children?.some((c) => c.path === 'quotations')).toBeFalse();
+  });
 
   it('loads AdminReportsPage for /admin/reports', async () => {
     const child = adminRoute()?.children?.find((c) => c.path === 'reports');

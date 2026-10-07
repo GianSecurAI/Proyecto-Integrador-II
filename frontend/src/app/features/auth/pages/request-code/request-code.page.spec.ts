@@ -51,7 +51,7 @@ describe('RequestCodePage', () => {
     component.emailControl.setValue('  customer@example.com  ');
     component.submit();
     expect(auth.requestOtp).toHaveBeenCalledWith('customer@example.com');
-    expect(router.navigate).toHaveBeenCalledWith(['/auth/verify-code']);
+    expect(router.navigate).toHaveBeenCalledWith(['/auth/verify-code'], { queryParamsHandling: 'preserve' });
     expect(component.emailControl.value).toBe('');
   });
   it('shows loading and prevents duplicate submits', () => {
@@ -84,7 +84,7 @@ describe('RequestCodePage', () => {
     component.emailControl.setValue('customer@example.com');
     component.submit();
     fixture.detectChanges();
-    expect(component.errorMessage()).toContain('demasiados códigos');
+    expect(component.errorMessage()).toContain('Demasiados intentos');
     expect(fixture.nativeElement.textContent).not.toContain('internal detail');
   });
   it('never displays error details that could disclose account existence', () => {

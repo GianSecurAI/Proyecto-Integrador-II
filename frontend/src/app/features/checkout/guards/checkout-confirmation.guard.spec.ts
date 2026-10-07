@@ -24,7 +24,7 @@ describe('checkoutConfirmationGuard', () => {
   it('allows navigation once an order has been placed', () => {
     checkoutState.setPlacedOrder({
       id: 'PED-1',
-      status: 'PENDIENTE',
+      status: 'CONFIRMADO',
       kind: 'ESTANDAR',
       placedAt: new Date('2026-09-07T00:00:00Z'),
       summary: '1 unidad: Llavero A',

@@ -42,7 +42,7 @@ class FakeCartStorageAdapter implements CartStorageAdapter {
 const CREATED_ORDER: OrderDetailViewModel = {
   id: 'PED-20261006-0001',
   placedAt: new Date('2026-09-07T00:00:00Z'),
-  status: 'PENDIENTE',
+  status: 'CONFIRMADO',
   kind: 'ESTANDAR',
   summary: '1 unidad: Llavero A',
   totalAmount: 19.9,

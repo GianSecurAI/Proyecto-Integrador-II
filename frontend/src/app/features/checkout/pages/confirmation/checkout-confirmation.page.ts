@@ -9,7 +9,7 @@ import { CheckoutStateService } from '../../state/checkout-state.service';
  * `/checkout/confirmacion` — reached only right after the backend CONFIRMED the order
  * (`POST /api/orders` answered 201, or 200 for an idempotent replay); see
  * `../../guards/checkout-confirmation.guard.ts`. Everything shown comes from that response: the
- * order id, server-assigned status (`PENDIENTE`), placement time, items with server prices, the
+ * order id, server-assigned status (`CONFIRMADO`), placement time, items with server prices, the
  * server-computed total and the delivery data — nothing is recomputed client-side.
  *
  * NO PAYMENT-PROCESSED LANGUAGE: the backend creates orders without a payment step (PD-ORD-01),

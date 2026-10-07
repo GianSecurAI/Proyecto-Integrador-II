@@ -33,6 +33,7 @@ function incident(overrides: Record<string, unknown> = {}) {
     customerEmail: 'ana@example.com',
     customerName: 'Ana',
     customerPhone: '987654321',
+    allowedNextStatuses: ['EN_REVISION', 'RECHAZADA'],
     ...overrides,
   };
 }
@@ -109,6 +110,29 @@ describe('AdminIncidentDetailPage (GET/PATCH /api/admin/incidents/{id}, POST ...
     expect(fixture.nativeElement.textContent).not.toContain('Cambiar estado');
   });
 
+  it('offers exactly the server allowedNextStatuses, never RESUELTA in the select, and hides the resolution form unless allowed', () => {
+    create();
+    load();
+    expect(fixture.nativeElement.textContent).not.toContain('Registrar resolución');
+    TestBed.resetTestingModule();
+    create();
+    load(incident({ status: 'EN_REVISION', allowedNextStatuses: ['RESUELTA', 'RECHAZADA'] }));
+    const options = (Array.from(fixture.nativeElement.querySelector('select').options) as HTMLOptionElement[])
+      .map((o) => o.value)
+      .filter(Boolean);
+    expect(options).toEqual(['RECHAZADA']);
+    expect(fixture.nativeElement.textContent).toContain('Registrar resolución');
+  });
+
+  it('shows a terminal notice and no controls for status/resolution when nothing is allowed', () => {
+    create();
+    load(incident({ status: 'RECHAZADA', allowedNextStatuses: [] }));
+    const text: string = fixture.nativeElement.textContent;
+    expect(text).toContain('ya no admite más cambios de estado');
+    expect(text).not.toContain('Registrar resolución');
+    expect(component.otherStatuses()).toEqual([]);
+  });
+
   it('never offers RESUELTA in the status select (only the resolution form can reach it)', () => {
     create();
     load();
@@ -116,8 +140,7 @@ describe('AdminIncidentDetailPage (GET/PATCH /api/admin/incidents/{id}, POST ...
       .map((o) => o.value)
       .filter(Boolean);
     expect(values).not.toContain('RESUELTA');
-    expect(values).not.toContain('ABIERTA'); // the current one
-    expect(values).toContain('EN_REVISION');
+    expect(values).toEqual(['EN_REVISION', 'RECHAZADA']);
   });
 
   it('PATCHes { status } and shows the returned incident', () => {
@@ -128,7 +151,7 @@ describe('AdminIncidentDetailPage (GET/PATCH /api/admin/incidents/{id}, POST ...
     const req = http.expectOne(url);
     expect(req.request.method).toBe('PATCH');
     expect(req.request.body).toEqual({ status: 'EN_REVISION' });
-    req.flush(incident({ status: 'EN_REVISION' }));
+    req.flush(incident({ status: 'EN_REVISION', allowedNextStatuses: ['RESUELTA', 'RECHAZADA'] }));
     fixture.detectChanges();
     expect(component.incident()?.status).toBe('EN_REVISION');
     expect(component.statusSuccess()).toContain('actualizó');
@@ -162,7 +185,7 @@ describe('AdminIncidentDetailPage (GET/PATCH /api/admin/incidents/{id}, POST ...
 
   it('POSTs the trimmed resolution text and shows RESUELTA', () => {
     create();
-    load(incident({ status: 'EN_REVISION' }));
+    load(incident({ status: 'EN_REVISION', allowedNextStatuses: ['RESUELTA', 'RECHAZADA'] }));
     component.updateResolutionText('  Se coordinó el reenvío.  ');
     component.submitResolution();
     const req = http.expectOne(`${url}/resolution`);

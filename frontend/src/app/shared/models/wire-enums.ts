@@ -37,14 +37,12 @@ export function categoryLabel(category: ProductCategory): string {
 
 // ---- Order status / kind (backend `OrderStatus`, `OrderKind`) ----
 export type OrderStatus =
-  | 'PENDIENTE'
   | 'CONFIRMADO'
   | 'EN_PRODUCCION'
   | 'ENVIADO'
   | 'ENTREGADO'
   | 'CANCELADO';
 export const ORDER_STATUSES: readonly OrderStatus[] = [
-  'PENDIENTE',
   'CONFIRMADO',
   'EN_PRODUCCION',
   'ENVIADO',
@@ -55,7 +53,6 @@ export type OrderKind = 'ESTANDAR' | 'PERSONALIZADO';
 export const ORDER_KINDS: readonly OrderKind[] = ['ESTANDAR', 'PERSONALIZADO'];
 
 const ORDER_STATUS_META: Record<OrderStatus, Described> = {
-  PENDIENTE: { label: 'Pendiente', tone: 'neutral' },
   CONFIRMADO: { label: 'Confirmado', tone: 'info' },
   EN_PRODUCCION: { label: 'En producción', tone: 'info' },
   ENVIADO: { label: 'Enviado', tone: 'info' },

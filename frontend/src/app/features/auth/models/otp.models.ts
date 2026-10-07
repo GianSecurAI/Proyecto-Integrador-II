@@ -28,9 +28,11 @@ export interface OtpVerifyPayload {
 }
 
 /** `POST /api/auth/otp/verify` 200 body. `accountStatus` is the only point where new-vs-existing
- * is revealed; `role` is what the server resolved for the account. */
+ * is revealed; `id`/`email`/`role` are what the server resolved for the account. */
 export interface OtpVerifyResponse {
   accountStatus: 'created' | 'existing';
+  id: number;
+  email: string;
   role: Role;
 }
 

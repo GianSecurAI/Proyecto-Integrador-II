@@ -97,7 +97,7 @@
       <p class="auth-card__error" role="alert">{{ errorMessage() }}</p>
     }
     <p class="auth-card__meta">
-      ¿Ya tienes cuenta? <a routerLink="/auth/request-code">Inicia sesión</a>
+      ¿Ya tienes cuenta? <a routerLink="/auth/request-code" queryParamsHandling="preserve">Inicia sesión</a>
     </p>
     <p class="auth-card__notice">
       El nombre, apellido y teléfono son opcionales.

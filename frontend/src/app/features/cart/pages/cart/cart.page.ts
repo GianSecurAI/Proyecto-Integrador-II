@@ -24,9 +24,8 @@ import { CartStateService } from '../../services/cart-state.service';
  * - No "Color"/"Material" attribute lines (not real `CatalogProduct` fields) — category/
  *   subcategory shown instead (`CartItemComponent`).
  * - No "Shipping: FREE" claim — this project's own shipping policy
- *   (`features/legal/pages/shipping-policy/`) says shipping is calculated at checkout, and no
- *   payment gateway is chosen yet (CLAUDE.md). The summary below shows an honest
- *   "Se calcula en el checkout" note instead, and the displayed "Total" equals the subtotal.
+ *   (`features/legal/pages/shipping-policy/`) states the price shown is the price charged (no shipping
+ *   cost line, ADR-004 D-04); the displayed "Total" equals the subtotal.
  * - No "SSL Encrypted"/"Free returns 30 days" trust badges — unverifiable/contradicted by the
  *   real refund policy page.
  * - No product photography — same placeholder treatment as `shared/ui/product-card`.

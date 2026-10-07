@@ -54,7 +54,7 @@ describe('AuthService (real HTTP, contract shapes)', () => {
     expect(service.hasPendingRequest()).toBeFalse();
   });
 
-  it('verifies, reads the identity back from /auth/me and marks the session with server values', () => {
+  it('verifies and marks the session with server values', () => {
     service.requestOtp('staff@armakers3d.com').subscribe();
     httpMock.expectOne(`${base}/otp/request`).flush({ message: 'ok' }, accepted);
 
@@ -62,8 +62,8 @@ describe('AuthService (real HTTP, contract shapes)', () => {
     service.verifyOtp('123456').subscribe((r) => (result = r));
     const verify = httpMock.expectOne(`${base}/otp/verify`);
     expect(verify.request.body).toEqual({ email: 'staff@armakers3d.com', code: '123456' });
-    verify.flush({ accountStatus: 'existing', role: 'ASESOR' });
-    httpMock.expectOne(`${base}/me`).flush({ id: 7, email: 'staff@armakers3d.com', role: 'ASESOR' });
+    verify.flush({ accountStatus: 'existing', id: 7, email: 'staff@armakers3d.com', role: 'ASESOR' });
+    httpMock.expectNone(`${base}/me`);
 
     expect(result).toEqual({
       role: 'ASESOR',

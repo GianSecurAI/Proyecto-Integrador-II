@@ -22,7 +22,7 @@ function detail(overrides: Record<string, unknown> = {}) {
   return {
     id: 'PED-9001',
     placedAt: '2026-06-01T10:00:00Z',
-    status: 'PENDIENTE',
+    status: 'CONFIRMADO',
     kind: 'ESTANDAR',
     summary: '2 unidades: Llavero',
     totalAmount: 25,
@@ -37,13 +37,13 @@ function detail(overrides: Record<string, unknown> = {}) {
     statusHistory: [
       {
         previousStatus: null,
-        newStatus: 'PENDIENTE',
+        newStatus: 'CONFIRMADO',
         changedAt: '2026-06-01T10:00:00Z',
         responsible: 'Sistema',
         note: null,
       },
     ],
-    allowedNextStatuses: ['CONFIRMADO', 'CANCELADO'],
+    allowedNextStatuses: ['EN_PRODUCCION', 'CANCELADO'],
     ...overrides,
   };
 }
@@ -82,7 +82,7 @@ describe('AdminOrderDetailPage (GET /api/admin/orders/{id}, PATCH .../status)', 
     load();
     const text: string = fixture.nativeElement.textContent;
     expect(text).toContain('PED-9001');
-    expect(text).toContain('Pendiente');
+    expect(text).toContain('Confirmado');
     expect(text).toContain('ana@example.com');
     expect(text).toContain('987654321');
     expect(text).toContain('Llavero × 2');
@@ -139,21 +139,21 @@ describe('AdminOrderDetailPage (GET /api/admin/orders/{id}, PATCH .../status)', 
   it('PATCHes the chosen status with the optional note and renders the returned order', () => {
     create();
     load();
-    component.updateSelectedNextStatus('CONFIRMADO');
+    component.updateSelectedNextStatus('EN_PRODUCCION');
     component.updateTransitionNote(' Pago verificado ');
     component.submitTransition();
     const req = http.expectOne(`${url}/status`);
     expect(req.request.method).toBe('PATCH');
-    expect(req.request.body).toEqual({ status: 'CONFIRMADO', note: 'Pago verificado' });
+    expect(req.request.body).toEqual({ status: 'EN_PRODUCCION', note: 'Pago verificado' });
     req.flush(
       detail({
-        status: 'CONFIRMADO',
-        allowedNextStatuses: ['EN_PRODUCCION', 'CANCELADO'],
+        status: 'EN_PRODUCCION',
+        allowedNextStatuses: ['ENVIADO', 'CANCELADO'],
         statusHistory: [
-          { previousStatus: null, newStatus: 'PENDIENTE', changedAt: '2026-06-01T10:00:00Z', responsible: 'Sistema', note: null },
+          { previousStatus: null, newStatus: 'CONFIRMADO', changedAt: '2026-06-01T10:00:00Z', responsible: 'Sistema', note: null },
           {
-            previousStatus: 'PENDIENTE',
-            newStatus: 'CONFIRMADO',
+            previousStatus: 'CONFIRMADO',
+            newStatus: 'EN_PRODUCCION',
             changedAt: '2026-06-01T11:00:00Z',
             responsible: 'asesor@armakers3d.com',
             note: 'Pago verificado',
@@ -162,10 +162,10 @@ describe('AdminOrderDetailPage (GET /api/admin/orders/{id}, PATCH .../status)', 
       }),
     );
     fixture.detectChanges();
-    expect(component.order()?.status).toBe('CONFIRMADO');
+    expect(component.order()?.status).toBe('EN_PRODUCCION');
     expect(component.transitionSuccess()).toContain('actualizó');
     expect(fixture.nativeElement.textContent).toContain('Pago verificado');
-    expect(component.allowedNextStatuses()).toEqual(['EN_PRODUCCION', 'CANCELADO']);
+    expect(component.allowedNextStatuses()).toEqual(['ENVIADO', 'CANCELADO']);
   });
 
   it('omits the note when blank', () => {
@@ -181,7 +181,7 @@ describe('AdminOrderDetailPage (GET /api/admin/orders/{id}, PATCH .../status)', 
   it('on 409 INVALID_STATUS_TRANSITION shows a message and reloads the current server state', () => {
     create();
     load();
-    component.updateSelectedNextStatus('CONFIRMADO');
+    component.updateSelectedNextStatus('EN_PRODUCCION');
     component.submitTransition();
     http
       .expectOne(`${url}/status`)
@@ -198,13 +198,13 @@ describe('AdminOrderDetailPage (GET /api/admin/orders/{id}, PATCH .../status)', 
   it('shows a generic error on a server failure and does not change the order', () => {
     create();
     load();
-    component.updateSelectedNextStatus('CONFIRMADO');
+    component.updateSelectedNextStatus('EN_PRODUCCION');
     component.submitTransition();
     http
       .expectOne(`${url}/status`)
       .flush({ code: 'INTERNAL_ERROR', message: 'x', timestamp: 't' }, { status: 500, statusText: 'x' });
     expect(component.transitionError()).toContain('No pudimos actualizar');
-    expect(component.order()?.status).toBe('PENDIENTE');
+    expect(component.order()?.status).toBe('CONFIRMADO');
   });
 
   it('shows not-found on 404', () => {

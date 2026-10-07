@@ -12,8 +12,7 @@ const ORDER_REPORT = {
   standardOrders: 3,
   customOrders: 2,
   byStatus: [
-    { status: 'PENDIENTE', count: 1 },
-    { status: 'CONFIRMADO', count: 2 },
+    { status: 'CONFIRMADO', count: 3 },
     { status: 'EN_PRODUCCION', count: 0 },
     { status: 'ENVIADO', count: 0 },
     { status: 'ENTREGADO', count: 1 },

@@ -15,11 +15,11 @@ interface AdminNavItem {
 }
 
 /**
- * The six approved admin domains, each tracing to a "Confirmado" requirement in
+ * The five approved admin domains, each tracing to a "Confirmado" requirement in
  * `docs/discovery/06-system-definition.md`:
  * - Productos     -> RF-07 (lines 197-201: alta/edición/activación de productos) — Administrador-only.
  * - Pedidos       -> RF-13 (gestión de estados del pedido) — Administrador/Asesor.
- * - Cotizaciones  -> RF-10 (registro y gestión de cotización por Asesor/Administrador).
+ * (No Cotizaciones entry: quotations are prepared outside the system, ADR-004 D-14.)
  * - Incidencias   -> RF-16/17/18 (gestión de estado, prioridad, resolución) — Administrador/Asesor.
  * - Reportes      -> RF-19 (reportes de pedidos/cotizaciones/incidencias, exclusivo Administrador).
  * - Usuarios y roles -> RF-03 (autorización por rol / gestión de roles y permisos) — Administrador-only.
@@ -35,7 +35,6 @@ interface AdminNavItem {
 const ADMIN_NAV_ITEMS: readonly AdminNavItem[] = [
   { label: 'Productos', path: '/admin/products', roles: ADMIN_ONLY_ROLES },
   { label: 'Pedidos', path: '/admin/orders' },
-  { label: 'Cotizaciones', path: '/admin/quotations' },
   { label: 'Incidencias', path: '/admin/incidents' },
   { label: 'Reportes', path: '/admin/reports', roles: ADMIN_ONLY_ROLES },
   { label: 'Usuarios y roles', path: '/admin/users', roles: ADMIN_ONLY_ROLES },

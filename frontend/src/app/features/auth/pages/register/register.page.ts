@@ -94,7 +94,7 @@ export class RegisterPage {
         next: () => {
           this.submitting.set(false);
           this.form.reset();
-          void this.router.navigate(['/auth/verify-code']);
+          void this.router.navigate(['/auth/verify-code'], { queryParamsHandling: 'preserve' });
         },
         error: (err: unknown) => {
           this.submitting.set(false);

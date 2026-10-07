@@ -9,6 +9,7 @@ import { ProfileFieldRowComponent } from '../../components/profile-field-row/pro
 import { EditableCustomerProfileFields } from '../../models/customer-profile.model';
 import { CustomerProfileService } from '../../services/customer-profile.service';
 import { applyFieldErrors } from '../../../../core/errors/form-errors';
+import { withRateLimit } from '../../../../core/models/api-error.model';
 
 /**
  * Local, page-only form model — the editable subset of `CustomerProfileViewModel`
@@ -136,7 +137,7 @@ export class ProfilePage {
           this.errorMessage.set(
             unmatched.length > 0 || this.form.invalid
               ? 'Revisa los datos ingresados e inténtalo de nuevo.'
-              : 'No pudimos guardar los cambios. Inténtalo de nuevo más tarde.',
+              : withRateLimit(err, 'No pudimos guardar los cambios. Inténtalo de nuevo más tarde.'),
           );
         },
       });

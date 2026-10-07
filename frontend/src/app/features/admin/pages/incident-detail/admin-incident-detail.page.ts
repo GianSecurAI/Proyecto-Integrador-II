@@ -1,7 +1,7 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { apiErrorCode, httpStatus } from '../../../../core/models/api-error.model';
+import { apiErrorCode, httpStatus, withRateLimit } from '../../../../core/models/api-error.model';
 import { SessionStateService } from '../../../../core/services/session-state.service';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { CardComponent } from '../../../../shared/ui/card/card.component';
@@ -12,7 +12,6 @@ import { StatusBadgeComponent } from '../../../../shared/ui/status-badge/status-
 import {
   AdminIncidentViewModel,
   INCIDENT_PRIORITIES,
-  INCIDENT_STATUSES,
   IncidentPriority,
   describeIncidentPriority,
 } from '../../models/admin-incident.model';
@@ -59,7 +58,6 @@ export class AdminIncidentDetailPage {
   readonly status = signal<LoadStatus>('loading');
   readonly incident = signal<AdminIncidentViewModel | null>(null);
 
-  readonly allStatuses = INCIDENT_STATUSES;
   readonly allPriorities = INCIDENT_PRIORITIES;
 
   readonly selectedStatus = signal<IncidentStatus | null>(null);
@@ -94,16 +92,18 @@ export class AdminIncidentDetailPage {
   });
 
   /**
-   * Statuses offered in the change-status select: every status except the current one and
-   * RESUELTA (reachable ONLY through the resolution form/endpoint). The backend owns the
-   * lifecycle (ABIERTA -> EN_REVISION -> RECHAZADA) and answers 409 INVALID_STATUS_TRANSITION for
-   * anything else, so no transition table is duplicated here (`IncidentDto` carries no
-   * `allowedNextStatuses` — see docs/reviews/frontend-backend-integration.md).
+   * Statuses offered in the change-status select: exactly the server's `allowedNextStatuses`
+   * minus RESUELTA, which is reachable ONLY through the resolution form/endpoint (PATCH rejects
+   * it). No transition table lives in the client.
    */
-  readonly otherStatuses = computed(() => {
-    const current = this.incident();
-    return current ? this.allStatuses.filter((s) => s !== current.status && s !== 'RESUELTA') : [];
-  });
+  readonly otherStatuses = computed(() =>
+    (this.incident()?.allowedNextStatuses ?? []).filter((s) => s !== 'RESUELTA'),
+  );
+
+  /** The server allows RESUELTA next, so the resolution form is offered. */
+  readonly canResolve = computed(
+    () => this.incident()?.allowedNextStatuses.includes('RESUELTA') ?? false,
+  );
 
   readonly otherPriorities = computed(() => {
     const current = this.incident();
@@ -176,7 +176,7 @@ export class AdminIncidentDetailPage {
           this.statusError.set(
             apiErrorCode(err) === 'INVALID_STATUS_TRANSITION'
               ? 'Ese cambio de estado no está permitido para la situación actual de la incidencia.'
-              : 'No pudimos actualizar el estado. Inténtalo de nuevo más tarde.',
+              : withRateLimit(err, 'No pudimos actualizar el estado. Inténtalo de nuevo más tarde.'),
           );
         },
       });
@@ -201,9 +201,11 @@ export class AdminIncidentDetailPage {
           this.selectedPriority.set(null);
           this.prioritySuccess.set('La prioridad de la incidencia se actualizó correctamente.');
         },
-        error: () => {
+        error: (err: unknown) => {
           this.updatingPriority.set(false);
-          this.priorityError.set('No pudimos actualizar la prioridad. Inténtalo de nuevo más tarde.');
+          this.priorityError.set(
+            withRateLimit(err, 'No pudimos actualizar la prioridad. Inténtalo de nuevo más tarde.'),
+          );
         },
       });
   }
@@ -234,7 +236,7 @@ export class AdminIncidentDetailPage {
               ? 'Solo una incidencia En revisión puede resolverse. Cambia primero su estado.'
               : apiErrorCode(err) === 'VALIDATION_FAILED'
                 ? 'La resolución no es válida (máx. 1000 caracteres).'
-                : 'No pudimos registrar la resolución. Inténtalo de nuevo más tarde.',
+                : withRateLimit(err, 'No pudimos registrar la resolución. Inténtalo de nuevo más tarde.'),
           );
         },
       });

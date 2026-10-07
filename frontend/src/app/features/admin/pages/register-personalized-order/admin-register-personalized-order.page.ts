@@ -4,7 +4,7 @@ import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { Router, RouterLink } from '@angular/router';
 import { applyFieldErrors, serverError } from '../../../../core/errors/form-errors';
 import { IdempotencyAttempt } from '../../../../core/http/idempotency-attempt';
-import { apiErrorCode, httpStatus } from '../../../../core/models/api-error.model';
+import { apiErrorCode, httpStatus, rateLimitMessage } from '../../../../core/models/api-error.model';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { CardComponent } from '../../../../shared/ui/card/card.component';
 import { FormFieldComponent } from '../../../../shared/ui/form-field/form-field.component';
@@ -138,7 +138,7 @@ export class AdminRegisterPersonalizedOrderPage {
       this.attempt.reset();
       return 'No pudimos completar el envío. Inténtalo de nuevo.';
     }
-    if (httpStatus(err) === 429) return 'Demasiados intentos. Espera un momento e inténtalo de nuevo.';
+    if (httpStatus(err) === 429) return rateLimitMessage(err);
     return 'No pudimos registrar el pedido personalizado. Inténtalo de nuevo más tarde.';
   }
 }
