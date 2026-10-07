@@ -83,4 +83,30 @@ abstract class AuthenticatedSessionRepositoryContract {
         assertThat(repository().findById("tok-rev-other").orElseThrow().getRevokedAt()).isNull();
         assertThat(repository().revokeAllForCliente(owner, T0.plusSeconds(120))).isZero();
     }
+
+    @Test
+    void purgeDeletesOnlySessionsExpiredOrRevokedBeforeTheCutoff() {
+        Long owner = existingClienteId();
+        Instant cutoff = T0.plusSeconds(100_000);
+        repository().deleteExpiredOrRevokedBefore(cutoff); // clear rows other committed tests may have left
+        // expired long ago -> deleted
+        repository().save(new AuthenticatedSession("tok-purge-expired", owner, Rol.CLIENTE, T0, T0.plusSeconds(3600)));
+        // revoked long ago, still nominally unexpired -> deleted
+        AuthenticatedSession revoked = new AuthenticatedSession("tok-purge-revoked", owner, Rol.CLIENTE, T0, cutoff.plusSeconds(9999));
+        revoked.revoke(T0.plusSeconds(10));
+        repository().save(revoked);
+        // revoked after the cutoff and active ones -> kept
+        AuthenticatedSession revokedRecently = new AuthenticatedSession("tok-purge-recent", owner, Rol.CLIENTE, T0, cutoff.plusSeconds(9999));
+        revokedRecently.revoke(cutoff.plusSeconds(1));
+        repository().save(revokedRecently);
+        repository().save(new AuthenticatedSession("tok-purge-active", owner, Rol.CLIENTE, T0, cutoff.plusSeconds(9999)));
+
+        assertThat(repository().deleteExpiredOrRevokedBefore(cutoff)).isEqualTo(2);
+
+        assertThat(repository().findById("tok-purge-expired")).isEmpty();
+        assertThat(repository().findById("tok-purge-revoked")).isEmpty();
+        assertThat(repository().findById("tok-purge-recent")).isPresent();
+        assertThat(repository().findById("tok-purge-active")).isPresent();
+        assertThat(repository().deleteExpiredOrRevokedBefore(cutoff)).isZero();
+    }
 }

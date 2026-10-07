@@ -60,9 +60,9 @@ class OrderNotificationServiceTest {
     }
 
     @ParameterizedTest
-    @EnumSource(value = OrderStatus.class, names = {"CONFIRMADO", "EN_PRODUCCION", "ENVIADO", "ENTREGADO"})
+    @EnumSource(value = OrderStatus.class, names = {"CONFIRMADO", "EN_PRODUCCION", "ENVIADO", "ENTREGADO", "CANCELADO"})
     void notifyingStatusSendsOneEmailToTheOrdersCustomer(OrderStatus status) {
-        service.onOrderStatusChanged(event(OrderStatus.PENDIENTE, status));
+        service.onOrderStatusChanged(event(null, status));
 
         assertThat(sender.getSent()).hasSize(1);
         assertThat(sender.getSent().get(0).to()).isEqualTo("cliente@example.test");
@@ -71,14 +71,13 @@ class OrderNotificationServiceTest {
                 .containsExactly("notification.sent order=PED-000001 status=" + status);
     }
 
-    @ParameterizedTest
-    @EnumSource(value = OrderStatus.class, names = {"PENDIENTE", "CANCELADO"})
-    void nonNotifyingStatusSendsNothingAndDoesNotEvenLookUpTheCustomer(OrderStatus status) {
-        service.onOrderStatusChanged(event(null, status));
+    @Test
+    void cancellationEmailNeverContainsAHistoryNote() {
+        service.onOrderStatusChanged(event(OrderStatus.CONFIRMADO, OrderStatus.CANCELADO));
 
-        assertThat(sender.getSent()).isEmpty();
-        assertThat(logs.list).isEmpty();
-        verifyNoInteractions(directory);
+        assertThat(sender.getSent()).hasSize(1);
+        assertThat(sender.getSent().get(0).body()).contains("cancelado").contains("WhatsApp")
+                .doesNotContain("reembolso").doesNotContain("nota");
     }
 
     @Test

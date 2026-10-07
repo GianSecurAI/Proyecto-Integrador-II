@@ -127,7 +127,7 @@ class OrderApiTest extends AbstractNoDbRbacTest {
         ResultActions result = submit(customer, order(item(p1, 2), item(p2, 3)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(org.hamcrest.Matchers.matchesPattern("PED-\\d{6}")))
-                .andExpect(jsonPath("$.status").value("PENDIENTE"))
+                .andExpect(jsonPath("$.status").value("CONFIRMADO"))
                 .andExpect(jsonPath("$.kind").value("ESTANDAR"))
                 .andExpect(jsonPath("$.placedAt").isString())
                 .andExpect(jsonPath("$.items.length()").value(2))
@@ -202,7 +202,7 @@ class OrderApiTest extends AbstractNoDbRbacTest {
         assertMoney(created.get("totalAmount"), "40.00");
         assertMoney(created.get("items").get(0).get("unitPrice"), "20.00");
         assertThat(created.get("items").get(0).get("title").asText()).isNotEqualTo("Hacked");
-        assertThat(created.get("status").asText()).isEqualTo("PENDIENTE");
+        assertThat(created.get("status").asText()).isEqualTo("CONFIRMADO");
         assertThat(created.get("kind").asText()).isEqualTo("ESTANDAR");
         assertThat(created.get("id").asText()).isNotEqualTo("PED-999999");
         assertThat(created.get("placedAt").asText()).doesNotStartWith("2001");

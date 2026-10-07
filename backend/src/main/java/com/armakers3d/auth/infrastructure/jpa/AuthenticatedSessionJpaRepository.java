@@ -13,4 +13,9 @@ public interface AuthenticatedSessionJpaRepository extends JpaRepository<Authent
     @Query("update AuthenticatedSessionEntity s set s.revokedAt = :now"
             + " where s.clienteId = :clienteId and s.revokedAt is null")
     int revokeAllForCliente(@Param("clienteId") Long clienteId, @Param("now") Instant now);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("delete from AuthenticatedSessionEntity s where s.expiresAt < :cutoff"
+            + " or (s.revokedAt is not null and s.revokedAt < :cutoff)")
+    int deleteExpiredOrRevokedBefore(@Param("cutoff") Instant cutoff);
 }

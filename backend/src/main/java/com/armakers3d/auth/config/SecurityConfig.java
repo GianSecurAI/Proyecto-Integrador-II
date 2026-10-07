@@ -3,6 +3,7 @@ package com.armakers3d.auth.config;
 import com.armakers3d.auth.domain.Rol;
 import com.armakers3d.auth.security.AccessMatrix;
 import com.armakers3d.auth.security.ApiSecurityErrorHandlers;
+import com.armakers3d.auth.security.MutationRateLimitFilter;
 import com.armakers3d.auth.security.OtpIpRateLimitFilter;
 import com.armakers3d.auth.security.SessionAuthenticationFilter;
 import com.armakers3d.auth.service.SessionService;
@@ -52,6 +53,7 @@ public class SecurityConfig {
             SessionService sessionService,
             ObjectMapper objectMapper,
             OtpPolicyProperties otpPolicy,
+            MutationRateLimitProperties mutationLimit,
             Clock clock,
             @Value("${security.api-docs-public:false}") boolean apiDocsPublic)
             throws Exception {
@@ -73,6 +75,8 @@ public class SecurityConfig {
                 .addFilterBefore(new SessionAuthenticationFilter(sessionService), AnonymousAuthenticationFilter.class)
                 // M3: per-IP throttle on the public OTP endpoints, before any session/DB work.
                 .addFilterBefore(new OtpIpRateLimitFilter(otpPolicy, clock, objectMapper), SessionAuthenticationFilter.class)
+                // BE-05: per-account mutation limit, after authentication (key = account id).
+                .addFilterAfter(new MutationRateLimitFilter(mutationLimit, clock, objectMapper), SessionAuthenticationFilter.class)
                 .authorizeHttpRequests(auth -> {
                     // Operational: liveness probe only (no other actuator endpoint is exposed anyway).
                     auth.requestMatchers(paths.matcher("/actuator/health"), paths.matcher("/actuator/health/**"))

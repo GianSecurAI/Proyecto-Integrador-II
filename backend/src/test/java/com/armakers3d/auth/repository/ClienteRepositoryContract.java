@@ -10,8 +10,7 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Behavior every {@link ClienteRepository} adapter must share (run against the JPA and the
- * in-memory adapter). ASESOR is intentionally not used: the V1 check constraint does not allow it
- * yet, so only the in-memory adapter could store it.
+ * in-memory adapter). ASESOR is covered: V4 (DB-02) widened the role check constraint, so the JPA adapter stores it too.
  */
 abstract class ClienteRepositoryContract {
 
@@ -29,6 +28,18 @@ abstract class ClienteRepositoryContract {
         assertThat(found.getRol()).isEqualTo(Rol.ADMINISTRADOR);
         assertThat(found.getCreatedAt()).isEqualTo(T0);
         assertThat(found.isActive()).isTrue();
+    }
+
+    @Test
+    void anAdvisorAccountRoundTrips() {
+        Cliente saved = repository().save(Cliente.provisioned("contract-advisor@example.test", Rol.ASESOR, T0));
+
+        Cliente found = repository().findById(saved.getId()).orElseThrow();
+        assertThat(found.getRol()).isEqualTo(Rol.ASESOR);
+        assertThat(repository().findByEmail("contract-advisor@example.test").orElseThrow().getRol()).isEqualTo(Rol.ASESOR);
+        // and an advisor can be promoted/changed like any account
+        repository().save(found.withRol(Rol.ADMINISTRADOR));
+        assertThat(repository().findById(saved.getId()).orElseThrow().getRol()).isEqualTo(Rol.ADMINISTRADOR);
     }
 
     @Test

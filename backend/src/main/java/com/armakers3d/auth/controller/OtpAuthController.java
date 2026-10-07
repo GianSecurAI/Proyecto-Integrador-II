@@ -70,7 +70,7 @@ public class OtpAuthController {
             summary = "Verify a one-time code",
             description =
                     "On success, establishes a server-side session via an httpOnly/Secure/SameSite=Strict "
-                            + "cookie and reveals whether the account was just created (FR-004a).")
+                            + "cookie. Body: accountStatus (created|existing, FR-004a), id, email, role.")
     @ApiResponse(
             responseCode = "200",
             description = "Code verified; session cookie set.",
@@ -94,6 +94,7 @@ public class OtpAuthController {
         sessionService.attachCookie(response, session);
 
         String accountStatus = result.accountJustCreated() ? OtpVerifyResponseDto.CREATED : OtpVerifyResponseDto.EXISTING;
-        return ResponseEntity.ok(new OtpVerifyResponseDto(accountStatus, result.cliente().getRol()));
+        return ResponseEntity.ok(new OtpVerifyResponseDto(
+                accountStatus, result.cliente().getId(), result.cliente().getEmail(), result.cliente().getRol()));
     }
 }

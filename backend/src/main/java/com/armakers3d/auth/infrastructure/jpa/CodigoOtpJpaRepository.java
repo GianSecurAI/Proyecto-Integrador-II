@@ -35,4 +35,8 @@ public interface CodigoOtpJpaRepository extends JpaRepository<CodigoOtpEntity, L
     @Query("update CodigoOtpEntity c set c.status = com.armakers3d.auth.domain.CodigoOtpStatus.VERIFIED,"
             + " c.usedAt = :now where c.id = :id and c.status = com.armakers3d.auth.domain.CodigoOtpStatus.PENDING")
     int markVerifiedIfPending(@Param("id") Long id, @Param("now") Instant now);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("delete from CodigoOtpEntity c where c.issuedAt < :cutoff")
+    int deleteIssuedBefore(@Param("cutoff") Instant cutoff);
 }

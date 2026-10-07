@@ -24,10 +24,9 @@ public final class OrderEmailTemplates {
 
     private OrderEmailTemplates() {}
 
-    /** Which statuses send an email: exactly the lifecycle doc map (CONFIRMADO, EN_PRODUCCION, ENVIADO, ENTREGADO). */
+    /** Which statuses send an email: exactly the lifecycle doc map (all five statuses, D-16; CANCELADO added by BE-02). */
     public static boolean notifies(OrderStatus status) {
-        return status == OrderStatus.CONFIRMADO || status == OrderStatus.EN_PRODUCCION
-                || status == OrderStatus.ENVIADO || status == OrderStatus.ENTREGADO;
+        return status != null;
     }
 
     /** Empty when the status does not notify. */
@@ -43,7 +42,7 @@ public final class OrderEmailTemplates {
         switch (status) {
             case CONFIRMADO -> {
                 friendly = "Confirmado";
-                message = "Hemos confirmado tu pedido y pronto comenzaremos con su preparacion.";
+                message = "Hemos confirmado tu pedido (pago recibido) y pronto comenzaremos con su preparacion.";
             }
             case EN_PRODUCCION -> {
                 friendly = "En preparacion";
@@ -52,6 +51,10 @@ public final class OrderEmailTemplates {
             case ENVIADO -> {
                 friendly = "Enviado";
                 message = "Tu pedido ya fue enviado y va en camino.";
+            }
+            case CANCELADO -> {
+                friendly = "Cancelado";
+                message = "Tu pedido fue cancelado. Si tienes dudas, escribenos por WhatsApp y te ayudaremos.";
             }
             default -> {
                 friendly = "Entregado";

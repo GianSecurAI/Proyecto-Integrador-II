@@ -51,7 +51,7 @@ public final class AccessMatrix {
             new Rule("/api/auth/logout", Access.PUBLIC), // idempotent 204 by contract (E4)
             new Rule("/api/auth/me", Access.ANY_ROLE),
             // Customer self-service (own data only, enforced from the principal)
-            new Rule("/api/customers/**", Access.CLIENTE),
+            new Rule("/api/customers/me", Access.CLIENTE), // GET/PUT; GET /api/customers/{id} retired (BE-06)
             // Customer orders: submit (POST), list (GET) and detail/tracking (GET /{id}). Own orders only; the owner
             // is the principal; not-owned ids are 404. Explicit paths on purpose (no /api/orders/**).
             new Rule("/api/orders", Access.CLIENTE),

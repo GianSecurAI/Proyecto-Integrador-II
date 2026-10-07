@@ -34,7 +34,8 @@ import org.springframework.test.web.servlet.MockMvc;
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("nodb")
-@TestPropertySource(properties = {"otp.ip-max-request-calls=1000000", "otp.ip-max-verify-calls=1000000"})
+@TestPropertySource(properties = {"otp.ip-max-request-calls=1000000", "otp.ip-max-verify-calls=1000000",
+        "ratelimit.mutations-per-window=1000000"})
 @Import(NoDbTestConfig.class)
 public abstract class AbstractNoDbRbacTest {
 

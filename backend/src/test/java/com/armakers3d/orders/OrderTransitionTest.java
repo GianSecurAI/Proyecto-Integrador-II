@@ -26,7 +26,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 /**
  * Domain-level transition rules. The allowed table is written out here independently from the
  * production code, straight from docs/architecture/order-lifecycle.md section 3; every other
- * from-to pair (36 pairs in total) must be rejected.
+ * from-to pair (25 pairs in total) must be rejected.
  */
 class OrderTransitionTest {
 
@@ -35,7 +35,6 @@ class OrderTransitionTest {
 
     /** order-lifecycle.md section 3, verbatim. */
     private static final Map<OrderStatus, List<OrderStatus>> DOC_TABLE = Map.of(
-            OrderStatus.PENDIENTE, List.of(OrderStatus.CONFIRMADO, OrderStatus.CANCELADO),
             OrderStatus.CONFIRMADO, List.of(OrderStatus.EN_PRODUCCION, OrderStatus.CANCELADO),
             OrderStatus.EN_PRODUCCION, List.of(OrderStatus.ENVIADO, OrderStatus.CANCELADO),
             OrderStatus.ENVIADO, List.of(OrderStatus.ENTREGADO),
@@ -70,10 +69,10 @@ class OrderTransitionTest {
     }
 
     @Test
-    void theTableCoversEverySixBySixPairExactlyOnce() {
-        assertThat(allowed().count() + rejected().count()).isEqualTo(36);
-        assertThat(allowed().count()).isEqualTo(7);
-        assertThat(rejected().count()).isEqualTo(29);
+    void theTableCoversEveryFiveByFivePairExactlyOnce() {
+        assertThat(allowed().count() + rejected().count()).isEqualTo(25);
+        assertThat(allowed().count()).isEqualTo(5);
+        assertThat(rejected().count()).isEqualTo(20);
     }
 
     @ParameterizedTest(name = "{0} -> {1} is allowed")
@@ -119,20 +118,31 @@ class OrderTransitionTest {
         }
         assertThat(OrderStatus.ENTREGADO.isTerminal()).isTrue();
         assertThat(OrderStatus.CANCELADO.isTerminal()).isTrue();
-        assertThat(OrderStatus.PENDIENTE.canTransitionTo(null)).isFalse();
+        assertThat(OrderStatus.values()).hasSize(5);
+        assertThat(OrderStatus.CONFIRMADO.canTransitionTo(null)).isFalse();
+    }
+
+    @Test
+    void skippingAndCancellingAfterShipmentAreIllegal() {
+        assertThat(OrderStatus.CONFIRMADO.canTransitionTo(OrderStatus.ENVIADO)).isFalse();
+        assertThat(OrderStatus.ENVIADO.canTransitionTo(OrderStatus.CANCELADO)).isFalse();
+        assertThatThrownBy(() -> orderIn(OrderStatus.CONFIRMADO).transitionTo(OrderStatus.ENVIADO, 1L, Rol.ASESOR, null, T1))
+                .isInstanceOf(InvalidStatusTransitionException.class);
+        assertThatThrownBy(() -> orderIn(OrderStatus.ENVIADO).transitionTo(OrderStatus.CANCELADO, 1L, Rol.ASESOR, null, T1))
+                .isInstanceOf(InvalidStatusTransitionException.class);
     }
 
     @Test
     void aNullTargetIsRejected() {
-        assertThatThrownBy(() -> orderIn(OrderStatus.PENDIENTE).transitionTo(null, 1L, Rol.ASESOR, null, T1))
+        assertThatThrownBy(() -> orderIn(OrderStatus.CONFIRMADO).transitionTo(null, 1L, Rol.ASESOR, null, T1))
                 .isInstanceOf(InvalidStatusTransitionException.class);
     }
 
     @Test
     void creationWritesTheInitialHistoryEntryForBothFlows() {
-        Order standard = orderIn(OrderStatus.PENDIENTE);
+        Order standard = orderIn(OrderStatus.CONFIRMADO);
         assertThat(standard.history()).containsExactly(
-                new StatusHistoryEntry(null, OrderStatus.PENDIENTE, 7L, Rol.CLIENTE, T0, null));
+                new StatusHistoryEntry(null, OrderStatus.CONFIRMADO, 7L, Rol.CLIENTE, T0, null));
 
         Order personalized = Order.registerPersonalized(
                 "PED-000002", 7L, 99L, Rol.ASESOR, "Figura", new BigDecimal("10.00"), T0);
@@ -142,32 +152,31 @@ class OrderTransitionTest {
 
     @Test
     void historyStaysOrderedAcrossAWalkThroughTheWholeLifecycle() {
-        Order o = orderIn(OrderStatus.PENDIENTE);
-        OrderStatus[] path = {OrderStatus.CONFIRMADO, OrderStatus.EN_PRODUCCION, OrderStatus.ENVIADO, OrderStatus.ENTREGADO};
+        Order o = orderIn(OrderStatus.CONFIRMADO);
+        OrderStatus[] path = {OrderStatus.EN_PRODUCCION, OrderStatus.ENVIADO, OrderStatus.ENTREGADO};
         Instant t = T0;
         for (OrderStatus next : path) {
             t = t.plusSeconds(60);
             o = o.transitionTo(next, 5L, Rol.ASESOR, null, t);
         }
         assertThat(o.history()).extracting(StatusHistoryEntry::toStatus).containsExactly(
-                OrderStatus.PENDIENTE, OrderStatus.CONFIRMADO, OrderStatus.EN_PRODUCCION, OrderStatus.ENVIADO,
-                OrderStatus.ENTREGADO);
+                OrderStatus.CONFIRMADO, OrderStatus.EN_PRODUCCION, OrderStatus.ENVIADO, OrderStatus.ENTREGADO);
         assertThat(o.history()).extracting(StatusHistoryEntry::fromStatus).containsExactly(
-                null, OrderStatus.PENDIENTE, OrderStatus.CONFIRMADO, OrderStatus.EN_PRODUCCION, OrderStatus.ENVIADO);
+                null, OrderStatus.CONFIRMADO, OrderStatus.EN_PRODUCCION, OrderStatus.ENVIADO);
         assertThat(o.history()).extracting(StatusHistoryEntry::at).isSorted();
         assertThat(o.history().get(o.history().size() - 1).toStatus()).isEqualTo(o.status());
     }
 
     @Test
     void noteIsTrimmedBlankBecomesNullAndLimitsApply() {
-        Order o = orderIn(OrderStatus.PENDIENTE);
-        assertThat(o.transitionTo(OrderStatus.CONFIRMADO, 1L, Rol.ASESOR, "   ", T1).history().get(1).note()).isNull();
-        assertThat(o.transitionTo(OrderStatus.CONFIRMADO, 1L, Rol.ASESOR, null, T1).history().get(1).note()).isNull();
-        assertThat(o.transitionTo(OrderStatus.CONFIRMADO, 1L, Rol.ASESOR, "x".repeat(500), T1).history().get(1).note())
+        Order o = orderIn(OrderStatus.CONFIRMADO);
+        assertThat(o.transitionTo(OrderStatus.EN_PRODUCCION, 1L, Rol.ASESOR, "   ", T1).history().get(1).note()).isNull();
+        assertThat(o.transitionTo(OrderStatus.EN_PRODUCCION, 1L, Rol.ASESOR, null, T1).history().get(1).note()).isNull();
+        assertThat(o.transitionTo(OrderStatus.EN_PRODUCCION, 1L, Rol.ASESOR, "x".repeat(500), T1).history().get(1).note())
                 .hasSize(500);
-        assertThatThrownBy(() -> o.transitionTo(OrderStatus.CONFIRMADO, 1L, Rol.ASESOR, "x".repeat(501), T1))
+        assertThatThrownBy(() -> o.transitionTo(OrderStatus.EN_PRODUCCION, 1L, Rol.ASESOR, "x".repeat(501), T1))
                 .isInstanceOf(ValidationFailedException.class);
-        assertThatThrownBy(() -> o.transitionTo(OrderStatus.CONFIRMADO, 1L, Rol.ASESOR, "bad\u0000note", T1))
+        assertThatThrownBy(() -> o.transitionTo(OrderStatus.EN_PRODUCCION, 1L, Rol.ASESOR, "bad\u0000note", T1))
                 .isInstanceOf(ValidationFailedException.class);
     }
 
@@ -175,7 +184,7 @@ class OrderTransitionTest {
     void anInvalidTransitionIsCheckedBeforeTheNote() {
         // The status is the first rule: an illegal change never reports a note problem instead.
         assertThatThrownBy(() -> orderIn(OrderStatus.ENTREGADO)
-                        .transitionTo(OrderStatus.CONFIRMADO, 1L, Rol.ASESOR, "x".repeat(501), T1))
+                        .transitionTo(OrderStatus.EN_PRODUCCION, 1L, Rol.ASESOR, "x".repeat(501), T1))
                 .isInstanceOf(InvalidStatusTransitionException.class);
     }
 }

@@ -24,6 +24,6 @@ public final class IncidentDtoMapper {
         return new AdminIncidentDto(
                 i.id(), i.orderId(), v.orderSummary(), i.description(), i.status(), i.priority(), i.resolution(),
                 i.createdAt(), i.updatedAt(), i.resolvedAt(),
-                c == null ? null : c.email(), c == null ? null : c.name(), c == null ? null : c.phone());
+                c == null ? null : c.email(), c == null ? null : c.name(), c == null ? null : c.phone(), i.status().allowedNext());
     }
 }

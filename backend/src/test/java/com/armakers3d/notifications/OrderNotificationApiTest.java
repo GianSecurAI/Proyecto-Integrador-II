@@ -64,7 +64,7 @@ class OrderNotificationApiTest extends AbstractNoDbRbacTest {
         Cookie advisor = staff(Rol.ASESOR);
         Order o = orderOf(idOf(customer));
 
-        change(advisor, o.id(), "CONFIRMADO").andExpect(status().isOk());
+        change(advisor, o.id(), "EN_PRODUCCION").andExpect(status().isOk());
 
         assertThat(emailSender.getSent()).hasSize(1);
         SentEmail mail = emailSender.getSent().get(0);
@@ -77,23 +77,30 @@ class OrderNotificationApiTest extends AbstractNoDbRbacTest {
     }
 
     @Test
-    void everyNotifyingTransitionSendsAndCancelSendsNothing() throws Exception {
+    void everyTransitionSendsAndTheCancelEmailNeverContainsTheHistoryNote() throws Exception {
         Cookie advisor = staff(Rol.ASESOR);
         String customer = uniqueEmail("cust");
         provision(customer, Rol.CLIENTE);
         Order o = orderOf(idOf(customer));
 
-        change(advisor, o.id(), "CONFIRMADO").andExpect(status().isOk());
         change(advisor, o.id(), "EN_PRODUCCION").andExpect(status().isOk());
         change(advisor, o.id(), "ENVIADO").andExpect(status().isOk());
         change(advisor, o.id(), "ENTREGADO").andExpect(status().isOk());
-        assertThat(emailSender.getSent()).hasSize(4);
+        assertThat(emailSender.getSent()).hasSize(3);
         assertThat(emailSender.getSent()).extracting(SentEmail::to).containsOnly(customer);
 
         emailSender.clear();
         Order c = orderOf(idOf(customer));
-        change(advisor, c.id(), "CANCELADO").andExpect(status().isOk());
-        assertThat(emailSender.getSent()).isEmpty();
+        mockMvc.perform(patch("/api/admin/orders/" + c.id() + "/status").cookie(advisor)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of("status", "CANCELADO", "note", "reembolso-interno-12345"))))
+                .andExpect(status().isOk());
+        assertThat(emailSender.getSent()).hasSize(1);
+        SentEmail cancelMail = emailSender.getSent().get(0);
+        assertThat(cancelMail.to()).isEqualTo(customer);
+        assertThat(cancelMail.subject()).contains(c.id()).contains("Cancelado");
+        assertThat(cancelMail.body()).contains("cancelado").contains("WhatsApp");
+        assertThat(cancelMail.body()).doesNotContain("reembolso-interno-12345");
     }
 
     @Test
@@ -116,9 +123,9 @@ class OrderNotificationApiTest extends AbstractNoDbRbacTest {
         Order o = orderOf(idOf(customer));
         emailSender.setFailing(true);
 
-        change(advisor, o.id(), "CONFIRMADO").andExpect(status().isOk()).andExpect(jsonPath("$.status").value("CONFIRMADO"));
+        change(advisor, o.id(), "EN_PRODUCCION").andExpect(status().isOk()).andExpect(jsonPath("$.status").value("EN_PRODUCCION"));
 
-        assertThat(orders.findById(o.id()).orElseThrow().status()).isEqualTo(OrderStatus.CONFIRMADO);
+        assertThat(orders.findById(o.id()).orElseThrow().status()).isEqualTo(OrderStatus.EN_PRODUCCION);
         assertThat(emailSender.getSent()).isEmpty();
     }
 
@@ -153,7 +160,7 @@ class OrderNotificationApiTest extends AbstractNoDbRbacTest {
 
         mockMvc.perform(patch("/api/admin/orders/" + o.id() + "/status").cookie(advisor)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(Map.of("status", "CONFIRMADO", "to", "evil@x.test", "email", "evil@x.test"))))
+                        .content(json(Map.of("status", "EN_PRODUCCION", "to", "evil@x.test", "email", "evil@x.test"))))
                 .andExpect(status().isOk());
 
         assertThat(emailSender.getSent()).hasSize(1);

@@ -27,7 +27,7 @@ public record Order(
         List<StatusHistoryEntry> history) {
 
     /** Status every standard order starts in (docs/architecture/order-lifecycle.md). */
-    public static final OrderStatus INITIAL_STANDARD_STATUS = OrderStatus.PENDIENTE;
+    public static final OrderStatus INITIAL_STANDARD_STATUS = OrderStatus.CONFIRMADO;
 
     /** Status of a staff-registered personalized order: payment was attested before registration (order-lifecycle.md). */
     public static final OrderStatus INITIAL_PERSONALIZED_STATUS = OrderStatus.CONFIRMADO;

@@ -49,4 +49,11 @@ public interface CodigoOtpRepository {
      * of the correct code (FR-010).
      */
     boolean markVerifiedIfPending(Long id, Instant now);
+
+    /**
+     * Deletes every code issued strictly before {@code cutoff} (daily purge, DB-06 / R2). Returns how many rows were
+     * removed. Codes older than the cutoff can no longer matter: they are expired, and the throttling windows are
+     * far shorter.
+     */
+    int deleteIssuedBefore(Instant cutoff);
 }

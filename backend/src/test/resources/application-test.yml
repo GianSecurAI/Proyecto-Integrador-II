@@ -50,3 +50,13 @@ logging:
 
 app:
   frontend-base-url: http://localhost:4200
+
+# No scheduled timers in tests; the purge service is called directly with a fixed clock.
+purge:
+  enabled: false
+
+# Generous default so the many mutations of the integration tests never trip the limiter; the limiter tests set
+# their own values (MutationRateLimit*Test).
+ratelimit:
+  mutations-per-window: 1000000
+  window-minutes: 10

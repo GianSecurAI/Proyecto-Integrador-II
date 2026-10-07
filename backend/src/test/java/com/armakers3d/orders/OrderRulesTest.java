@@ -53,10 +53,10 @@ class OrderRulesTest {
     }
 
     @Test
-    void aNewStandardOrderStartsPendienteAndEstandar() {
+    void aNewStandardOrderStartsConfirmadoAndEstandar() {
         Order order = Order.placeStandard(
                 "PED-000001", 7L, List.of(new OrderLine(1L, "A", BigDecimal.ONE, 1)), DELIVERY, CONTACT, Instant.EPOCH);
-        assertThat(order.status()).isEqualTo(OrderStatus.PENDIENTE);
+        assertThat(order.status()).isEqualTo(OrderStatus.CONFIRMADO);
         assertThat(order.kind()).isEqualTo(OrderKind.ESTANDAR);
         assertThat(order.belongsTo(7L)).isTrue();
         assertThat(order.belongsTo(8L)).isFalse();

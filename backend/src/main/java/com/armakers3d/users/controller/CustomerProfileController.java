@@ -11,10 +11,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -55,18 +53,5 @@ public class CustomerProfileController {
             @Valid @RequestBody CustomerProfileUpdateRequestDto request) {
         return CustomerProfileResponseDto.from(
                 profileService.updateOwn(user.id(), request.firstName(), request.lastName(), request.phone()));
-    }
-
-    /**
-     * TRANSITIONAL (contract review finding 21; kept only because it is the one existing path-id
-     * endpoint and demonstrates the object-level rule): a customer may read only their own row. The
-     * id is compared with the principal BEFORE any lookup, so another customer id gets 403 whether
-     * or not that account exists, which leaks nothing. Remove once the SPA is on /me.
-     */
-    @GetMapping("/{id}")
-    @PreAuthorize("#id == principal.id()")
-    @Operation(summary = "Own account by id (transitional)", description = "Any id other than the caller is 403.")
-    public CustomerProfileResponseDto byId(@PathVariable Long id, @AuthenticationPrincipal AuthenticatedUser user) {
-        return CustomerProfileResponseDto.from(profileService.getOwn(user.id()));
     }
 }

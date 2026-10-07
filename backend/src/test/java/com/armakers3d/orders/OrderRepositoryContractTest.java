@@ -90,7 +90,8 @@ public abstract class OrderRepositoryContractTest {
     void searchFiltersByCustomerStatusKindAndDateRange() {
         Instant jan = Instant.parse("2026-01-10T12:00:00Z");
         Instant feb = Instant.parse("2026-02-10T12:00:00Z");
-        Order a = repository.save(order(repository.nextOrderNumber(), 1L, jan));
+        Order a = repository.save(order(repository.nextOrderNumber(), 1L, jan)
+                .transitionTo(OrderStatus.EN_PRODUCCION, 5L, Rol.ASESOR, null, jan));
         Order b = repository.save(personalized(1L, feb));
         Order c = repository.save(order(repository.nextOrderNumber(), 2L, feb));
 
@@ -100,7 +101,9 @@ public abstract class OrderRepositoryContractTest {
         assertThat(repository.search(new OrderSearchCriteria(1L, null, null, null, null, null, null), sort, page).content())
                 .containsExactly(b, a);
         assertThat(repository.search(new OrderSearchCriteria(null, OrderStatus.CONFIRMADO, null, null, null, null, null), sort, page)
-                .content()).containsExactly(b);
+                .content()).containsExactly(c, b);
+        assertThat(repository.search(new OrderSearchCriteria(null, OrderStatus.EN_PRODUCCION, null, null, null, null, null), sort, page)
+                .content()).containsExactly(a);
         assertThat(repository.search(new OrderSearchCriteria(null, null, OrderKind.ESTANDAR, null, null, null, null), sort, page)
                 .content()).containsExactly(c, a);
         // from inclusive, toExclusive exclusive
@@ -148,22 +151,22 @@ public abstract class OrderRepositoryContractTest {
     @Test
     void replaceIfStatusAppliesOnlyWhenTheCurrentStatusMatches() {
         Order saved = repository.save(order(repository.nextOrderNumber(), 1L, Instant.EPOCH));
-        Order confirmed = saved.transitionTo(OrderStatus.CONFIRMADO, 5L, Rol.ASESOR, null, Instant.EPOCH.plusSeconds(1));
+        Order confirmed = saved.transitionTo(OrderStatus.EN_PRODUCCION, 5L, Rol.ASESOR, null, Instant.EPOCH.plusSeconds(1));
 
-        assertThat(repository.replaceIfStatus(confirmed, OrderStatus.EN_PRODUCCION)).isFalse();
+        assertThat(repository.replaceIfStatus(confirmed, OrderStatus.ENVIADO)).isFalse();
         assertThat(repository.findById(saved.id())).contains(saved);
 
-        assertThat(repository.replaceIfStatus(confirmed, OrderStatus.PENDIENTE)).isTrue();
+        assertThat(repository.replaceIfStatus(confirmed, OrderStatus.CONFIRMADO)).isTrue();
         assertThat(repository.findById(saved.id())).contains(confirmed);
 
         // The same expectation again fails: the stored status is no longer PENDIENTE.
-        assertThat(repository.replaceIfStatus(confirmed, OrderStatus.PENDIENTE)).isFalse();
+        assertThat(repository.replaceIfStatus(confirmed, OrderStatus.CONFIRMADO)).isFalse();
     }
 
     @Test
     void replaceIfStatusOnAnUnknownOrderIsFalseAndStoresNothing() {
         Order ghost = order("PED-424242", 1L, Instant.EPOCH);
-        assertThat(repository.replaceIfStatus(ghost, OrderStatus.PENDIENTE)).isFalse();
+        assertThat(repository.replaceIfStatus(ghost, OrderStatus.CONFIRMADO)).isFalse();
         assertThat(repository.findById("PED-424242")).isEmpty();
     }
 
@@ -176,11 +179,11 @@ public abstract class OrderRepositoryContractTest {
         AtomicInteger winners = new AtomicInteger();
         List<Future<?>> futures = new java.util.ArrayList<>();
         for (int i = 0; i < threads; i++) {
-            OrderStatus target = i % 2 == 0 ? OrderStatus.CONFIRMADO : OrderStatus.CANCELADO;
+            OrderStatus target = i % 2 == 0 ? OrderStatus.EN_PRODUCCION : OrderStatus.CANCELADO;
             futures.add(pool.submit(() -> {
                 go.await();
                 Order next = saved.transitionTo(target, 5L, Rol.ASESOR, null, Instant.EPOCH.plusSeconds(1));
-                if (repository.replaceIfStatus(next, OrderStatus.PENDIENTE)) {
+                if (repository.replaceIfStatus(next, OrderStatus.CONFIRMADO)) {
                     winners.incrementAndGet();
                 }
                 return null;

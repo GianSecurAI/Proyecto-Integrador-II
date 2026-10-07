@@ -86,7 +86,7 @@ class OrderLifecycleApiTest extends AbstractNoDbRbacTest {
     // ---------- helpers ----------
 
     private static final List<OrderStatus> PATH_TO = List.of(
-            OrderStatus.CONFIRMADO, OrderStatus.EN_PRODUCCION, OrderStatus.ENVIADO, OrderStatus.ENTREGADO);
+            OrderStatus.EN_PRODUCCION, OrderStatus.ENVIADO, OrderStatus.ENTREGADO);
 
     /** Stores a standard order for the customer, already advanced to {@code target} through the real domain transitions. */
     private Order orderAt(Long customerId, OrderStatus target) {
@@ -108,7 +108,7 @@ class OrderLifecycleApiTest extends AbstractNoDbRbacTest {
     }
 
     private Order pending(Long customerId) {
-        return orderAt(customerId, OrderStatus.PENDIENTE);
+        return orderAt(customerId, OrderStatus.CONFIRMADO);
     }
 
     private ResultActions changeStatus(Cookie cookie, String orderId, Object body) throws Exception {
@@ -176,7 +176,7 @@ class OrderLifecycleApiTest extends AbstractNoDbRbacTest {
         String email = uniqueEmail("filters");
         Cookie me = signIn(email);
         Long myId = idOf(email);
-        Order a = orderAt(myId, OrderStatus.PENDIENTE);
+        Order a = orderAt(myId, OrderStatus.ENVIADO);
         ((MutableClock) clock).advance(Duration.ofMinutes(1));
         Order b = orderAt(myId, OrderStatus.CONFIRMADO);
         ((MutableClock) clock).advance(Duration.ofMinutes(1));
@@ -203,7 +203,7 @@ class OrderLifecycleApiTest extends AbstractNoDbRbacTest {
         for (String q : List.of("size=101", "size=0", "page=-1")) {
             getAs(me, "/api/orders?" + q).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
         }
-        for (String q : List.of("sort=total", "sort=placedAt,sideways", "sort=placedAt,asc,x", "status=NOPE", "kind=NOPE", "size=abc")) {
+        for (String q : List.of("sort=total", "sort=placedAt,sideways", "sort=placedAt,asc,x", "status=NOPE", "status=PENDIENTE", "kind=NOPE", "size=abc")) {
             getAs(me, "/api/orders?" + q).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("MALFORMED_REQUEST"));
         }
         getAs(me, "/api/orders?size=100").andExpect(status().isOk());
@@ -227,17 +227,17 @@ class OrderLifecycleApiTest extends AbstractNoDbRbacTest {
         Order o = pending(idOf(email));
         String staffEmail = uniqueEmail("asesor");
         Cookie advisor = staff(Rol.ASESOR, staffEmail);
-        changeStatus(advisor, o.id(), Map.of("status", "CONFIRMADO", "note", "Pago verificado")).andExpect(status().isOk());
+        changeStatus(advisor, o.id(), Map.of("status", "EN_PRODUCCION", "note", "Pago verificado")).andExpect(status().isOk());
 
         String body = getAs(me, "/api/orders/" + o.id()).andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(o.id()))
-                .andExpect(jsonPath("$.status").value("CONFIRMADO"))
+                .andExpect(jsonPath("$.status").value("EN_PRODUCCION"))
                 .andExpect(jsonPath("$.statusHistory.length()").value(2))
                 .andExpect(jsonPath("$.statusHistory[0].previousStatus").doesNotExist())
-                .andExpect(jsonPath("$.statusHistory[0].newStatus").value("PENDIENTE"))
+                .andExpect(jsonPath("$.statusHistory[0].newStatus").value("CONFIRMADO"))
                 .andExpect(jsonPath("$.statusHistory[0].responsible").value("Sistema"))
-                .andExpect(jsonPath("$.statusHistory[1].previousStatus").value("PENDIENTE"))
-                .andExpect(jsonPath("$.statusHistory[1].newStatus").value("CONFIRMADO"))
+                .andExpect(jsonPath("$.statusHistory[1].previousStatus").value("CONFIRMADO"))
+                .andExpect(jsonPath("$.statusHistory[1].newStatus").value("EN_PRODUCCION"))
                 .andExpect(jsonPath("$.statusHistory[1].responsible").value("Equipo Ar Makers 3D"))
                 .andExpect(jsonPath("$.statusHistory[1].note").value("Pago verificado"))
                 .andExpect(jsonPath("$.allowedNextStatuses").doesNotExist())
@@ -296,7 +296,7 @@ class OrderLifecycleApiTest extends AbstractNoDbRbacTest {
         changeStatus(me, "PED-999999", Map.of("status", "CANCELADO")).andExpect(status().isForbidden());
         getAs(me, "/api/admin/orders").andExpect(status().isForbidden());
         getAs(me, "/api/admin/orders/" + mine.id()).andExpect(status().isForbidden());
-        assertThat(orders.findById(mine.id()).orElseThrow().status()).isEqualTo(OrderStatus.PENDIENTE);
+        assertThat(orders.findById(mine.id()).orElseThrow().status()).isEqualTo(OrderStatus.CONFIRMADO);
         assertThat(orders.findById(mine.id()).orElseThrow().history()).hasSize(1);
     }
 
@@ -317,7 +317,7 @@ class OrderLifecycleApiTest extends AbstractNoDbRbacTest {
             String email = uniqueEmail("buyer");
             provision(email, Rol.CLIENTE);
             Long id = idOf(email);
-            Order a = orderAt(id, OrderStatus.PENDIENTE);
+            Order a = orderAt(id, OrderStatus.CONFIRMADO);
             Order b = orderAt(id, OrderStatus.EN_PRODUCCION);
             String fragment = email.substring(0, email.indexOf('@'));
 
@@ -350,7 +350,7 @@ class OrderLifecycleApiTest extends AbstractNoDbRbacTest {
             getAs(s, "/api/admin/orders?" + q).andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
         }
-        for (String q : List.of("sort=customerEmail", "sort=placedAt,up", "status=NOPE", "kind=NOPE", "from=06-10-2026",
+        for (String q : List.of("sort=customerEmail", "sort=placedAt,up", "status=NOPE", "status=PENDIENTE", "kind=NOPE", "from=06-10-2026",
                 "to=2026-13-40", "from=yesterday")) {
             getAs(s, "/api/admin/orders?" + q).andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.code").value("MALFORMED_REQUEST"));
@@ -367,12 +367,12 @@ class OrderLifecycleApiTest extends AbstractNoDbRbacTest {
         String customerEmail = uniqueEmail("cust");
         provision(customerEmail, Rol.CLIENTE);
         Order o = pending(idOf(customerEmail));
-        changeStatus(advisor, o.id(), Map.of("status", "CONFIRMADO")).andExpect(status().isOk());
+        changeStatus(advisor, o.id(), Map.of("status", "EN_PRODUCCION")).andExpect(status().isOk());
 
         getAs(advisor, "/api/admin/orders/" + o.id()).andExpect(status().isOk())
                 .andExpect(jsonPath("$.customerEmail").value(customerEmail))
-                .andExpect(jsonPath("$.status").value("CONFIRMADO"))
-                .andExpect(jsonPath("$.allowedNextStatuses[0]").value("EN_PRODUCCION"))
+                .andExpect(jsonPath("$.status").value("EN_PRODUCCION"))
+                .andExpect(jsonPath("$.allowedNextStatuses[0]").value("ENVIADO"))
                 .andExpect(jsonPath("$.allowedNextStatuses[1]").value("CANCELADO"))
                 .andExpect(jsonPath("$.statusHistory[0].responsible").value("Sistema"))
                 .andExpect(jsonPath("$.statusHistory[1].responsible").value(advisorEmail))
@@ -421,9 +421,9 @@ class OrderLifecycleApiTest extends AbstractNoDbRbacTest {
         Long adminId = idOf(adminEmail);
 
         var before = clock.instant();
-        changeStatus(advisor, o.id(), Map.of("status", "CONFIRMADO")).andExpect(status().isOk());
+        changeStatus(advisor, o.id(), Map.of("status", "EN_PRODUCCION")).andExpect(status().isOk());
         ((MutableClock) clock).advance(Duration.ofMinutes(5));
-        changeStatus(admin, o.id(), Map.of("status", "EN_PRODUCCION", "note", "  En la impresora 2  ")).andExpect(status().isOk());
+        changeStatus(admin, o.id(), Map.of("status", "ENVIADO", "note", "  En la impresora 2  ")).andExpect(status().isOk());
 
         Order stored = orders.findById(o.id()).orElseThrow();
         assertThat(stored.history()).hasSize(3);
@@ -436,7 +436,7 @@ class OrderLifecycleApiTest extends AbstractNoDbRbacTest {
         assertThat(h2.actorRole()).isEqualTo(Rol.ADMINISTRADOR);
         assertThat(h2.at()).isEqualTo(before.plus(Duration.ofMinutes(5)));
         assertThat(h2.note()).isEqualTo("En la impresora 2");
-        assertThat(h2.fromStatus()).isEqualTo(OrderStatus.CONFIRMADO);
+        assertThat(h2.fromStatus()).isEqualTo(OrderStatus.EN_PRODUCCION);
     }
 
     @Test
@@ -445,7 +445,7 @@ class OrderLifecycleApiTest extends AbstractNoDbRbacTest {
         Cookie advisor = staff(Rol.ASESOR, advisorEmail);
         Order o = pending(idOf(uniqueEmailSignedUp()));
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("status", "CONFIRMADO");
+        body.put("status", "EN_PRODUCCION");
         body.put("actorId", 1);
         body.put("actorRole", "ADMINISTRADOR");
         body.put("responsible", "Alguien Mas");
@@ -457,7 +457,7 @@ class OrderLifecycleApiTest extends AbstractNoDbRbacTest {
         changeStatus(advisor, o.id(), body).andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(o.id()))
                 .andExpect(jsonPath("$.statusHistory[1].responsible").value(advisorEmail))
-                .andExpect(jsonPath("$.statusHistory[1].previousStatus").value("PENDIENTE"));
+                .andExpect(jsonPath("$.statusHistory[1].previousStatus").value("CONFIRMADO"));
         Order stored = orders.findById(o.id()).orElseThrow();
         assertThat(stored.history().get(1).actorId()).isEqualTo(idOf(advisorEmail));
         assertThat(stored.history().get(1).actorRole()).isEqualTo(Rol.ASESOR);
@@ -469,8 +469,8 @@ class OrderLifecycleApiTest extends AbstractNoDbRbacTest {
     void resendingTheCurrentStatusIsRejectedAndNeverDuplicatesHistory() throws Exception {
         Cookie advisor = signInAs(Rol.ASESOR);
         Order o = pending(idOf(uniqueEmailSignedUp()));
-        changeStatus(advisor, o.id(), Map.of("status", "CONFIRMADO")).andExpect(status().isOk());
-        changeStatus(advisor, o.id(), Map.of("status", "CONFIRMADO")).andExpect(status().isConflict())
+        changeStatus(advisor, o.id(), Map.of("status", "EN_PRODUCCION")).andExpect(status().isOk());
+        changeStatus(advisor, o.id(), Map.of("status", "EN_PRODUCCION")).andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("INVALID_STATUS_TRANSITION"));
         assertThat(orders.findById(o.id()).orElseThrow().history()).hasSize(2);
     }
@@ -486,20 +486,20 @@ class OrderLifecycleApiTest extends AbstractNoDbRbacTest {
         changeStatus(advisor, o.id(), Map.of("status", "ENVIADO_YA")).andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("MALFORMED_REQUEST"));
         changeStatus(advisor, o.id(), Map.of("status", "confirmado")).andExpect(status().isBadRequest());
-        changeStatus(advisor, o.id(), Map.of("status", "CONFIRMADO", "note", "n".repeat(501))).andExpect(status().isBadRequest())
+        changeStatus(advisor, o.id(), Map.of("status", "EN_PRODUCCION", "note", "n".repeat(501))).andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
                 .andExpect(jsonPath("$.fieldErrors[0].field").value("note"));
-        changeStatus(advisor, o.id(), Map.of("status", "CONFIRMADO", "note", "bad\u0000note")).andExpect(status().isBadRequest())
+        changeStatus(advisor, o.id(), Map.of("status", "EN_PRODUCCION", "note", "bad\u0000note")).andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
         mockMvc.perform(patch("/api/admin/orders/" + o.id() + "/status").cookie(advisor)
-                        .contentType(MediaType.TEXT_PLAIN).content("CONFIRMADO"))
+                        .contentType(MediaType.TEXT_PLAIN).content("EN_PRODUCCION"))
                 .andExpect(status().isUnsupportedMediaType());
-        changeStatus(advisor, "PED-999999", Map.of("status", "CONFIRMADO")).andExpect(status().isNotFound())
+        changeStatus(advisor, "PED-999999", Map.of("status", "EN_PRODUCCION")).andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("NOT_FOUND"));
-        assertThat(orders.findById(o.id()).orElseThrow().status()).isEqualTo(OrderStatus.PENDIENTE);
+        assertThat(orders.findById(o.id()).orElseThrow().status()).isEqualTo(OrderStatus.CONFIRMADO);
 
         // A 500 character note and a blank note are accepted; blank is stored as null.
-        changeStatus(advisor, o.id(), Map.of("status", "CONFIRMADO", "note", "   ")).andExpect(status().isOk())
+        changeStatus(advisor, o.id(), Map.of("status", "EN_PRODUCCION", "note", "   ")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.statusHistory[1].note").doesNotExist());
     }
 
@@ -558,7 +558,7 @@ class OrderLifecycleApiTest extends AbstractNoDbRbacTest {
                 go.await();
                 try {
                     statusService.changeStatus(new OrderStatusService.ChangeStatusCommand(
-                            o.id(), OrderStatus.CONFIRMADO, null, staffId, Rol.ASESOR));
+                            o.id(), OrderStatus.EN_PRODUCCION, null, staffId, Rol.ASESOR));
                     return true;
                 } catch (InvalidStatusTransitionException ex) {
                     return false;
@@ -592,7 +592,7 @@ class OrderLifecycleApiTest extends AbstractNoDbRbacTest {
         JsonNode created = read(mockMvc.perform(post("/api/orders").cookie(me).contentType(MediaType.APPLICATION_JSON).content(json(body)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.statusHistory.length()").value(1))
-                .andExpect(jsonPath("$.statusHistory[0].newStatus").value("PENDIENTE"))
+                .andExpect(jsonPath("$.statusHistory[0].newStatus").value("CONFIRMADO"))
                 .andExpect(jsonPath("$.statusHistory[0].previousStatus").doesNotExist())
                 .andExpect(jsonPath("$.statusHistory[0].responsible").value("Sistema")));
 
@@ -649,13 +649,13 @@ class OrderLifecycleApiTest extends AbstractNoDbRbacTest {
         changeStatus(advisor, o.id(), Map.of("status", "ENTREGADO")).andExpect(status().isConflict());
         assertThat(events.stream(OrderStatusChanged.class).count()).isEqualTo(before);
 
-        changeStatus(advisor, o.id(), Map.of("status", "CONFIRMADO")).andExpect(status().isOk());
+        changeStatus(advisor, o.id(), Map.of("status", "EN_PRODUCCION")).andExpect(status().isOk());
         List<OrderStatusChanged> published = events.stream(OrderStatusChanged.class)
                 .filter(e -> e.orderId().equals(o.id())).toList();
         assertThat(published).hasSize(1);
         var e = published.get(0);
-        assertThat(e.previousStatus()).isEqualTo(OrderStatus.PENDIENTE);
-        assertThat(e.newStatus()).isEqualTo(OrderStatus.CONFIRMADO);
+        assertThat(e.previousStatus()).isEqualTo(OrderStatus.CONFIRMADO);
+        assertThat(e.newStatus()).isEqualTo(OrderStatus.EN_PRODUCCION);
         assertThat(e.customerId()).isEqualTo(o.customerId());
         assertThat(e.actorRole()).isEqualTo(Rol.ASESOR);
     }
@@ -674,7 +674,7 @@ class OrderLifecycleApiTest extends AbstractNoDbRbacTest {
                 .singleElement()
                 .satisfies(e -> {
                     assertThat(e.previousStatus()).isNull();
-                    assertThat(e.newStatus()).isEqualTo(OrderStatus.PENDIENTE);
+                    assertThat(e.newStatus()).isEqualTo(OrderStatus.CONFIRMADO);
                 });
     }
 
@@ -683,12 +683,12 @@ class OrderLifecycleApiTest extends AbstractNoDbRbacTest {
         String advisorEmail = uniqueEmail("asesor");
         Cookie advisor = staff(Rol.ASESOR, advisorEmail);
         Order o = pending(idOf(uniqueEmailSignedUp()));
-        changeStatus(advisor, o.id(), Map.of("status", "CONFIRMADO", "note", "texto-secreto-del-asesor")).andExpect(status().isOk());
+        changeStatus(advisor, o.id(), Map.of("status", "EN_PRODUCCION", "note", "texto-secreto-del-asesor")).andExpect(status().isOk());
         changeStatus(advisor, o.id(), Map.of("status", "ENTREGADO")).andExpect(status().isConflict());
 
         List<String> lines = auditLogs.list.stream().map(ILoggingEvent::getFormattedMessage).toList();
         assertThat(lines).anyMatch(l -> l.startsWith("order.status.changed")
-                && l.contains("order=" + o.id()) && l.contains("from=PENDIENTE") && l.contains("to=CONFIRMADO")
+                && l.contains("order=" + o.id()) && l.contains("from=CONFIRMADO") && l.contains("to=EN_PRODUCCION")
                 && l.contains("actor=" + idOf(advisorEmail)) && l.contains("role=ASESOR"));
         assertThat(lines).anyMatch(l -> l.startsWith("order.status.rejected") && l.contains("to=ENTREGADO"));
         assertThat(lines).noneMatch(l -> l.contains("texto-secreto") || l.contains(advisorEmail));

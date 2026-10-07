@@ -87,7 +87,30 @@ class AuthSessionEndpointsTest extends AbstractOtpIntegrationTest {
         verifyOtp(email, emailSender.lastCodeFor(email))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accountStatus").value("created"))
-                .andExpect(jsonPath("$.role").value("CLIENTE"));
+                .andExpect(jsonPath("$.role").value("CLIENTE"))
+                .andExpect(jsonPath("$.email").value(email.toLowerCase()))
+                .andExpect(jsonPath("$.id").isNumber());
+    }
+
+    @Test
+    void verifyResponseIdentityMatchesWhatMeReturns() throws Exception {
+        String email = uniqueEmail("verify-identity");
+        requestOtp(email);
+
+        var result = verifyOtp(email, emailSender.lastCodeFor(email)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").doesNotExist())
+                .andReturn();
+        String verifyBody = result.getResponse().getContentAsString();
+        Cookie cookie = result.getResponse().getCookie("ARM3D_SESSION");
+        String meBody = getWithCookie("/api/auth/me", cookie).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        com.fasterxml.jackson.databind.ObjectMapper om = new com.fasterxml.jackson.databind.ObjectMapper();
+        var v = om.readTree(verifyBody);
+        var m = om.readTree(meBody);
+        org.assertj.core.api.Assertions.assertThat(v.get("id")).isEqualTo(m.get("id"));
+        org.assertj.core.api.Assertions.assertThat(v.get("email")).isEqualTo(m.get("email"));
+        org.assertj.core.api.Assertions.assertThat(v.get("role")).isEqualTo(m.get("role"));
+        org.assertj.core.api.Assertions.assertThat(v.has("accountStatus")).isTrue();
     }
 
     @Test

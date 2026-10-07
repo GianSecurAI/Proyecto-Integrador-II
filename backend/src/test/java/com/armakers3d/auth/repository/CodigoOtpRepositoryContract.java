@@ -139,4 +139,18 @@ abstract class CodigoOtpRepositoryContract {
         assertThat(repository().sumFailedAttemptsIssuedAfter(email, T0.plusSeconds(3600))).isZero();
         assertThat(repository().sumFailedAttemptsIssuedAfter("otp-nobody@example.test", T0.minusSeconds(3600))).isZero();
     }
+
+    @Test
+    void purgeDeletesOnlyCodesIssuedBeforeTheCutoff() {
+        repository().deleteIssuedBefore(T0.plusSeconds(86_400)); // clear rows other committed tests may have left
+        repository().save(newCode("otp-purge@example.test", T0));
+        repository().save(newCode("otp-purge@example.test", T0.plusSeconds(10)));
+        CodigoOtp kept = repository().save(newCode("otp-purge@example.test", T0.plusSeconds(100_000)));
+
+        assertThat(repository().deleteIssuedBefore(T0.plusSeconds(86_400))).isEqualTo(2);
+
+        assertThat(repository().findLatestByEmail("otp-purge@example.test").orElseThrow().getId()).isEqualTo(kept.getId());
+        assertThat(repository().countIssuedAfter("otp-purge@example.test", T0.minusSeconds(1))).isEqualTo(1);
+        assertThat(repository().deleteIssuedBefore(T0.plusSeconds(86_400))).isZero();
+    }
 }

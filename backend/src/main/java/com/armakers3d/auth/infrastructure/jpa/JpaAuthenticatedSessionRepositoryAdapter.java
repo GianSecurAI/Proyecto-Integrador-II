@@ -36,6 +36,12 @@ public class JpaAuthenticatedSessionRepositoryAdapter implements AuthenticatedSe
         return jpa.revokeAllForCliente(clienteId, now);
     }
 
+    @Override
+    @Transactional
+    public int deleteExpiredOrRevokedBefore(Instant cutoff) {
+        return jpa.deleteExpiredOrRevokedBefore(cutoff);
+    }
+
     private static AuthenticatedSession toDomain(AuthenticatedSessionEntity e) {
         return new AuthenticatedSession(
                 e.getId(), e.getClienteId(), e.getRol(), e.getCreatedAt(), e.getExpiresAt(), e.getRevokedAt());

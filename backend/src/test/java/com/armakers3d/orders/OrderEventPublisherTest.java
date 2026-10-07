@@ -18,7 +18,7 @@ import org.springframework.context.ApplicationEventPublisher;
 class OrderEventPublisherTest {
 
     private static final OrderStatusChanged EVENT = new OrderStatusChanged(
-            "PED-000001", 7L, OrderKind.ESTANDAR, OrderStatus.PENDIENTE, OrderStatus.CONFIRMADO, 5L, Rol.ASESOR, Instant.EPOCH);
+            "PED-000001", 7L, OrderKind.ESTANDAR, null, OrderStatus.CONFIRMADO, 5L, Rol.ASESOR, Instant.EPOCH);
 
     @Test
     void aFailingListenerNeverBreaksTheOrderOperation() {

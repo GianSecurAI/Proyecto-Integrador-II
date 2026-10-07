@@ -53,6 +53,21 @@ otp:
   ip-max-request-calls: ${OTP_IP_MAX_REQUEST_CALLS:10}
   ip-max-verify-calls: ${OTP_IP_MAX_VERIFY_CALLS:30}
 
+# Per-account limit on authenticated mutating requests (BE-05, ADR-004 D4): fixed window, 429 RATE_LIMITED + Retry-After.
+ratelimit:
+  mutations-per-window: ${RATELIMIT_MUTATIONS_PER_WINDOW:60}
+  window-minutes: ${RATELIMIT_WINDOW_MINUTES:10}
+
+# First administrator bootstrap (DB-04): an email address, never a secret. Used only when no active administrator
+# exists (see FirstAdministratorBootstrap). Leave empty once an administrator exists.
+bootstrap:
+  admin-email: ${BOOTSTRAP_ADMIN_EMAIL:}
+
+# Daily purge of old OTP codes and expired/revoked sessions (DB-06). Lima time; set PURGE_ENABLED=false to switch off.
+purge:
+  enabled: ${PURGE_ENABLED:true}
+  cron: ${PURGE_CRON:0 30 3 * * *}
+
 # Server-side session policy (research.md #3). The feature spec explicitly leaves session
 # lifetime out of scope; 24h is a documented, reasonable default for this academic-scale system.
 session:

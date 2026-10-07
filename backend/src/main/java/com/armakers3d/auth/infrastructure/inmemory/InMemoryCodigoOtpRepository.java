@@ -97,6 +97,13 @@ public class InMemoryCodigoOtpRepository implements CodigoOtpRepository {
         return changed.get();
     }
 
+    @Override
+    public int deleteIssuedBefore(Instant cutoff) {
+        int before = byId.size();
+        byId.values().removeIf(c -> c.getIssuedAt().isBefore(cutoff));
+        return before - byId.size();
+    }
+
     /** Test/dev helper; not part of the port. */
     public void clear() {
         byId.clear();

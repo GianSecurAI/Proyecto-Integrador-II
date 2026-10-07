@@ -112,12 +112,10 @@ class ReportApiTest extends AbstractNoDbRbacTest {
 
     private static List<OrderStatus> path(OrderStatus target) {
         return switch (target) {
-            case PENDIENTE -> List.of();
-            case CONFIRMADO -> List.of(OrderStatus.CONFIRMADO);
-            case EN_PRODUCCION -> List.of(OrderStatus.CONFIRMADO, OrderStatus.EN_PRODUCCION);
-            case ENVIADO -> List.of(OrderStatus.CONFIRMADO, OrderStatus.EN_PRODUCCION, OrderStatus.ENVIADO);
-            case ENTREGADO -> List.of(OrderStatus.CONFIRMADO, OrderStatus.EN_PRODUCCION, OrderStatus.ENVIADO,
-                    OrderStatus.ENTREGADO);
+            case CONFIRMADO -> List.of();
+            case EN_PRODUCCION -> List.of(OrderStatus.EN_PRODUCCION);
+            case ENVIADO -> List.of(OrderStatus.EN_PRODUCCION, OrderStatus.ENVIADO);
+            case ENTREGADO -> List.of(OrderStatus.EN_PRODUCCION, OrderStatus.ENVIADO, OrderStatus.ENTREGADO);
             case CANCELADO -> List.of(OrderStatus.CANCELADO);
         };
     }
@@ -150,13 +148,13 @@ class ReportApiTest extends AbstractNoDbRbacTest {
             return;
         }
         ordersSeeded = true;
-        standard("2020-03-10T00:00:00", "12.50", 2, OrderStatus.PENDIENTE); // 25.00, first instant of 03-10
+        standard("2020-03-10T00:00:00", "12.50", 2, OrderStatus.CONFIRMADO); // 25.00, first instant of 03-10
         standard("2020-03-15T12:00:00", "10.00", 3, OrderStatus.ENTREGADO); // 30.00
         standard("2020-03-20T09:00:00", "100.00", 1, OrderStatus.CANCELADO); // 100.00, excluded from amounts
         personalized("2020-03-30T23:59:59", "250.00"); // CONFIRMADO
         personalized("2020-03-31T23:59:59", "80.00"); // last second of the inclusive end
         personalized("2020-04-01T00:00:00", "500.00"); // out: first instant after the end
-        standard("2020-02-29T23:59:59", "999.00", 1, OrderStatus.PENDIENTE); // out: last second before the start
+        standard("2020-02-29T23:59:59", "999.00", 1, OrderStatus.CONFIRMADO); // out: last second before the start
     }
 
     private synchronized void seedJune2021() {
@@ -216,9 +214,9 @@ class ReportApiTest extends AbstractNoDbRbacTest {
         assertThat(r.get("totalOrders").asLong()).isEqualTo(5);
         assertThat(r.get("standardOrders").asLong()).isEqualTo(3);
         assertThat(r.get("customOrders").asLong()).isEqualTo(2);
-        assertThat(r.get("byStatus")).hasSize(6);
-        assertThat(countOf(r.get("byStatus"), "status", "PENDIENTE")).isEqualTo(1);
-        assertThat(countOf(r.get("byStatus"), "status", "CONFIRMADO")).isEqualTo(2);
+        assertThat(r.get("byStatus")).hasSize(5);
+        assertThat(r.get("byStatus").toString()).doesNotContain("PENDIENTE");
+        assertThat(countOf(r.get("byStatus"), "status", "CONFIRMADO")).isEqualTo(3);
         assertThat(countOf(r.get("byStatus"), "status", "EN_PRODUCCION")).isZero();
         assertThat(countOf(r.get("byStatus"), "status", "ENTREGADO")).isEqualTo(1);
         assertThat(countOf(r.get("byStatus"), "status", "CANCELADO")).isEqualTo(1);
@@ -259,13 +257,17 @@ class ReportApiTest extends AbstractNoDbRbacTest {
         assertThat(cancelled.get("totalOrders").asLong()).isEqualTo(1);
         assertThat(cancelled.get("standardOrders").asLong()).isEqualTo(1);
         assertThat(countOf(cancelled.get("byStatus"), "status", "CANCELADO")).isEqualTo(1);
-        assertThat(countOf(cancelled.get("byStatus"), "status", "PENDIENTE")).isZero();
+        assertThat(countOf(cancelled.get("byStatus"), "status", "CONFIRMADO")).isZero();
         assertThat(amount(cancelled.get("totalAmount"))).isEqualByComparingTo("0.00");
 
         JsonNode confirmed =
                 body(getAs(admin, ORDERS + "?from=2020-03-01&to=2020-03-31&status=CONFIRMADO").andExpect(status().isOk()));
-        assertThat(confirmed.get("totalOrders").asLong()).isEqualTo(2);
-        assertThat(amount(confirmed.get("totalAmount"))).isEqualByComparingTo("330.00");
+        assertThat(confirmed.get("totalOrders").asLong()).isEqualTo(3);
+        assertThat(amount(confirmed.get("totalAmount"))).isEqualByComparingTo("355.00");
+
+        // PENDIENTE no longer exists on the wire (ADR-004 D-02).
+        getAs(admin, ORDERS + "?from=2020-03-01&to=2020-03-31&status=PENDIENTE").andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("MALFORMED_REQUEST"));
     }
 
     @Test
@@ -277,7 +279,7 @@ class ReportApiTest extends AbstractNoDbRbacTest {
         assertThat(r.get("totalOrders").asLong()).isZero();
         assertThat(r.get("standardOrders").asLong()).isZero();
         assertThat(r.get("customOrders").asLong()).isZero();
-        assertThat(r.get("byStatus")).hasSize(6).allSatisfy(n -> assertThat(n.get("count").asLong()).isZero());
+        assertThat(r.get("byStatus")).hasSize(5).allSatisfy(n -> assertThat(n.get("count").asLong()).isZero());
         assertThat(amount(r.get("totalAmount"))).isEqualByComparingTo("0");
     }
 

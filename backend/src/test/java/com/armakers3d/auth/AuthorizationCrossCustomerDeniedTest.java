@@ -7,9 +7,9 @@ import org.junit.jupiter.api.Test;
 
 /**
  * T046 (Constitution Principle XII, NON-NEGOTIABLE): an authenticated customer is denied (403)
- * access to another customer's data (FR-016, spec.md User Story 4 Scenario 2) — the object-level
- * check in {@code @PreAuthorize} on {@code CustomerProfileController.byId} must compare the path id against the principal
- * clienteId, never trust the path id alone.
+ * access to another customer's data (FR-016, spec.md User Story 4 Scenario 2) — the retired
+ * {@code GET /api/customers/{id}} path (BE-06) is no longer mapped and falls to default-deny; {@code /me} is the only
+ * customer profile route.
  */
 class AuthorizationCrossCustomerDeniedTest extends AbstractOtpIntegrationTest {
 

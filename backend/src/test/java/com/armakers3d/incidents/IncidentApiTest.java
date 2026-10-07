@@ -140,6 +140,40 @@ class IncidentApiTest extends AbstractNoDbRbacTest {
         triage(staff, id, Map.of("status", "EN_REVISION")).andExpect(status().isOk());
     }
 
+    // ---------- BE-04: allowedNextStatuses ----------
+
+    @Test
+    void staffResponsesCarryAllowedNextStatusesForEveryIncidentStatus() throws Exception {
+        Cookie s = staff(Rol.ASESOR);
+        Customer c = customer();
+        JsonNode created = incidentFor(c);
+        String id = created.get("id").asText();
+
+        JsonNode open = read(getAs(s, "/api/admin/incidents/" + id).andExpect(status().isOk()));
+        assertThat(allowed(open)).containsExactly("EN_REVISION");
+
+        JsonNode review = read(triage(s, id, Map.of("status", "EN_REVISION")).andExpect(status().isOk()));
+        assertThat(allowed(review)).containsExactly("RESUELTA", "RECHAZADA");
+        // the list rows carry it too
+        assertThat(allowed(read(getAs(s, "/api/admin/incidents/" + id)))).containsExactly("RESUELTA", "RECHAZADA");
+        // RESUELTA is still not settable through PATCH
+        triage(s, id, Map.of("status", "RESUELTA")).andExpect(status().isBadRequest());
+
+        JsonNode resolved = read(resolve(s, id, Map.of("resolutionText", "Listo")).andExpect(status().isOk()));
+        assertThat(allowed(resolved)).isEmpty();
+
+        String other = incidentFor(customer()).get("id").asText();
+        toReview(s, other);
+        JsonNode rejected = read(triage(s, other, Map.of("status", "RECHAZADA")).andExpect(status().isOk()));
+        assertThat(allowed(rejected)).isEmpty();
+    }
+
+    private static List<String> allowed(JsonNode incident) {
+        List<String> out = new ArrayList<>();
+        incident.get("allowedNextStatuses").forEach(n -> out.add(n.asText()));
+        return out;
+    }
+
     // ---------- customer: register ----------
 
     @Test
@@ -470,7 +504,7 @@ class IncidentApiTest extends AbstractNoDbRbacTest {
             JsonNode row = read(getAs(s, "/api/admin/incidents?q=" + marker + "&size=1")).get("content").get(0);
             assertThat(row.fieldNames()).toIterable().containsExactlyInAnyOrder(
                     "id", "orderId", "orderSummary", "description", "status", "priority", "resolution", "reportedAt",
-                    "updatedAt", "resolvedAt", "customerEmail", "customerName", "customerPhone");
+                    "updatedAt", "resolvedAt", "customerEmail", "customerName", "customerPhone", "allowedNextStatuses");
             assertThat(row.get("customerEmail").asText()).isEqualTo(c.email());
             assertThat(row.get("customerName").isNull()).isTrue();
         }

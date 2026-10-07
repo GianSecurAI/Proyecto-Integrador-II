@@ -47,6 +47,14 @@ public class InMemoryAuthenticatedSessionRepository implements AuthenticatedSess
         return revoked.get();
     }
 
+    @Override
+    public int deleteExpiredOrRevokedBefore(Instant cutoff) {
+        int before = byToken.size();
+        byToken.values().removeIf(s -> s.getExpiresAt().isBefore(cutoff)
+                || (s.getRevokedAt() != null && s.getRevokedAt().isBefore(cutoff)));
+        return before - byToken.size();
+    }
+
     /** Test/dev helper; not part of the port. */
     public void clear() {
         byToken.clear();

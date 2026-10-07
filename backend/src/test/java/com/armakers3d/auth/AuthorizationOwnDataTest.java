@@ -23,13 +23,12 @@ class AuthorizationOwnDataTest extends AbstractOtpIntegrationTest {
     }
 
     @Test
-    void authenticatedCustomerCanReadOwnDataByOwnId() throws Exception {
+    void theRetiredByIdPathIsDeniedEvenForTheOwnId() throws Exception {
         String email = uniqueEmail("own-data-id");
         Cookie sessionCookie = registerAndGetSessionCookie(email);
         Long ownId = clienteRepository.findByEmail(email).orElseThrow().getId();
 
-        getWithCookie("/api/customers/" + ownId, sessionCookie)
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.email").value(email));
+        getWithCookie("/api/customers/" + ownId, sessionCookie).andExpect(status().isForbidden());
+        getWithCookie("/api/customers/" + ownId, null).andExpect(status().isUnauthorized());
     }
 }

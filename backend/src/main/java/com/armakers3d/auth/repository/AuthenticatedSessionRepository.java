@@ -17,4 +17,10 @@ public interface AuthenticatedSessionRepository {
      * many sessions were revoked. Atomic: one statement/one pass, no read-modify-write by callers.
      */
     int revokeAllForCliente(Long clienteId, Instant now);
+
+    /**
+     * Deletes sessions that expired, or were revoked, strictly before {@code cutoff} (daily purge, DB-06 / R2).
+     * Active sessions are never touched. Returns how many rows were removed.
+     */
+    int deleteExpiredOrRevokedBefore(Instant cutoff);
 }

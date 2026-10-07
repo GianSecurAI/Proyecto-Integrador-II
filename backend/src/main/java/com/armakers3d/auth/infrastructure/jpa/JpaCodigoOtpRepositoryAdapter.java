@@ -70,6 +70,12 @@ public class JpaCodigoOtpRepositoryAdapter implements CodigoOtpRepository {
         return jpa.markVerifiedIfPending(id, now) == 1;
     }
 
+    @Override
+    @Transactional
+    public int deleteIssuedBefore(Instant cutoff) {
+        return jpa.deleteIssuedBefore(cutoff);
+    }
+
     private static CodigoOtp toDomain(CodigoOtpEntity e) {
         return new CodigoOtp(
                 e.getId(),

@@ -15,7 +15,7 @@ class OrderEmailTemplatesTest {
     private static final String BASE = "https://app.armakers.example";
 
     @ParameterizedTest
-    @EnumSource(value = OrderStatus.class, names = {"CONFIRMADO", "EN_PRODUCCION", "ENVIADO", "ENTREGADO"})
+    @EnumSource(value = OrderStatus.class, names = {"CONFIRMADO", "EN_PRODUCCION", "ENVIADO", "ENTREGADO", "CANCELADO"})
     void notifyingStatusesRenderSpanishMessageWithCodeStatusBusinessAndLink(OrderStatus status) {
         var r = OrderEmailTemplates.render(status, "PED-000042", "Ana Perez", BASE + "/").orElseThrow();
 
@@ -34,11 +34,11 @@ class OrderEmailTemplatesTest {
                 .contains("Estado: Enviado");
     }
 
-    @ParameterizedTest
-    @EnumSource(value = OrderStatus.class, names = {"PENDIENTE", "CANCELADO"})
-    void nonNotifyingStatusesRenderNothing(OrderStatus status) {
-        assertThat(OrderEmailTemplates.notifies(status)).isFalse();
-        assertThat(OrderEmailTemplates.render(status, "PED-000042", "Ana", BASE)).isEmpty();
+    @Test
+    void cancelledEmailIsGenericAndMentionsWhatsAppButNoNote() {
+        var r = OrderEmailTemplates.render(OrderStatus.CANCELADO, "PED-000042", "Ana", BASE).orElseThrow();
+        assertThat(r.subject()).contains("PED-000042").contains("Cancelado");
+        assertThat(r.body()).contains("cancelado").contains("WhatsApp").contains("Estado: Cancelado");
     }
 
     @Test
@@ -50,7 +50,8 @@ class OrderEmailTemplatesTest {
             }
         }
         assertThat(notifying).containsExactlyInAnyOrder(
-                OrderStatus.CONFIRMADO, OrderStatus.EN_PRODUCCION, OrderStatus.ENVIADO, OrderStatus.ENTREGADO);
+                OrderStatus.CONFIRMADO, OrderStatus.EN_PRODUCCION, OrderStatus.ENVIADO, OrderStatus.ENTREGADO,
+                OrderStatus.CANCELADO);
     }
 
     @Test

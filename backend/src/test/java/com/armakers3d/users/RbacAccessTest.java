@@ -79,7 +79,7 @@ class RbacAccessTest extends AbstractNoDbRbacTest {
         mockMvc.perform(get("/api/customers/me")).andExpect(status().isUnauthorized()).andExpect(jsonPath("$.code").value(UNAUTHENTICATED));
         mockMvc.perform(put("/api/customers/me").contentType(MediaType.APPLICATION_JSON).content("{}"))
                 .andExpect(status().isUnauthorized());
-        mockMvc.perform(get("/api/customers/1")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/customers/1")).andExpect(status().isUnauthorized()); // retired (BE-06)
     }
 
     @Test
@@ -167,12 +167,12 @@ class RbacAccessTest extends AbstractNoDbRbacTest {
         Long idA = idOf(emailA);
         Long idB = idOf(emailB);
 
+        // GET /api/customers/{id} was retired (BE-06): default-deny, the same 403 for any id (own, other, unknown).
         mockMvc.perform(get("/api/customers/" + idB).cookie(a))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("FORBIDDEN"));
-        // Same answer for an id that does not exist: the check precedes any lookup, nothing leaks.
         mockMvc.perform(get("/api/customers/999999").cookie(a)).andExpect(status().isForbidden());
-        mockMvc.perform(get("/api/customers/" + idA).cookie(a)).andExpect(status().isOk());
+        mockMvc.perform(get("/api/customers/" + idA).cookie(a)).andExpect(status().isForbidden());
         // A forged id in query/header cannot redirect /me to someone else.
         mockMvc.perform(get("/api/customers/me").param("id", String.valueOf(idB)).header("X-Customer-Id", idB).cookie(a))
                 .andExpect(jsonPath("$.id").value(idA))
