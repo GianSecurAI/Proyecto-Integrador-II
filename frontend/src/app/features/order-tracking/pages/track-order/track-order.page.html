@@ -24,7 +24,7 @@
           <h1 id="track-order-heading">Rastrea tu pedido</h1>
           <app-empty-state
             title="No encontramos ese pedido"
-            description="Revisa que el ID esté completo y vuelve a intentarlo."
+            description="Revisa que el ID esté completo y que el pedido sea de tu cuenta."
           >
             <app-button emptyStateAction [onDark]="true" (clicked)="reset()">
               Buscar otro pedido
@@ -39,9 +39,7 @@
             </div>
             <div class="track-order-page__meta">
               <app-status-badge [label]="badgeFor(order.status).label" [tone]="badgeFor(order.status).tone" />
-              <span class="track-order-page__kind">
-                {{ order.kind === 'personalizado' ? 'Pedido personalizado' : 'Pedido estándar' }}
-              </span>
+              <span class="track-order-page__kind">{{ kindLabel(order.kind) }}</span>
             </div>
             <p class="track-order-page__summary">{{ order.summary }}</p>
 
@@ -77,7 +75,7 @@
         @default {
           <h1 id="track-order-heading">Rastrea tu pedido</h1>
           <p class="track-order-page__description">
-            Ingresa el ID de tu pedido para conocer su estado actual.
+            Ingresa el ID de uno de tus pedidos para conocer su estado actual.
           </p>
           <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
             <app-form-field
@@ -111,10 +109,5 @@
       }
     </section>
 
-    <p class="track-order-page__notice">
-      Vista de demostración: este seguimiento no proviene de un servidor real. Prueba con un ID
-      como <code>PED-2031</code>. Añade <code>?mockState=error</code> a esta URL para
-      previsualizar el estado de error genérico.
-    </p>
   </div>
 </main>

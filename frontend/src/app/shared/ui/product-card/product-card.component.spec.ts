@@ -23,12 +23,11 @@ class FakeCartStorageAdapter implements CartStorageAdapter {
 }
 
 const PRODUCT: CatalogProduct = {
-  id: 'p1',
-  category: 'Llaveros',
+  id: 1,
+  category: 'LLAVERO',
   subcategory: 'Llaveros personalizados',
   title: 'Llavero personalizado con placa 3D',
   price: 19.9,
-  compareAtPrice: 25,
 };
 
 describe('ProductCardComponent', () => {
@@ -53,13 +52,14 @@ describe('ProductCardComponent', () => {
   it('renders the product title and category/subcategory eyebrow', () => {
     const text: string = fixture.nativeElement.textContent;
     expect(text).toContain('Llavero personalizado con placa 3D');
-    expect(text).toContain('Llaveros / Llaveros personalizados');
+    expect(text).toContain('Llavero / Llaveros personalizados');
   });
 
-  it('formats the current and compare-at price in soles', () => {
+  it('formats the price in soles and shows no compare-at price or badge (not in the backend contract)', () => {
     const text: string = fixture.nativeElement.textContent;
     expect(text).toContain('S/ 19.90');
-    expect(text).toContain('S/ 25.00');
+    expect(fixture.nativeElement.querySelector('.product-card__price-compare')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.product-card__badge')).toBeNull();
   });
 
   it('renders an aria-hidden placeholder instead of a real product image', () => {
@@ -72,7 +72,7 @@ describe('ProductCardComponent', () => {
   it('links Ver más to this product detail without opening WhatsApp', () => {
     const link: HTMLAnchorElement = fixture.nativeElement.querySelector('a');
     expect(link.textContent?.trim()).toBe('Ver más');
-    expect(link.getAttribute('href')).toBe('/catalog/p1');
+    expect(link.getAttribute('href')).toBe('/catalog/1');
     expect(link.getAttribute('aria-label')).toContain(PRODUCT.title);
   });
 
@@ -93,7 +93,7 @@ describe('ProductCardComponent', () => {
     fixture.detectChanges();
 
     expect(cart.itemCount()).toBe(1);
-    expect(cart.items()[0].productId).toBe('p1');
+    expect(cart.items()[0].productId).toBe(1);
     expect(fixture.nativeElement.querySelector('[role="status"]').textContent).toContain(
       'Añadido al carrito',
     );

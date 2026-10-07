@@ -1,3 +1,5 @@
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { CatalogProduct } from '../../../../shared/models/catalog-product.model';
@@ -11,8 +13,8 @@ import { CheckoutStateService } from '../../state/checkout-state.service';
 import { CheckoutPage } from './checkout.page';
 
 const PRODUCT: CatalogProduct = {
-  id: 'p-a',
-  category: 'Llaveros',
+  id: 1,
+  category: 'LLAVERO',
   subcategory: 'Personalizados',
   title: 'Llavero A',
   price: 19.9,
@@ -46,6 +48,8 @@ describe('CheckoutPage', () => {
       imports: [CheckoutPage],
       providers: [
         provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
         { provide: CART_STORAGE_ADAPTER, useValue: new FakeCartStorageAdapter() },
       ],
     });
@@ -54,6 +58,21 @@ describe('CheckoutPage', () => {
     checkoutState = TestBed.inject(CheckoutStateService);
     fixture = TestBed.createComponent(CheckoutPage);
     fixture.detectChanges();
+  });
+
+  it('revalidates the cart against GET /api/catalog/products?ids= when checkout opens', () => {
+    const http = TestBed.inject(HttpTestingController);
+    const req = http.expectOne((r) => r.url === '/api/catalog/products');
+    expect(req.request.params.getAll('ids')).toEqual(['1']);
+    req.flush({
+      content: [{ id: 1, title: 'Llavero A', category: 'LLAVERO', subcategory: 'Personalizados', price: 25 }],
+      page: 0,
+      size: 1,
+      totalElements: 1,
+      totalPages: 1,
+    });
+    expect(cart.items()[0].unitPrice).toBe(25);
+    expect(cart.pricesUpdated()).toBeTrue();
   });
 
   it('starts on the cart-review step', () => {
@@ -72,7 +91,7 @@ describe('CheckoutPage', () => {
 
   it('preserves typed customer/delivery data across forward AND backward step navigation', () => {
     const component = fixture.componentInstance;
-    checkoutState.setCustomerInfo({ fullName: 'Ana', email: 'ana@example.com', phone: '987654321' });
+    checkoutState.setCustomerInfo({ fullName: 'Ana', phone: '987654321' });
     checkoutState.setDeliveryInfo({ address: 'Calle 1', district: 'San Isidro', notes: '' });
 
     component.goToStep('customer');

@@ -1,27 +1,44 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { BehaviorSubject, catchError, combineLatest, map, of, startWith, switchMap } from 'rxjs';
+import { httpStatus } from '../../../../core/models/api-error.model';
+import { ProductDetail } from '../../../../shared/models/catalog-product.model';
+import { categoryLabel } from '../../../../shared/models/wire-enums';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
-import { ProductCardComponent } from '../../../../shared/ui/product-card/product-card.component';
+import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
+import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state.component';
 import { CartStateService } from '../../../cart/services/cart-state.service';
 import { ProductGalleryComponent } from '../../components/product-gallery/product-gallery.component';
-import { PRODUCT_DETAILS } from '../../mocks/product-details.mock';
+import { ProductImageViewModel } from '../../models/product-detail.model';
+import { CatalogService } from '../../services/catalog.service';
 
-/** RF-07/RF-08, explicit Product Owner visual-only scope. Figma Producto 2:906.
- * Mocks are isolated; no REST contract, pricing engine, payment or quotation is defined.
+type DetailState =
+  | { kind: 'loading' }
+  | { kind: 'loaded'; product: ProductDetail }
+  | { kind: 'not-found' }
+  | { kind: 'error' };
+
+/**
+ * RF-07/RF-08 product detail, backed by `GET /api/catalog/products/{id}` (numeric id). A 404
+ * (unknown OR unavailable product — the public catalog hides unavailable products) shows the
+ * "not found" state; any other failure shows a retryable error. Images come from the backend
+ * (currently always an empty list -> placeholder). There is no related-products block and no
+ * specifications table beyond real fields: the backend has no such data.
  *
- * "Añadir a la cesta" and "Comprar ahora" were wired to the real standard-catalog cart
- * (`features/cart/`, CLAUDE.md's "Business clarification: purchasing flows") once it existed —
- * both were previously demo-only stubs. "Comprar ahora" adds 1 unit AND navigates straight to
- * `/cart` in one step (a common "buy now" shortcut) since no real checkout exists yet to jump
- * into directly; "Añadir a la cesta" adds without navigating, showing inline confirmation
- * feedback instead (mirrors the previous `previewAction` feedback pattern, now backed by a real
- * action rather than a dead-end demo message).
+ * "Añadir a la cesta" / "Comprar ahora" feed the standard-catalog cart (`features/cart/`); the
+ * server prices the order, the shown price is informational.
  */
 @Component({
   selector: 'app-product-detail-page',
   standalone: true,
-  imports: [RouterLink, ProductGalleryComponent, ProductCardComponent, EmptyStateComponent],
+  imports: [
+    RouterLink,
+    ProductGalleryComponent,
+    EmptyStateComponent,
+    LoadingStateComponent,
+    ErrorStateComponent,
+  ],
   templateUrl: './product-detail.page.html',
   styleUrl: './product-detail.page.scss',
 })
@@ -29,30 +46,63 @@ export class ProductDetailPage {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly cart = inject(CartStateService);
-  private readonly params = toSignal(this.route.paramMap, {
-    initialValue: this.route.snapshot.paramMap,
-  });
-  readonly detail = computed(() =>
-    PRODUCT_DETAILS.find((item) => item.product.id === this.params().get('id')),
+  private readonly catalog = inject(CatalogService);
+
+  private readonly retry$ = new BehaviorSubject<void>(undefined);
+
+  /** Loads on construction and whenever `:id` changes or the retry button is pressed. */
+  readonly state = toSignal(
+    combineLatest([this.route.paramMap, this.retry$]).pipe(
+      switchMap(([params]) => {
+        const id = params.get('id');
+        const numericId = id !== null && /^\d+$/.test(id) ? Number(id) : null;
+        if (numericId === null) return of<DetailState>({ kind: 'not-found' });
+        return this.catalog.get(numericId).pipe(
+          map((product): DetailState => ({ kind: 'loaded', product })),
+          catchError((err: unknown) =>
+            of<DetailState>(httpStatus(err) === 404 ? { kind: 'not-found' } : { kind: 'error' }),
+          ),
+          startWith<DetailState>({ kind: 'loading' }),
+        );
+      }),
+    ),
+    { initialValue: { kind: 'loading' } as DetailState },
   );
-  private readonly feedback = signal<{ id: string; message: string } | null>(null);
+
+  readonly detail = computed(() => {
+    const state = this.state();
+    return state.kind === 'loaded' ? state.product : null;
+  });
+  readonly images = computed<ProductImageViewModel[]>(
+    () => this.detail()?.images.map((image) => ({ src: image.url, alt: image.alt })) ?? [],
+  );
+  readonly categoryLabel = computed(() => {
+    const detail = this.detail();
+    return detail ? categoryLabel(detail.category) : '';
+  });
+
+  private readonly feedback = signal<{ id: number; message: string } | null>(null);
   readonly actionMessage = computed(() => {
     const feedback = this.feedback();
-    if (!feedback || feedback.id !== this.detail()?.product.id) return '';
+    if (!feedback || feedback.id !== this.detail()?.id) return '';
     return feedback.message;
   });
+
+  retry(): void {
+    this.retry$.next();
+  }
 
   addToCart(): void {
     const detail = this.detail();
     if (!detail) return;
-    this.cart.addItem(detail.product, 1);
-    this.feedback.set({ id: detail.product.id, message: 'Se añadió al carrito.' });
+    this.cart.addItem(detail, 1);
+    this.feedback.set({ id: detail.id, message: 'Se añadió al carrito.' });
   }
 
   buyNow(): void {
     const detail = this.detail();
     if (!detail) return;
-    this.cart.addItem(detail.product, 1);
+    this.cart.addItem(detail, 1);
     void this.router.navigateByUrl('/cart');
   }
 }

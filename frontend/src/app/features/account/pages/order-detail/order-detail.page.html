@@ -41,20 +41,49 @@
               <div class="order-detail-page__meta">
                 <app-order-status-badge [status]="order.status" />
                 <span class="order-detail-page__kind">
-                  {{ order.kind === 'personalizado' ? 'Pedido personalizado' : 'Pedido estándar' }}
+                  {{ kindLabel(order.kind) }}
                 </span>
               </div>
             </div>
             <p class="order-detail-page__summary">{{ order.summary }}</p>
 
-            @if (order.kind === 'estandar') {
-              <div class="order-detail-page__repurchase">
-                <app-button variant="secondary" (clicked)="requestRepurchase()">
-                  Volver a comprar
-                </app-button>
-                <p role="status" class="order-detail-page__feedback">{{ repurchaseMessage() }}</p>
-              </div>
+            @if (order.items.length > 0) {
+              <table class="order-detail-page__items">
+                <caption class="visually-hidden">Productos del pedido</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Producto</th>
+                    <th scope="col">Cant.</th>
+                    <th scope="col">Precio</th>
+                    <th scope="col">Subtotal</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (item of order.items; track item.productId) {
+                    <tr>
+                      <td>{{ item.title }}</td>
+                      <td>{{ item.quantity }}</td>
+                      <td>S/ {{ item.unitPrice.toFixed(2) }}</td>
+                      <td>S/ {{ item.lineTotal.toFixed(2) }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
             }
+            <p class="order-detail-page__total">
+              Total: <strong>S/ {{ order.totalAmount.toFixed(2) }}</strong>
+            </p>
+
+            @if (order.delivery; as delivery) {
+              <section aria-labelledby="delivery-title" class="order-detail-page__delivery">
+                <h2 id="delivery-title">Entrega</h2>
+                <p>{{ delivery.address }}, {{ delivery.district }}</p>
+                @if (delivery.notes) {
+                  <p>{{ delivery.notes }}</p>
+                }
+              </section>
+            }
+
           </app-card>
 
           <app-order-status-timeline [status]="order.status" />
@@ -84,9 +113,5 @@
       }
     }
 
-    <p class="order-detail-page__notice">
-      Vista de demostración: este pedido no proviene de un servidor real. Añade
-      <code>?mockState=error</code> a esta URL para previsualizar el estado de error.
-    </p>
   </div>
 </main>

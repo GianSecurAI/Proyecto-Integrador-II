@@ -18,6 +18,34 @@
 
         <p class="checkout-confirmation-page__summary">{{ order.summary }}</p>
 
+        <table class="checkout-confirmation-page__items">
+          <caption class="visually-hidden">Productos de tu pedido</caption>
+          <thead>
+            <tr>
+              <th scope="col">Producto</th>
+              <th scope="col">Cant.</th>
+              <th scope="col">Subtotal</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of order.items; track item.productId) {
+              <tr>
+                <td>{{ item.title }}</td>
+                <td>{{ item.quantity }}</td>
+                <td>S/ {{ item.lineTotal.toFixed(2) }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+        <p class="checkout-confirmation-page__total">
+          Total: <strong>S/ {{ order.totalAmount.toFixed(2) }}</strong>
+        </p>
+        @if (order.delivery; as delivery) {
+          <p class="checkout-confirmation-page__delivery">
+            Entrega en {{ delivery.address }}, {{ delivery.district }}
+          </p>
+        }
+
         <div class="checkout-confirmation-page__actions">
           <a
             class="ui-btn ui-btn--primary ui-btn--md"
@@ -26,11 +54,9 @@
           >
             Rastrear mi pedido
           </a>
-          @if (canViewOwnOrder()) {
-            <a class="ui-btn ui-btn--secondary ui-btn--md" [routerLink]="['/account/orders', order.id]">
-              Ver mi pedido
-            </a>
-          }
+          <a class="ui-btn ui-btn--secondary ui-btn--md" [routerLink]="['/account/orders', order.id]">
+            Ver mi pedido
+          </a>
           <a class="ui-btn ui-btn--ghost ui-btn--md" routerLink="/catalog">Seguir comprando</a>
         </div>
       </app-card>

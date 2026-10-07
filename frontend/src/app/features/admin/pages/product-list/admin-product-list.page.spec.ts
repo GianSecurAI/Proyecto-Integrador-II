@@ -1,237 +1,142 @@
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
-import { ActivatedRoute, ActivatedRouteSnapshot, ParamMap, convertToParamMap, provideRouter } from '@angular/router';
-import { Observable, of, throwError } from 'rxjs';
-import { AdminProductViewModel } from '../../models/admin-product.model';
-import { AdminProductsMockService } from '../../services/admin-products-mock.service';
-import { AdminProductListPage } from './admin-product-list.page';
+import { provideRouter } from '@angular/router';
+import { AdminProductListPage, PRODUCT_SEARCH_DEBOUNCE_MS } from './admin-product-list.page';
 
-/** Lightweight `ActivatedRoute` fake — mirrors `order-history.page.spec.ts`'s narrow-mocking
- * convention: only exposes `queryParamMap` (this page reacts to `?mockState=`). */
-function fakeActivatedRoute(queryParams: Record<string, string> = {}): Partial<ActivatedRoute> {
-  const map: ParamMap = convertToParamMap(queryParams);
+/** Shapes copied from backend `Page<AdminProductDto>` (AdminProductController list). */
+function dto(id: number, overrides: Record<string, unknown> = {}) {
   return {
-    queryParamMap: of(map),
-    snapshot: { queryParamMap: map } as ActivatedRouteSnapshot,
+    id,
+    title: `Producto ${id}`,
+    category: 'LLAVERO',
+    subcategory: 'Sub',
+    price: 10 + id,
+    description: 'd',
+    characteristics: [],
+    images: [],
+    available: true,
+    createdAt: '2026-09-01T10:00:00Z',
+    updatedAt: '2026-09-01T10:00:00Z',
+    ...overrides,
   };
 }
 
-const PRODUCTS: AdminProductViewModel[] = [
-  {
-    id: 'p-1',
-    category: 'llavero',
-    subcategory: 'Llaveros personalizados',
-    title: 'Llavero con silueta de mascota',
-    price: 21.9,
-    personalizable: true,
-    description: 'Descripción del llavero.',
-    available: true,
-    characteristics: ['Material: PLA'],
-  },
-  {
-    id: 'p-2',
-    category: 'pegatinas',
-    subcategory: 'Pegatinas personalizadas',
-    title: 'Set de pegatinas personalizadas',
-    price: 14.5,
-    description: 'Descripción de las pegatinas.',
-    available: false,
-    characteristics: [],
-  },
-];
+function page(content: object[], totalPages = 1) {
+  return { content, page: 0, size: 20, totalElements: content.length, totalPages };
+}
 
-describe('AdminProductListPage', () => {
+describe('AdminProductListPage (GET /api/admin/products)', () => {
   let fixture: ComponentFixture<AdminProductListPage>;
   let component: AdminProductListPage;
+  let http: HttpTestingController;
+  const listReq = () => http.expectOne((r) => r.method === 'GET' && r.url === '/api/admin/products');
 
-  describe('with the real mock service', () => {
-    beforeEach(async () => {
-      await TestBed.configureTestingModule({
-        imports: [AdminProductListPage],
-        providers: [provideRouter([]), { provide: ActivatedRoute, useValue: fakeActivatedRoute() }],
-      }).compileComponents();
-    });
-
-    it('renders the loading state immediately, before the mock delay resolves', fakeAsync(() => {
-      fixture = TestBed.createComponent(AdminProductListPage);
-      fixture.detectChanges();
-
-      expect(fixture.nativeElement.querySelector('.ui-state, [role="status"]')).toBeTruthy();
-      expect(fixture.nativeElement.querySelector('table')).toBeNull();
-
-      tick(400);
-    }));
-
-    it('renders the seeded products in the table once loaded', fakeAsync(() => {
-      fixture = TestBed.createComponent(AdminProductListPage);
-      fixture.detectChanges();
-      tick(400);
-      fixture.detectChanges();
-
-      const text: string = fixture.nativeElement.textContent;
-      expect(text).toContain('Llavero con silueta de mascota');
-      expect(text).toContain('Activo');
-      expect(text).toContain('Inactivo');
-    }));
-
-    it('renders the empty state for ?mockState=empty', fakeAsync(() => {
-      TestBed.overrideProvider(ActivatedRoute, {
-        useValue: fakeActivatedRoute({ mockState: 'empty' }),
-      });
-      fixture = TestBed.createComponent(AdminProductListPage);
-      fixture.detectChanges();
-      tick(400);
-      fixture.detectChanges();
-
-      expect(fixture.nativeElement.querySelector('app-empty-state')).toBeTruthy();
-      expect(fixture.nativeElement.querySelector('table')).toBeNull();
-    }));
-
-    it('renders the error state with a working retry for ?mockState=error', fakeAsync(() => {
-      TestBed.overrideProvider(ActivatedRoute, {
-        useValue: fakeActivatedRoute({ mockState: 'error' }),
-      });
-      fixture = TestBed.createComponent(AdminProductListPage);
-      fixture.detectChanges();
-      tick(400);
-      fixture.detectChanges();
-
-      expect(fixture.nativeElement.querySelector('[role="alert"]')).toBeTruthy();
-
-      const retryButton = (
-        Array.from(fixture.nativeElement.querySelectorAll('button')) as HTMLButtonElement[]
-      ).find((b) => b.textContent?.includes('Reintentar'))!;
-      retryButton.click();
-      tick(400);
-      fixture.detectChanges();
-
-      expect(fixture.nativeElement.querySelector('[role="alert"]')).toBeTruthy();
-    }));
-  });
-
-  describe('search and category filtering, and the availability toggle (test double service)', () => {
-    let service: Partial<AdminProductsMockService> & {
-      setAvailability: jasmine.Spy;
-    };
-
-    beforeEach(async () => {
-      service = {
-        getProducts: (): Observable<AdminProductViewModel[]> => of([...PRODUCTS]),
-        setAvailability: jasmine.createSpy('setAvailability'),
-      };
-
-      await TestBed.configureTestingModule({
-        imports: [AdminProductListPage],
-        providers: [
-          provideRouter([]),
-          { provide: ActivatedRoute, useValue: fakeActivatedRoute() },
-          { provide: AdminProductsMockService, useValue: service },
-        ],
-      }).compileComponents();
-
-      fixture = TestBed.createComponent(AdminProductListPage);
-      component = fixture.componentInstance;
-      fixture.detectChanges();
-    });
-
-    it('narrows visible rows by case-insensitive title search', () => {
-      component.updateSearch('pegatinas');
-      fixture.detectChanges();
-
-      const text: string = fixture.nativeElement.textContent;
-      expect(text).toContain('Set de pegatinas personalizadas');
-      expect(text).not.toContain('Llavero con silueta de mascota');
-    });
-
-    it('narrows visible rows by category', () => {
-      component.updateCategoryFilter('llavero');
-      fixture.detectChanges();
-
-      const text: string = fixture.nativeElement.textContent;
-      expect(text).toContain('Llavero con silueta de mascota');
-      expect(text).not.toContain('Set de pegatinas personalizadas');
-    });
-
-    it('opens the confirm dialog when deactivating, and does NOT call setAvailability until confirmed', () => {
-      const deactivateButton = (
-        Array.from(fixture.nativeElement.querySelectorAll('button')) as HTMLButtonElement[]
-      ).find((b) => b.textContent?.includes('Desactivar'))!;
-      deactivateButton.click();
-      fixture.detectChanges();
-
-      expect(fixture.nativeElement.querySelector('[role="alertdialog"]')).toBeTruthy();
-      expect(service.setAvailability).not.toHaveBeenCalled();
-    });
-
-    it('calls setAvailability(id, false) only after confirming the dialog', () => {
-      service.setAvailability.and.returnValue(of({ ...PRODUCTS[0], available: false }));
-
-      const deactivateButton = (
-        Array.from(fixture.nativeElement.querySelectorAll('button')) as HTMLButtonElement[]
-      ).find((b) => b.textContent?.includes('Desactivar'))!;
-      deactivateButton.click();
-      fixture.detectChanges();
-
-      const confirmButton = (
-        Array.from(
-          fixture.nativeElement.querySelectorAll('.admin-confirm-dialog__actions button'),
-        ) as HTMLButtonElement[]
-      ).find((b) => b.textContent?.includes('Desactivar'))!;
-      confirmButton.click();
-      fixture.detectChanges();
-
-      expect(service.setAvailability).toHaveBeenCalledOnceWith('p-1', false);
-      expect(fixture.nativeElement.querySelector('[role="alertdialog"]')).toBeNull();
-    });
-
-    it('does NOT call setAvailability when the confirm dialog is cancelled', () => {
-      const deactivateButton = (
-        Array.from(fixture.nativeElement.querySelectorAll('button')) as HTMLButtonElement[]
-      ).find((b) => b.textContent?.includes('Desactivar'))!;
-      deactivateButton.click();
-      fixture.detectChanges();
-
-      const cancelButton = (
-        Array.from(
-          fixture.nativeElement.querySelectorAll('.admin-confirm-dialog__actions button'),
-        ) as HTMLButtonElement[]
-      ).find((b) => b.textContent?.includes('Cancelar'))!;
-      cancelButton.click();
-      fixture.detectChanges();
-
-      expect(service.setAvailability).not.toHaveBeenCalled();
-      expect(fixture.nativeElement.querySelector('[role="alertdialog"]')).toBeNull();
-    });
-
-    it('reactivating an inactive product calls setAvailability(id, true) immediately, without a dialog', () => {
-      service.setAvailability.and.returnValue(of({ ...PRODUCTS[1], available: true }));
-
-      const activateButton = (
-        Array.from(fixture.nativeElement.querySelectorAll('button')) as HTMLButtonElement[]
-      ).find((b) => b.textContent?.includes('Activar'))!;
-      activateButton.click();
-      fixture.detectChanges();
-
-      expect(service.setAvailability).toHaveBeenCalledOnceWith('p-2', true);
-      expect(fixture.nativeElement.querySelector('[role="alertdialog"]')).toBeNull();
-    });
-  });
-
-  it('renders the error state when the initial fetch fails (test double service)', () => {
-    const failingService: Partial<AdminProductsMockService> = {
-      getProducts: (): Observable<AdminProductViewModel[]> => throwError(() => new Error('boom')),
-    };
-
-    TestBed.configureTestingModule({
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
       imports: [AdminProductListPage],
-      providers: [
-        provideRouter([]),
-        { provide: ActivatedRoute, useValue: fakeActivatedRoute() },
-        { provide: AdminProductsMockService, useValue: failingService },
-      ],
-    });
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+    }).compileComponents();
+    http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(AdminProductListPage);
+    component = fixture.componentInstance;
     fixture.detectChanges();
+  });
+  afterEach(() => http.verify());
 
-    expect(fixture.nativeElement.querySelector('[role="alert"]')).toBeTruthy();
+  it('shows loading, then the server products (including unavailable ones) with status badges', () => {
+    expect(fixture.nativeElement.querySelector('[role="status"]')).toBeTruthy();
+    listReq().flush(page([dto(1), dto(2, { available: false, category: 'PEGATINAS' })]));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('tbody tr').length).toBe(2);
+    const text: string = fixture.nativeElement.textContent;
+    expect(text).toContain('Pegatinas');
+    expect(text).toContain('Inactivo');
+    expect(text).not.toContain('Vista de demostración');
+  });
+
+  it('sends category and availability filters to the server', () => {
+    listReq().flush(page([dto(1)]));
+    component.updateCategoryFilter('PEGATINAS');
+    const byCategory = listReq();
+    expect(byCategory.request.params.get('category')).toBe('PEGATINAS');
+    byCategory.flush(page([]));
+    component.updateAvailabilityFilter('no-disponibles');
+    const byAvailability = listReq();
+    expect(byAvailability.request.params.get('available')).toBe('false');
+    byAvailability.flush(page([]));
+  });
+
+  it('debounces search and sends q', fakeAsync(() => {
+    listReq().flush(page([dto(1)]));
+    component.updateSearch('llavero');
+    http.expectNone((r) => r.url === '/api/admin/products');
+    tick(PRODUCT_SEARCH_DEBOUNCE_MS);
+    const req = listReq();
+    expect(req.request.params.get('q')).toBe('llavero');
+    req.flush(page([dto(1)]));
+  }));
+
+  it('shows the empty state when there are no products and a no-match state under filters', () => {
+    listReq().flush(page([]));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Todavía no hay productos');
+    component.updateCategoryFilter('LLAVERO');
+    listReq().flush(page([]));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Ningún producto coincide');
+  });
+
+  it('opens the confirm dialog when deactivating and PATCHes { available: false } only after confirming', () => {
+    listReq().flush(page([dto(1)]));
+    fixture.detectChanges();
+    component.requestDeactivate(component.products()[0]);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[role="alertdialog"]')).toBeTruthy();
+    http.expectNone((r) => r.method === 'PATCH');
+    component.confirmDeactivate();
+    const req = http.expectOne('/api/admin/products/1/availability');
+    expect(req.request.method).toBe('PATCH');
+    expect(req.request.body).toEqual({ available: false });
+    req.flush(dto(1, { available: false }));
+    expect(component.products()[0].available).toBeFalse();
+  });
+
+  it('does not call the API when the dialog is cancelled', () => {
+    listReq().flush(page([dto(1)]));
+    component.requestDeactivate(component.products()[0]);
+    component.cancelDeactivate();
+    http.expectNone((r) => r.method === 'PATCH');
+  });
+
+  it('reactivating PATCHes { available: true } immediately, without a dialog', () => {
+    listReq().flush(page([dto(2, { available: false })]));
+    component.activate(component.products()[0]);
+    const req = http.expectOne('/api/admin/products/2/availability');
+    expect(req.request.body).toEqual({ available: true });
+    req.flush(dto(2, { available: true }));
+    expect(component.products()[0].available).toBeTrue();
+  });
+
+  it('shows an error message when the availability change fails', () => {
+    listReq().flush(page([dto(1)]));
+    component.activate(component.products()[0]);
+    http
+      .expectOne('/api/admin/products/1/availability')
+      .flush({ code: 'INTERNAL_ERROR', message: 'x', timestamp: 't' }, { status: 500, statusText: 'x' });
+    expect(component.availabilityError()).toContain('No pudimos actualizar');
+  });
+
+  it('shows an error state with a working retry', () => {
+    listReq().flush(
+      { code: 'INTERNAL_ERROR', message: 'x', timestamp: 't' },
+      { status: 500, statusText: 'Server Error' },
+    );
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-error-state')).toBeTruthy();
+    fixture.nativeElement.querySelector('app-error-state button').click();
+    listReq().flush(page([dto(1)]));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('tbody tr').length).toBe(1);
   });
 });

@@ -1,120 +1,94 @@
-import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
-import { ActivatedRoute, ActivatedRouteSnapshot, ParamMap, convertToParamMap, provideRouter } from '@angular/router';
-import { Observable, of, throwError } from 'rxjs';
-import { OrderSummaryViewModel } from '../../models/order.model';
-import { CustomerOrdersMockService } from '../../services/customer-orders-mock.service';
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { OrderHistoryPage } from './order-history.page';
 
-/** Lightweight `ActivatedRoute` fake — only exposes what `OrderHistoryPage` actually reads
- * (`queryParamMap` / `snapshot.queryParamMap`), mirroring the narrow-`Pick` mocking convention
- * already used for `CustomerProfileMockService` in `profile.page.spec.ts`. */
-function fakeActivatedRoute(queryParams: Record<string, string> = {}): Partial<ActivatedRoute> {
-  const map: ParamMap = convertToParamMap(queryParams);
-  return {
-    queryParamMap: of(map),
-    snapshot: { queryParamMap: map } as ActivatedRouteSnapshot,
-  };
+/** Shapes copied from backend `Page<OrderSummaryDto>` (OrderController list). */
+const SUMMARY_STANDARD = {
+  id: 'PED-20261006-0001',
+  placedAt: '2026-10-06T15:30:00Z',
+  status: 'EN_PRODUCCION',
+  kind: 'ESTANDAR',
+  summary: '3 unidades: Llavero naranja y 1 producto más',
+  totalAmount: 47.5,
+};
+const SUMMARY_CUSTOM = {
+  id: 'PED-20261001-0007',
+  placedAt: '2026-10-01T10:00:00Z',
+  status: 'CONFIRMADO',
+  kind: 'PERSONALIZADO',
+  summary: 'Figura a medida',
+  totalAmount: 120,
+};
+
+function page(content: object[], totalPages = 1) {
+  return { content, page: 0, size: 20, totalElements: content.length, totalPages };
 }
 
-describe('OrderHistoryPage', () => {
+describe('OrderHistoryPage (GET /api/orders)', () => {
   let fixture: ComponentFixture<OrderHistoryPage>;
+  let http: HttpTestingController;
+  const ordersReq = () => http.expectOne((r) => r.url === '/api/orders');
 
-  describe('loading and loaded states (real mock service)', () => {
-    beforeEach(async () => {
-      await TestBed.configureTestingModule({
-        imports: [OrderHistoryPage],
-        providers: [provideRouter([]), { provide: ActivatedRoute, useValue: fakeActivatedRoute() }],
-      }).compileComponents();
-    });
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [OrderHistoryPage],
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+    }).compileComponents();
+    http = TestBed.inject(HttpTestingController);
+    fixture = TestBed.createComponent(OrderHistoryPage);
+    fixture.detectChanges();
+  });
+  afterEach(() => http.verify());
 
-    it('renders the loading state immediately, before the mock delay resolves', fakeAsync(() => {
-      fixture = TestBed.createComponent(OrderHistoryPage);
-      fixture.detectChanges();
-
-      expect(fixture.nativeElement.querySelector('[role="status"]')).toBeTruthy();
-      expect(fixture.nativeElement.querySelector('.order-history-page__item')).toBeNull();
-
-      tick(400);
-    }));
-
-    it('renders every mock order with its identifier, date, status badge and type indicator', fakeAsync(() => {
-      fixture = TestBed.createComponent(OrderHistoryPage);
-      fixture.detectChanges();
-      tick(400);
-      fixture.detectChanges();
-
-      const text: string = fixture.nativeElement.textContent;
-      expect(text).toContain('PED-2031');
-      expect(text).toContain('Entregado');
-      expect(text).toContain('Pedido estándar');
-      expect(text).toContain('Pedido personalizado');
-      expect(fixture.nativeElement.querySelectorAll('.order-history-page__item').length).toBeGreaterThan(1);
-    }));
-
-    it('links each order to its detail route', fakeAsync(() => {
-      fixture = TestBed.createComponent(OrderHistoryPage);
-      fixture.detectChanges();
-      tick(400);
-      fixture.detectChanges();
-
-      const link: HTMLAnchorElement = fixture.nativeElement.querySelector('.order-history-page__item');
-      expect(link.getAttribute('href')).toBe('/account/orders/PED-2031');
-    }));
+  it('shows the loading state first, then the server orders with label, status, kind and total', () => {
+    expect(fixture.nativeElement.querySelector('[role="status"]')).toBeTruthy();
+    ordersReq().flush(page([SUMMARY_STANDARD, SUMMARY_CUSTOM]));
+    fixture.detectChanges();
+    const text: string = fixture.nativeElement.textContent;
+    expect(text).toContain('PED-20261006-0001');
+    expect(text).toContain('En producción');
+    expect(text).toContain('Confirmado');
+    expect(text).toContain('Pedido estándar');
+    expect(text).toContain('Pedido personalizado');
+    expect(text).toContain('S/ 47.50');
+    expect(fixture.nativeElement.querySelectorAll('.order-history-page__item').length).toBe(2);
+    expect(text).not.toContain('Vista de demostración');
   });
 
-  describe('empty state (?mockState=empty)', () => {
-    it('renders a friendly empty message with a link back to the catalog', fakeAsync(() => {
-      TestBed.configureTestingModule({
-        imports: [OrderHistoryPage],
-        providers: [
-          provideRouter([]),
-          { provide: ActivatedRoute, useValue: fakeActivatedRoute({ mockState: 'empty' }) },
-        ],
-      });
-      fixture = TestBed.createComponent(OrderHistoryPage);
-      fixture.detectChanges();
-      tick(400);
-      fixture.detectChanges();
-
-      expect(fixture.nativeElement.querySelector('app-empty-state')).toBeTruthy();
-      expect(fixture.nativeElement.querySelector('.order-history-page__item')).toBeNull();
-      const link: HTMLAnchorElement = fixture.nativeElement.querySelector('app-empty-state a');
-      expect(link.getAttribute('href')).toBe('/catalog');
-    }));
+  it('links each order to its detail page', () => {
+    ordersReq().flush(page([SUMMARY_STANDARD]));
+    fixture.detectChanges();
+    const link: HTMLAnchorElement = fixture.nativeElement.querySelector('.order-history-page__item');
+    expect(link.getAttribute('href')).toBe('/account/orders/PED-20261006-0001');
   });
 
-  describe('error and retry (test double service)', () => {
-    it('renders the error state when the fetch fails, and retry re-invokes the service', () => {
-      let callCount = 0;
-      const failingService: Partial<CustomerOrdersMockService> = {
-        getOrders: (): Observable<OrderSummaryViewModel[]> => {
-          callCount++;
-          return throwError(() => new Error('boom'));
-        },
-      };
+  it('renders the empty state when the customer has no orders', () => {
+    ordersReq().flush(page([]));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-empty-state')).toBeTruthy();
+  });
 
-      TestBed.configureTestingModule({
-        imports: [OrderHistoryPage],
-        providers: [
-          provideRouter([]),
-          { provide: ActivatedRoute, useValue: fakeActivatedRoute() },
-          { provide: CustomerOrdersMockService, useValue: failingService },
-        ],
-      });
-      fixture = TestBed.createComponent(OrderHistoryPage);
-      fixture.detectChanges();
+  it('renders an error state with a working retry', () => {
+    ordersReq().flush(
+      { code: 'INTERNAL_ERROR', message: 'x', timestamp: 't' },
+      { status: 500, statusText: 'Server Error' },
+    );
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-error-state')).toBeTruthy();
+    fixture.nativeElement.querySelector('app-error-state button').click();
+    ordersReq().flush(page([SUMMARY_STANDARD]));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('.order-history-page__item').length).toBe(1);
+  });
 
-      expect(callCount).toBe(1);
-      expect(fixture.nativeElement.querySelector('[role="alert"]')).toBeTruthy();
-
-      const retryButton = (
-        Array.from(fixture.nativeElement.querySelectorAll('button')) as HTMLButtonElement[]
-      ).find((button) => button.textContent?.includes('Reintentar'))!;
-      retryButton.click();
-      fixture.detectChanges();
-
-      expect(callCount).toBe(2);
-      expect(fixture.nativeElement.querySelector('[role="alert"]')).toBeTruthy();
-    });
+  it('pages through server pages', () => {
+    ordersReq().flush(page([SUMMARY_STANDARD], 2));
+    fixture.detectChanges();
+    fixture.componentInstance.goToPage(1);
+    const second = ordersReq();
+    expect(second.request.params.get('page')).toBe('1');
+    second.flush(page([SUMMARY_CUSTOM], 2));
   });
 });

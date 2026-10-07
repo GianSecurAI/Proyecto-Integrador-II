@@ -1,4 +1,5 @@
 import { Component, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
@@ -15,8 +16,8 @@ import { CartStateService } from '../../services/cart-state.service';
  * All state comes from `CartStateService` — this page holds no cart data of its own. "Proceder al
  * checkout" is a plain `routerLink` into `/checkout`
  * (`features/checkout/pages/checkout/checkout.page.ts`), which owns the multi-step
- * cart-review/customer-info/delivery-info/final-review flow and the actual (mock) order
- * submission — this page's job stops at "hand off to checkout."
+ * cart-review/customer-info/delivery-info/final-review flow and the real order
+ * submission (`POST /api/orders`) — this page's job stops at "hand off to checkout."
  *
  * Deviations from the Figma "Carrito de compras" reference (node 2:1459), see this feature's
  * other files for the fuller reasoning:
@@ -51,6 +52,15 @@ export class CartPage {
   readonly isEmpty = this.cart.isEmpty;
   readonly itemCount = this.cart.itemCount;
   readonly subtotal = this.cart.subtotal;
+  readonly unavailableIds = this.cart.unavailableIds;
+  readonly hasUnavailable = this.cart.hasUnavailable;
+  readonly pricesUpdated = this.cart.pricesUpdated;
+
+  constructor() {
+    // Opening the cart re-checks the carted products against the server (ADR-cart-state
+    // follow-up 4): refreshed prices, "no longer available" lines, "prices updated" notice.
+    this.cart.revalidate().pipe(takeUntilDestroyed()).subscribe();
+  }
 
   retryLoad(): void {
     this.cart.retryLoad();
@@ -60,12 +70,16 @@ export class CartPage {
     this.cart.continueWithEmptyCart();
   }
 
-  onQuantityChange(event: { productId: string; quantity: number }): void {
+  onQuantityChange(event: { productId: number; quantity: number }): void {
     this.cart.setQuantity(event.productId, event.quantity);
   }
 
-  removeItem(productId: string): void {
+  removeItem(productId: number): void {
     this.cart.removeItem(productId);
+  }
+
+  dismissPriceNotice(): void {
+    this.cart.dismissPriceNotice();
   }
 
   clearCart(): void {

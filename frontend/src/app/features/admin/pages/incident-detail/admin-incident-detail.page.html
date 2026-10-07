@@ -171,6 +171,7 @@
                   [value]="resolutionText()"
                   (input)="updateResolutionText($any($event.target).value)"
                   [disabled]="registeringResolution()"
+                  maxlength="1000"
                   placeholder="Describe cómo se resolvió la incidencia…"
                 ></textarea>
               </label>
@@ -199,8 +200,4 @@
     }
   }
 
-  <p class="admin-incident-detail-page__muted">
-    Vista de demostración: esta incidencia no proviene de un servidor real. Añade
-    <code>?mockState=error</code> a esta URL para previsualizar el estado de error.
-  </p>
 </div>

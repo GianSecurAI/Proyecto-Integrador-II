@@ -3,9 +3,14 @@
     <div class="cart-item__image" aria-hidden="true"></div>
 
     <div class="cart-item__info">
-      <p class="cart-item__eyebrow">{{ item().category }} / {{ item().subcategory }}</p>
+      <p class="cart-item__eyebrow">{{ categoryLabel() }} / {{ item().subcategory }}</p>
       <h3 class="cart-item__title">{{ item().title }}</h3>
       <p class="cart-item__unit-price">S/ {{ item().unitPrice.toFixed(2) }} c/u</p>
+      @if (unavailable()) {
+        <p class="cart-item__unavailable" role="alert">
+          Este producto ya no está disponible. Quítalo del carrito para continuar.
+        </p>
+      }
     </div>
 
     <div class="cart-item__quantity" role="group" [attr.aria-label]="'Cantidad de ' + item().title">
@@ -23,6 +28,7 @@
         type="button"
         class="ui-btn ui-btn--ghost ui-btn--sm"
         (click)="increment()"
+        [disabled]="item().quantity >= maxQuantity"
         aria-label="Aumentar cantidad"
       >
         +

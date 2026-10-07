@@ -1,13 +1,12 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { SessionStateService } from '../../../../core/services/session-state.service';
+import { OrderDetailViewModel } from '../../../account/models/order.model';
 import { CheckoutStateService } from '../../state/checkout-state.service';
 import { CheckoutConfirmationPage } from './checkout-confirmation.page';
 
 describe('CheckoutConfirmationPage', () => {
   let fixture: ComponentFixture<CheckoutConfirmationPage>;
   let checkoutState: CheckoutStateService;
-  let session: SessionStateService;
 
   const PLACED_AT = new Date('2026-09-07T15:30:00Z');
 
@@ -17,16 +16,21 @@ describe('CheckoutConfirmationPage', () => {
       providers: [provideRouter([])],
     });
     checkoutState = TestBed.inject(CheckoutStateService);
-    session = TestBed.inject(SessionStateService);
   });
 
   function placeOrder(): void {
-    checkoutState.setPlacedOrder({
+    const order: OrderDetailViewModel = {
       id: 'PED-MOCK-1',
-      status: 'pendiente',
+      status: 'PENDIENTE',
+      kind: 'ESTANDAR',
       placedAt: PLACED_AT,
       summary: '2 unidades: Llavero A',
-    });
+      totalAmount: 39.8,
+      items: [{ productId: 1, title: 'Llavero A', unitPrice: 19.9, quantity: 2, lineTotal: 39.8 }],
+      delivery: { address: 'Calle 1', district: 'Lima', notes: null },
+      statusHistory: [],
+    };
+    checkoutState.setPlacedOrder(order);
   }
 
   it('shows the order id and a "Pendiente" status badge, with no payment-processed claim', () => {
@@ -73,33 +77,22 @@ describe('CheckoutConfirmationPage', () => {
     expect(text).toContain('2026');
   });
 
-  it('shows a "Ver mi pedido" link to the customer-scoped order detail page for an authenticated CLIENTE session', () => {
+  it('shows the server-computed items and total from the order response, plus delivery', () => {
     placeOrder();
-    session.markAuthenticated('CLIENTE');
     fixture = TestBed.createComponent(CheckoutConfirmationPage);
     fixture.detectChanges();
+    const text: string = fixture.nativeElement.textContent;
+    expect(text).toContain('Llavero A');
+    expect(text).toContain('S/ 39.80');
+    expect(text).toContain('Calle 1, Lima');
+  });
 
-    const link: HTMLAnchorElement = fixture.nativeElement.querySelector(
-      'a[href*="/account/orders/"]',
-    );
+  it('links to the customer own order detail page', () => {
+    placeOrder();
+    fixture = TestBed.createComponent(CheckoutConfirmationPage);
+    fixture.detectChanges();
+    const link: HTMLAnchorElement = fixture.nativeElement.querySelector('a[href*="/account/orders/"]');
     expect(link).toBeTruthy();
     expect(link.getAttribute('href')).toContain('/account/orders/PED-MOCK-1');
-  });
-
-  it('omits the "Ver mi pedido" link for a guest/unauthenticated session', () => {
-    placeOrder();
-    fixture = TestBed.createComponent(CheckoutConfirmationPage);
-    fixture.detectChanges();
-
-    expect(fixture.nativeElement.querySelector('a[href*="/account/orders/"]')).toBeFalsy();
-  });
-
-  it('omits the "Ver mi pedido" link for a staff (non-CLIENTE) session', () => {
-    placeOrder();
-    session.markAuthenticated('ADMINISTRADOR');
-    fixture = TestBed.createComponent(CheckoutConfirmationPage);
-    fixture.detectChanges();
-
-    expect(fixture.nativeElement.querySelector('a[href*="/account/orders/"]')).toBeFalsy();
   });
 });

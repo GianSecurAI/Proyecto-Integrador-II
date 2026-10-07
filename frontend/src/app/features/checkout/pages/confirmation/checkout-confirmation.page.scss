@@ -46,3 +46,20 @@ h1 {
   gap: var(--ar-space-3);
   justify-content: center;
 }
+
+.checkout-confirmation-page__items {
+  width: 100%;
+  border-collapse: collapse;
+
+  th,
+  td {
+    padding: var(--ar-space-2);
+    text-align: left;
+    border-bottom: 1px solid var(--ar-color-border, #ddd);
+  }
+}
+
+.checkout-confirmation-page__total,
+.checkout-confirmation-page__delivery {
+  margin: 0;
+}

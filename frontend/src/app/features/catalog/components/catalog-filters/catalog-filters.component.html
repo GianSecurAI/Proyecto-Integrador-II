@@ -2,27 +2,21 @@
   <h2 class="catalog-filters__heading">Filtros</h2>
 
   <fieldset class="catalog-filters__group">
-    <legend class="catalog-filters__legend">Opciones</legend>
-
-    <label class="catalog-filters__option">
-      <input
-        class="ui-checkbox"
-        type="checkbox"
-        [checked]="filters().onSaleOnly"
-        (change)="toggleOnSaleOnly($any($event.target).checked)"
-      />
-      Solo en oferta
-    </label>
-
-    <label class="catalog-filters__option">
-      <input
-        class="ui-checkbox"
-        type="checkbox"
-        [checked]="filters().personalizableOnly"
-        (change)="togglePersonalizableOnly($any($event.target).checked)"
-      />
-      Solo personalizable
-    </label>
+    <legend class="catalog-filters__legend">Ordenar por</legend>
+    <app-form-field #sortField="appFormField" label="Orden">
+      <select
+        class="ui-input"
+        [id]="sortField.inputId()"
+        [value]="filters().sort"
+        (change)="selectSort($any($event.target).value)"
+      >
+        @for (option of sortOptions; track option.value) {
+          <option [value]="option.value" [selected]="option.value === filters().sort">
+            {{ option.label }}
+          </option>
+        }
+      </select>
+    </app-form-field>
   </fieldset>
 
   <fieldset class="catalog-filters__group">

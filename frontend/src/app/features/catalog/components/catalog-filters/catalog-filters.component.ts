@@ -4,16 +4,18 @@ import { FormFieldComponent } from '../../../../shared/ui/form-field/form-field.
 import {
   CATALOG_CATEGORIES,
   CATALOG_CATEGORY_LABELS,
+  CATALOG_SORT_OPTIONS,
   CatalogCategory,
   CatalogFilters,
+  CatalogSort,
 } from '../../models/catalog-filters.model';
 
 /**
- * Sidebar filter panel (Figma node 2:27): "FILTROS" heading, "OPCIONES" checkboxes, "CATEGORÍAS"
- * radio list, "GAMA DE PRECIOS" min/max inputs, and a "Restablecer filtros" button. Filtering is
- * reactive/local against the already-loaded product list — the real Figma file has no "aplicar"
- * button for this panel, so every control change reports upward immediately via
- * `filtersChange`, rather than this component (or `CatalogPage`) inventing an apply step.
+ * Sidebar filter panel (Figma node 2:27): "FILTROS" heading, "ORDENAR POR", "CATEGORÍAS" radio
+ * list, "GAMA DE PRECIOS" min/max inputs, and a "Restablecer filtros" button. The Figma "OPCIONES"
+ * checkboxes ("Solo en oferta", "Solo personalizable") were dropped: the backend has no discounts
+ * or personalizable flag (D-08/D-09). Every control change reports upward immediately via
+ * `filtersChange`; `CatalogPage` turns the state into server query params.
  *
  * The category radio list is one of two controls bound to the same `category` state (the other
  * is the toolbar's quick pill row in `CatalogToolbarComponent`) — selecting either updates the
@@ -42,12 +44,10 @@ export class CatalogFiltersComponent {
   readonly categories = CATALOG_CATEGORIES;
   readonly categoryLabels = CATALOG_CATEGORY_LABELS;
 
-  toggleOnSaleOnly(checked: boolean): void {
-    this.filtersChange.emit({ onSaleOnly: checked });
-  }
+  readonly sortOptions = CATALOG_SORT_OPTIONS;
 
-  togglePersonalizableOnly(checked: boolean): void {
-    this.filtersChange.emit({ personalizableOnly: checked });
+  selectSort(sort: string): void {
+    this.filtersChange.emit({ sort: sort as CatalogSort });
   }
 
   selectCategory(category: CatalogCategory): void {

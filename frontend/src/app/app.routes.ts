@@ -36,18 +36,21 @@ export const routes: Routes = [
   },
   {
     // Standard-catalog self-service checkout (CLAUDE.md's "Business clarification: purchasing
-    // flows", steps 3-5 — EXCLUDING the payment-gateway step 4, not implemented by this
-    // frontend-only mock; see `features/checkout/pages/checkout/checkout.page.ts`'s doc comment).
-    // Public, unguarded — guest checkout, same reasoning as `/cart`. Blocked at the route level
-    // when the cart is empty (`checkoutCartNotEmptyGuard`, redirects to `/cart`).
+    // flows", steps 3-5 — the payment-gateway step is not implemented, PD-ORD-01). Requires a
+    // signed-in CLIENTE (see below) and a non-empty cart (`checkoutCartNotEmptyGuard`, redirects
+    // to `/cart`).
     path: 'checkout',
-    canActivate: [checkoutCartNotEmptyGuard],
+    // The backend only accepts `POST /api/orders` from a signed-in CLIENTE, so the route requires
+    // that session (a guest is sent to the OTP login and returned here, cart intact). UX guard
+    // only — the API re-authorizes the request.
+    canActivate: [authGuard, checkoutCartNotEmptyGuard],
+    data: { role: CUSTOMER_ROLES },
     loadComponent: () =>
       import('./features/checkout/pages/checkout/checkout.page').then((m) => m.CheckoutPage),
     title: 'Checkout — Ar Makers 3D',
   },
   {
-    // Reachable only right after a real, successful mock order submission
+    // Reachable only right after the backend confirmed an order
     // (`checkoutConfirmationGuard`, redirects to `/cart` otherwise) — see
     // `features/checkout/pages/confirmation/checkout-confirmation.page.ts`'s doc comment.
     path: 'checkout/confirmacion',
@@ -63,11 +66,13 @@ export const routes: Routes = [
     loadChildren: () => import('./features/auth/auth.routes').then((m) => m.AUTH_ROUTES),
   },
   {
-    // Public, unauthenticated order-tracking entry point (RF-12), distinct from the
-    // authenticated customer's own order list under `/account/orders` — see
-    // `features/order-tracking/pages/track-order/track-order.page.ts` for the full rationale.
-    // Deliberately NOT nested under `/account` and NOT guarded.
+    // Order-tracking lookup by id (RF-12). The backend has NO public tracking endpoint (D-07), so
+    // this now requires the owner's CLIENTE session — see
+    // `features/order-tracking/pages/track-order/track-order.page.ts`. Not nested under `/account`
+    // because it is a distinct, linkable entry point.
     path: 'track-order',
+    canActivate: [authGuard],
+    data: { role: CUSTOMER_ROLES },
     loadComponent: () =>
       import('./features/order-tracking/pages/track-order/track-order.page').then(
         (m) => m.TrackOrderPage,
@@ -125,8 +130,8 @@ export const routes: Routes = [
     // shell now that Asesor has approved capabilities within it (RF-11/RF-13). The same OTP flow
     // used by customers now resolves a staff role after verification (see
     // `features/auth/pages/verify-code/verify-code.page.ts`), so this route is genuinely
-    // reachable in the running preview (still no fake "staff session" bypass — role is only ever
-    // discovered from a real, if mocked, OTP verification; see `SessionStateService`/`authGuard`).
+    // reachable (there is no "staff session" bypass — the role is only ever reported by the server
+    // after a real OTP verification, `GET /api/auth/me`; see `SessionStateService`/`authGuard`).
     // `loadComponent` here supplies the admin-only chrome (topbar + sidebar) that replaces the
     // public header/footer under this path (see `layout/shell/shell.component.ts`'s
     // `isAdminArea` signal).
@@ -255,9 +260,8 @@ export const routes: Routes = [
       },
       {
         // Administrador-ONLY — RF-19 (line 209: "Reportes... exclusivos para Administrador"). See
-        // the parent route's doc comment above. Loads `AdminReportsPage` (client-side aggregation
-        // over `AdminOrdersMockService`/`AdminIncidentsMockService` — `Reporte` is not a persisted
-        // entity, see that page's doc comment), replacing the earlier generic placeholder.
+        // the parent route's doc comment above. Loads `AdminReportsPage`, which renders the
+        // counts/amounts returned by `GET /api/admin/reports/*` (see that page's doc comment).
         path: 'reports',
         canActivate: [authGuard],
         loadComponent: () =>

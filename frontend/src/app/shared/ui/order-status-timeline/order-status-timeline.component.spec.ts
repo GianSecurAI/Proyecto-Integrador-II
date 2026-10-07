@@ -18,7 +18,7 @@ describe('OrderStatusTimelineComponent', () => {
   });
 
   it('renders all five happy-path steps with their Spanish labels', () => {
-    create('pendiente');
+    create('PENDIENTE');
     const steps: HTMLElement[] = Array.from(
       fixture.nativeElement.querySelectorAll('.ui-order-timeline__step'),
     );
@@ -32,7 +32,7 @@ describe('OrderStatusTimelineComponent', () => {
   });
 
   it('marks earlier steps as done and the matching current step as current (aria-current)', () => {
-    create('en_produccion');
+    create('EN_PRODUCCION');
     const steps: HTMLElement[] = Array.from(
       fixture.nativeElement.querySelectorAll('.ui-order-timeline__step'),
     );
@@ -51,7 +51,7 @@ describe('OrderStatusTimelineComponent', () => {
   });
 
   it('gives a cancelled order a distinct visual treatment instead of a step position', () => {
-    create('cancelado');
+    create('CANCELADO');
     const host: HTMLElement = fixture.nativeElement.querySelector('.ui-order-timeline');
     expect(host.classList).toContain('ui-order-timeline--cancelled');
     expect(fixture.nativeElement.textContent).toContain('cancelado');

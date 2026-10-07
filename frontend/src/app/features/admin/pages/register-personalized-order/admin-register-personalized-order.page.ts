@@ -2,45 +2,33 @@ import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { applyFieldErrors, serverError } from '../../../../core/errors/form-errors';
+import { IdempotencyAttempt } from '../../../../core/http/idempotency-attempt';
+import { apiErrorCode, httpStatus } from '../../../../core/models/api-error.model';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { CardComponent } from '../../../../shared/ui/card/card.component';
 import { FormFieldComponent } from '../../../../shared/ui/form-field/form-field.component';
-import { AdminOrdersMockService } from '../../services/admin-orders-mock.service';
+import { PERSONALIZED_LIMITS } from '../../models/admin-order.model';
+import { AdminOrdersService } from '../../services/admin-orders.service';
 
 interface RegisterPersonalizedOrderControls {
   customerEmail: FormControl<string>;
-  quotationDescription: FormControl<string>;
-  quotationAmount: FormControl<number | null>;
+  description: FormControl<string>;
+  agreedAmount: FormControl<number | null>;
   paymentConfirmed: FormControl<boolean>;
 }
 
 /**
- * Advisor workflow screen (`/admin/orders/register-personalized`) — RF-11 ("Registro de
- * pedidos", "Confirmado para el flujo personalizado", actor Asesor/Administrador) and RF-10
- * ("Registro y gestión de cotización", "Confirmado como registro administrativo posterior al
- * acuerdo por WhatsApp"). Reached from `AdminOrderListPage`'s page-header action.
+ * RF-11 (staff registration of a personalized order, CLAUDE.md "Custom / personalized products"
+ * steps 6-8), backed by `POST /api/admin/orders/personalized`. The quotation and the payment
+ * happened OUTSIDE the system (WhatsApp + the business's external payment): staff only records
+ * the customer's email, a description, the agreed amount (entered by staff — nothing is
+ * calculated) and confirms that the external payment was received. No payment is processed here.
  *
- * Implements CLAUDE.md's "Business clarification: purchasing flows" §"Custom / personalized
- * products" steps 4-6 EXACTLY: the advisor has already coordinated the sale over WhatsApp and the
- * customer has already paid through the business's external payment mechanism BEFORE this screen
- * is used — this form only records that fact and the manually-agreed quotation, it never
- * processes a payment itself (there is no payment field, no payment-provider reference, no
- * payment-gateway call of any kind anywhere in this page or its service call) and it never
- * calculates a price (`quotationAmount` is a plain, manually-typed positive number — line 96 of
- * `docs/discovery/06-system-definition.md`: "el monto de una Cotización siempre es un dato manual
- * del asesor").
- *
- * `paymentConfirmed` is a required attestation checkbox ("Confirmo que el pago externo ya fue
- * recibido"), validated like any other required control (accessible error feedback via
- * `app-form-field`), grounded by line 95: "el sistema confía en la afirmación humana, no valida
- * el pago."
- *
- * Client-side validation here (required email in valid format, required description, positive
- * amount, required checkbox) is a UX convenience only — Constitution Prohibited Practice #6 — no
- * real backend endpoint exists yet for this mock-only preview feature.
- *
- * On a successful (mock) registration, navigates straight to the new order's detail page
- * (`/admin/orders/:id`), mirroring `AdminProductCreatePage`'s create-and-redirect convention.
+ * Client validation mirrors the backend DTO for UX only; the server re-validates everything and a
+ * `400 VALIDATION_FAILED` is shown on the matching field. An `Idempotency-Key` UUID makes a retry
+ * of the same submission safe (a double click or lost response replays the original order).
+ * `409 CUSTOMER_NOT_ELIGIBLE` means the email belongs to a staff or deactivated account.
  */
 @Component({
   selector: 'app-admin-register-personalized-order-page',
@@ -50,9 +38,10 @@ interface RegisterPersonalizedOrderControls {
   styleUrl: './admin-register-personalized-order.page.scss',
 })
 export class AdminRegisterPersonalizedOrderPage {
-  private readonly ordersService = inject(AdminOrdersMockService);
+  private readonly ordersService = inject(AdminOrdersService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly attempt = new IdempotencyAttempt();
 
   readonly submitting = signal(false);
   readonly errorMessage = signal<string | null>(null);
@@ -60,14 +49,22 @@ export class AdminRegisterPersonalizedOrderPage {
   readonly form = new FormGroup<RegisterPersonalizedOrderControls>({
     customerEmail: new FormControl('', {
       nonNullable: true,
-      validators: [Validators.required, Validators.email],
+      validators: [
+        Validators.required,
+        Validators.email,
+        Validators.maxLength(PERSONALIZED_LIMITS.emailMax),
+      ],
     }),
-    quotationDescription: new FormControl('', {
+    description: new FormControl('', {
       nonNullable: true,
-      validators: [Validators.required],
+      validators: [Validators.required, Validators.maxLength(PERSONALIZED_LIMITS.descriptionMax)],
     }),
-    quotationAmount: new FormControl<number | null>(null, {
-      validators: [Validators.required, Validators.min(0.01)],
+    agreedAmount: new FormControl<number | null>(null, {
+      validators: [
+        Validators.required,
+        Validators.min(0.01),
+        Validators.max(PERSONALIZED_LIMITS.amountMax),
+      ],
     }),
     paymentConfirmed: new FormControl(false, {
       nonNullable: true,
@@ -75,14 +72,16 @@ export class AdminRegisterPersonalizedOrderPage {
     }),
   });
 
+  readonly serverError = serverError;
+
   get customerEmailControl() {
     return this.form.controls.customerEmail;
   }
-  get quotationDescriptionControl() {
-    return this.form.controls.quotationDescription;
+  get descriptionControl() {
+    return this.form.controls.description;
   }
-  get quotationAmountControl() {
-    return this.form.controls.quotationAmount;
+  get agreedAmountControl() {
+    return this.form.controls.agreedAmount;
   }
   get paymentConfirmedControl() {
     return this.form.controls.paymentConfirmed;
@@ -96,31 +95,50 @@ export class AdminRegisterPersonalizedOrderPage {
       return;
     }
     const raw = this.form.getRawValue();
+    const value = {
+      customerEmail: raw.customerEmail,
+      description: raw.description.trim(),
+      agreedAmount: raw.agreedAmount,
+      paymentConfirmed: raw.paymentConfirmed,
+    };
     this.submitting.set(true);
     this.errorMessage.set(null);
     this.ordersService
-      .registerPersonalizedOrder({
-        customerEmail: raw.customerEmail,
-        quotationDescription: raw.quotationDescription.trim(),
-        quotationAmount: raw.quotationAmount!,
-        paymentConfirmed: raw.paymentConfirmed,
-      })
+      .registerPersonalized(value, this.attempt.keyFor(value))
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (created) => {
+        next: ({ order }) => {
           this.submitting.set(false);
-          this.router.navigate(['/admin/orders', created.id]);
+          this.attempt.reset();
+          void this.router.navigate(['/admin/orders', order.id]);
         },
-        error: () => {
+        error: (err: unknown) => {
           this.submitting.set(false);
-          this.errorMessage.set(
-            'No pudimos registrar el pedido personalizado. Inténtalo de nuevo más tarde.',
-          );
+          this.errorMessage.set(this.messageFor(err));
         },
       });
   }
 
   cancel(): void {
-    this.router.navigate(['/admin/orders']);
+    void this.router.navigate(['/admin/orders']);
+  }
+
+  private messageFor(err: unknown): string {
+    const code = apiErrorCode(err);
+    if (code === 'VALIDATION_FAILED') {
+      const unmatched = applyFieldErrors(this.form, err);
+      return unmatched.length > 0
+        ? `El servidor rechazó los datos: ${unmatched.join('; ')}`
+        : 'Revisa los campos marcados e inténtalo de nuevo.';
+    }
+    if (code === 'CUSTOMER_NOT_ELIGIBLE') {
+      return 'Ese correo pertenece a una cuenta de personal o desactivada: no se puede registrar un pedido a su nombre.';
+    }
+    if (code === 'IDEMPOTENCY_KEY_REUSED') {
+      this.attempt.reset();
+      return 'No pudimos completar el envío. Inténtalo de nuevo.';
+    }
+    if (httpStatus(err) === 429) return 'Demasiados intentos. Espera un momento e inténtalo de nuevo.';
+    return 'No pudimos registrar el pedido personalizado. Inténtalo de nuevo más tarde.';
   }
 }

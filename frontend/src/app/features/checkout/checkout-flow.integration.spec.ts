@@ -1,86 +1,82 @@
-import { TestBed, fakeAsync, tick } from '@angular/core/testing';
-import { CATALOG_PRODUCTS } from '../catalog/mocks/catalog-products.mock';
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { TestBed } from '@angular/core/testing';
 import { CartStateService } from '../cart/services/cart-state.service';
-import { CustomerOrdersMockService } from '../account/services/customer-orders-mock.service';
+import { CART_STORAGE_ADAPTER } from '../cart/services/cart-storage.adapter';
+import {
+  StandardOrdersService,
+  buildPlaceOrderRequest,
+} from './services/standard-orders.service';
+import { CheckoutStateService } from './state/checkout-state.service';
 
 /**
- * Cross-feature SEAM test — deliberately uses the REAL `CartStateService` and REAL
- * `CustomerOrdersMockService`, never a spy/stand-in for either, unlike
- * `order-review-step.component.spec.ts` (which correctly spies on the order-creation call to
- * unit-test the component in isolation) or `customer-orders-mock.service.spec.ts` (which
- * correctly hand-builds a `CartItem[]` to unit-test `createStandardOrder` in isolation).
- *
- * Neither of those specs exercises the actual hand-off: a product added via
- * `CartStateService.addItem()` (the same method `ProductCardComponent`/`product-detail.page.ts`
- * call) flowing, unmodified, into `CustomerOrdersMockService.createStandardOrder()`, and the
- * resulting order then being visible via `getOrders()` (the same read `/account/orders` and the
- * public `/track-order` page both perform). This test exists specifically so a future change to
- * either side's shape (e.g. renaming a `CartItem`/`OrderSummaryViewModel` field) fails a test
- * here rather than only being caught by manual/live review.
+ * Cross-feature SEAM test: REAL `CartStateService` -> REAL request builder -> REAL
+ * `StandardOrdersService` over `HttpTestingController` (no stand-in for any of them). A product
+ * added through `CartStateService.addItem()` must reach `POST /api/orders` as `{ productId,
+ * quantity }` ONLY, and the order the server returns (server price/status) is what the checkout
+ * keeps — never the cart snapshot. The response body is copied from the backend's
+ * `OrderResponseDto`.
  */
-describe('Cart -> Checkout -> Order creation (integration seam)', () => {
+describe('Cart -> Checkout -> POST /api/orders (integration seam)', () => {
   let cart: CartStateService;
-  let orders: CustomerOrdersMockService;
+  let orders: StandardOrdersService;
+  let http: HttpTestingController;
+  let checkout: CheckoutStateService;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({});
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        // Real LocalStorage adapter would work too; a throwaway scope keeps the test hermetic.
+        {
+          provide: CART_STORAGE_ADAPTER,
+          useValue: { load: () => [], save: () => undefined, clear: () => undefined },
+        },
+      ],
+    });
     cart = TestBed.inject(CartStateService);
-    orders = TestBed.inject(CustomerOrdersMockService);
+    orders = TestBed.inject(StandardOrdersService);
+    http = TestBed.inject(HttpTestingController);
+    checkout = TestBed.inject(CheckoutStateService);
   });
+  afterEach(() => http.verify());
 
-  it('carries product id, title, price and quantity unchanged from cart to the created order and into getOrders()', fakeAsync(() => {
-    const product = CATALOG_PRODUCTS[0];
-    cart.addItem(product, 2);
-    cart.addItem(CATALOG_PRODUCTS[1], 1);
+  it('carries only product id and quantity from the cart to the request, and keeps the SERVER order', () => {
+    cart.addItem({ id: 5, title: 'Llavero', category: 'LLAVERO', subcategory: 'x', price: 12.5 }, 2);
+    cart.addItem({ id: 6, title: 'Pegatinas', category: 'PEGATINAS', subcategory: 'y', price: 4 }, 1);
 
-    expect(cart.itemCount()).toBe(3);
-    const cartItems = cart.items();
-    expect(cartItems.length).toBe(2);
+    const request = buildPlaceOrderRequest(
+      cart.items(),
+      { fullName: 'Ana Torres', phone: '987654321' },
+      { address: 'Av. Larco 345', district: 'Miraflores', notes: '' },
+    );
+    let created: { id: string; totalAmount: number } | undefined;
+    orders.place(request, checkout.idempotencyKeyFor(request)).subscribe((o) => (created = o));
 
-    let created: import('../account/models/order.model').OrderDetailViewModel | undefined;
-    orders
-      .createStandardOrder(
-        cartItems,
-        { fullName: 'Ana Torres', email: 'ana.torres@example.com', phone: '987654321' },
-        { address: 'Av. Larco 345', district: 'Miraflores', notes: '' },
-      )
-      .subscribe((result) => (created = result));
-    tick(500);
-
-    expect(created).toBeDefined();
-    expect(created!.kind).toBe('estandar');
-    expect(created!.status).toBe('pendiente');
-    // The summary is a collapsed presentation string (see `buildStandardOrderSummary`'s doc
-    // comment — no itemized line-item model exists yet), but it must still be built FROM the
-    // real cart items, not a hardcoded/independent value — it names the first product and the
-    // correct total unit count across both lines.
-    expect(created!.summary).toContain(product.title);
-    expect(created!.summary).toContain('3 unidad');
-
-    // The seam that matters most: the order this call created must be the SAME order `getOrders()`
-    // (read by both `/account/orders` and, via the same singleton service, `/track-order`) returns.
-    let listed: readonly import('../account/models/order.model').OrderSummaryViewModel[] = [];
-    orders.getOrders().subscribe((result) => (listed = result));
-    tick(500);
-
-    const found = listed.find((order) => order.id === created!.id);
-    expect(found).toBeDefined();
-    expect(found!.kind).toBe('estandar');
-    expect(found!.status).toBe('pendiente');
-  }));
-
-  it('never creates a personalized order from the standard cart flow', fakeAsync(() => {
-    cart.addItem(CATALOG_PRODUCTS[0], 1);
-    let created: import('../account/models/order.model').OrderDetailViewModel | undefined;
-    orders
-      .createStandardOrder(
-        cart.items(),
-        { fullName: 'Ana Torres', email: 'ana.torres@example.com', phone: '987654321' },
-        { address: 'Av. Larco 345', district: 'Miraflores', notes: '' },
-      )
-      .subscribe((result) => (created = result));
-    tick(500);
-
-    expect(created!.kind).toBe('estandar');
-  }));
+    const req = http.expectOne('/api/orders');
+    expect(req.request.body.items).toEqual([
+      { productId: 5, quantity: 2 },
+      { productId: 6, quantity: 1 },
+    ]);
+    expect(JSON.stringify(req.request.body)).not.toContain('unitPrice');
+    // The server may price differently from the cart snapshot; the client shows the server value.
+    req.flush(
+      {
+        id: 'PED-20261006-0009',
+        placedAt: '2026-10-06T15:30:00Z',
+        status: 'PENDIENTE',
+        kind: 'ESTANDAR',
+        summary: '3 unidades: Llavero y 1 producto más',
+        totalAmount: 31,
+        items: [],
+        delivery: null,
+        statusHistory: [],
+      },
+      { status: 201, statusText: 'Created' },
+    );
+    expect(created!.id).toBe('PED-20261006-0009');
+    expect(created!.totalAmount).toBe(31);
+    expect(cart.subtotal()).toBe(29); // untouched snapshot — the cart is cleared by the review step
+  });
 });

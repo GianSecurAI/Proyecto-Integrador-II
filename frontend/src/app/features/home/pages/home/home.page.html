@@ -1,23 +1,17 @@
 <main>
   <app-hero />
 
-  <app-product-showcase
-    heading="Tendencias"
-    headingAccent="actuales"
-    subheading="Descubre nuestras creaciones personalizadas más vendidas"
-    [products]="trendingProducts"
-    ctaLabel="Ver todos los productos"
-  />
-
   <app-why-choose-us />
 
-  <app-product-showcase
-    heading="Últimos"
-    headingAccent="productos"
-    subheading="Descubre nuestras últimas incorporaciones"
-    [products]="latestProducts"
-    ctaLabel="Ver todos los productos nuevos"
-  />
+  @if (latestProducts().length > 0) {
+    <app-product-showcase
+      heading="Últimos"
+      headingAccent="productos"
+      subheading="Descubre nuestras últimas incorporaciones"
+      [products]="latestProducts()"
+      ctaLabel="Ver todos los productos"
+    />
+  }
 
   <app-final-cta />
 </main>

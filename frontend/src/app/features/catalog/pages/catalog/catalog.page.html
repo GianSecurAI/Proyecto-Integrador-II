@@ -32,9 +32,30 @@
     <div class="catalog-page__grid">
       <app-product-grid
         [status]="status()"
-        [products]="filteredProducts()"
-        (retry)="loadProducts()"
+        [products]="products()"
+        (retry)="load()"
       />
+      @if (status() === 'loaded' && totalPages() > 1) {
+        <nav class="catalog-page__pagination" aria-label="Paginación del catálogo">
+          <button
+            type="button"
+            class="ui-btn ui-btn--secondary ui-btn--sm"
+            [disabled]="page() === 0"
+            (click)="goToPage(page() - 1)"
+          >
+            Anterior
+          </button>
+          <span aria-live="polite">Página {{ page() + 1 }} de {{ totalPages() }}</span>
+          <button
+            type="button"
+            class="ui-btn ui-btn--secondary ui-btn--sm"
+            [disabled]="page() + 1 >= totalPages()"
+            (click)="goToPage(page() + 1)"
+          >
+            Siguiente
+          </button>
+        </nav>
+      }
     </div>
   </div>
 </main>

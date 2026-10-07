@@ -1,3 +1,5 @@
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Component } from '@angular/core';
 import { provideRouter, Router } from '@angular/router';
@@ -17,6 +19,8 @@ describe('ShellComponent', () => {
     await TestBed.configureTestingModule({
       imports: [ShellComponent],
       providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
         provideRouter([
           { path: '', component: StubPublicPage },
           { path: 'admin', children: [{ path: '**', component: StubAdminPage }] },

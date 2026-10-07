@@ -1,4 +1,4 @@
-﻿<main class="auth-page">
+<main class="auth-page">
   <div class="auth-toolbar">
     <a
       class="ui-btn ui-btn--secondary ui-btn--on-dark auth-back"
@@ -28,11 +28,6 @@
       <p class="auth-card__description">
         Si el correo puede recibir mensajes, recibirás un código temporal para continuar.
       </p>
-      <p class="auth-card__notice" id="preview-instructions">
-        Demostración: no enviamos correos. Introduce cualquier combinación de 6 dígitos para
-        continuar, 000000 para simular un código expirado o 111111 para simular un código
-        inválido.
-      </p>
       <form [formGroup]="form" (ngSubmit)="submit()" novalidate [attr.aria-busy]="submitting()">
         <app-form-field
           #codeField="appFormField"
@@ -55,7 +50,7 @@
             placeholder="000000"
             [readonly]="submitting()"
             [attr.aria-invalid]="codeField.hasError()"
-            [attr.aria-describedby]="codeField.describedBy() || 'preview-instructions'"
+            [attr.aria-describedby]="codeField.describedBy()"
           />
         </app-form-field>
         <app-button type="submit" [fullWidth]="true" [onDark]="true" [loading]="submitting()">

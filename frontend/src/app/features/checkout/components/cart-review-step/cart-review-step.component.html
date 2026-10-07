@@ -9,11 +9,15 @@
       </a>
     </app-empty-state>
   } @else {
+    @if (pricesUpdated()) {
+      <p role="status">Actualizamos algunos precios según el catálogo actual.</p>
+    }
     <ul class="checkout-cart-review__list">
       @for (item of items(); track item.productId) {
         <li>
           <app-cart-item
             [item]="item"
+            [unavailable]="unavailableIds().has(item.productId)"
             (quantityChange)="onQuantityChange($event)"
             (remove)="removeItem($event)"
           />
@@ -31,14 +35,14 @@
         <dd>Se calcula en el checkout</dd>
       </div>
       <div class="checkout-cart-review__summary-total">
-        <dt>Total</dt>
+        <dt>Total estimado</dt>
         <dd>S/ {{ subtotal().toFixed(2) }}</dd>
       </div>
     </dl>
 
     <div class="checkout-cart-review__actions">
       <a routerLink="/cart" class="ui-btn ui-btn--ghost ui-btn--md">Volver al carrito</a>
-      <app-button type="button" (clicked)="goNext()">Continuar</app-button>
+      <app-button type="button" [disabled]="hasUnavailable()" (clicked)="goNext()">Continuar</app-button>
     </div>
   }
 </section>

@@ -54,16 +54,6 @@
                   <dt>Precio</dt>
                   <dd>S/ {{ product.price.toFixed(2) }}</dd>
                 </div>
-                @if (product.compareAtPrice) {
-                  <div>
-                    <dt>Precio antes de descuento</dt>
-                    <dd>S/ {{ product.compareAtPrice.toFixed(2) }}</dd>
-                  </div>
-                }
-                <div>
-                  <dt>Personalizable</dt>
-                  <dd>{{ product.personalizable ? 'Sí' : 'No' }}</dd>
-                </div>
                 <div class="admin-product-detail-page__field--full">
                   <dt>Descripción</dt>
                   <dd>{{ product.description }}</dd>
@@ -109,8 +99,4 @@
     }
   }
 
-  <p class="admin-product-detail-page__notice">
-    Vista de demostración: este producto no proviene de un servidor real. Añade
-    <code>?mockState=error</code> a esta URL para previsualizar el estado de error.
-  </p>
 </div>

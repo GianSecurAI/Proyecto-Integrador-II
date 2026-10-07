@@ -42,13 +42,12 @@
                         <p class="order-history-page__id">{{ order.id }}</p>
                         <p class="order-history-page__date">{{ formatDate(order.placedAt) }}</p>
                         <p class="order-history-page__summary">{{ order.summary }}</p>
+                        <p class="order-history-page__total">S/ {{ order.totalAmount.toFixed(2) }}</p>
                       </div>
                       <div class="order-history-page__meta">
                         <app-order-status-badge [status]="order.status" />
                         <span class="order-history-page__kind">
-                          {{
-                            order.kind === 'personalizado' ? 'Pedido personalizado' : 'Pedido estándar'
-                          }}
+                          {{ kindLabel(order.kind) }}
                         </span>
                       </div>
                     </div>
@@ -57,14 +56,30 @@
               </li>
             }
           </ul>
+          @if (totalPages() > 1) {
+            <nav class="order-history-page__pagination" aria-label="Paginación de pedidos">
+              <button
+                type="button"
+                class="ui-btn ui-btn--secondary ui-btn--sm"
+                [disabled]="page() === 0"
+                (click)="goToPage(page() - 1)"
+              >
+                Anterior
+              </button>
+              <span aria-live="polite">Página {{ page() + 1 }} de {{ totalPages() }}</span>
+              <button
+                type="button"
+                class="ui-btn ui-btn--secondary ui-btn--sm"
+                [disabled]="page() + 1 >= totalPages()"
+                (click)="goToPage(page() + 1)"
+              >
+                Siguiente
+              </button>
+            </nav>
+          }
         }
       }
     }
 
-    <p class="order-history-page__notice">
-      Vista de demostración: estos pedidos no provienen de un servidor real. Para previsualizar
-      otros estados desde el navegador, añade <code>?mockState=empty</code> o
-      <code>?mockState=error</code> a esta URL.
-    </p>
   </div>
 </main>

@@ -1,16 +1,5 @@
 import { Component, computed, input } from '@angular/core';
-// Deliberate exception to "shared/ui never imports from features/": this task's own brief
-// (RF-12 order-tracking screen) explicitly requires reusing the ONE existing order-status
-// vocabulary (`OrderStatus`, `describeOrderStatus`) rather than inventing a second, competing
-// one here — see `order.model.ts`'s "ASSUMPTION — order status vocabulary" doc comment. The
-// alternative (duplicating the six-value enum and its Spanish labels in `shared/`) would create
-// exactly the "two fake databases for the same concept" problem CLAUDE.md warns against. This
-// component still contains zero business/transition logic (Prohibited Practice #5) — it only
-// arranges an already-decided `status` into a presentational step list.
-import {
-  OrderStatus,
-  describeOrderStatus,
-} from '../../../features/account/models/order.model';
+import { OrderStatus, describeOrderStatus } from '../../models/wire-enums';
 
 export type OrderStatusStepState = 'done' | 'current' | 'upcoming';
 
@@ -23,11 +12,11 @@ export interface OrderStatusStepViewModel {
 /** Happy-path step order. `cancelado` is intentionally excluded — it is a terminal, off-path
  * state handled separately (see `isCancelled`), not a further step along this sequence. */
 const HAPPY_PATH_STEPS: readonly OrderStatus[] = [
-  'pendiente',
-  'confirmado',
-  'en_produccion',
-  'enviado',
-  'entregado',
+  'PENDIENTE',
+  'CONFIRMADO',
+  'EN_PRODUCCION',
+  'ENVIADO',
+  'ENTREGADO',
 ];
 
 /**
@@ -53,9 +42,9 @@ const HAPPY_PATH_STEPS: readonly OrderStatus[] = [
 export class OrderStatusTimelineComponent {
   readonly status = input.required<OrderStatus>();
 
-  readonly isCancelled = computed(() => this.status() === 'cancelado');
+  readonly isCancelled = computed(() => this.status() === 'CANCELADO');
 
-  readonly cancelledLabel = computed(() => describeOrderStatus('cancelado').label);
+  readonly cancelledLabel = computed(() => describeOrderStatus('CANCELADO').label);
 
   readonly steps = computed<readonly OrderStatusStepViewModel[]>(() => {
     const cancelled = this.isCancelled();

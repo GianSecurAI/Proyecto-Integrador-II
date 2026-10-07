@@ -14,10 +14,10 @@
       }
     </ul>
     <p class="checkout-review-subtotal">
-      Subtotal estimado ({{ itemCount() }} productos): <strong>S/ {{ subtotal().toFixed(2) }}</strong>
+      Total estimado ({{ itemCount() }} productos): <strong>S/ {{ subtotal().toFixed(2) }}</strong>
     </p>
     <p class="checkout-review-hint">
-      Estimado solo con fines de presentación — el monto final se confirma al procesar tu pedido.
+      Monto informativo: el total final lo calcula el servidor al registrar tu pedido.
     </p>
   </section>
 
@@ -26,7 +26,9 @@
       <h3 id="checkout-review-customer-title">Datos del cliente</h3>
       <dl>
         <div><dt>Nombre</dt><dd>{{ info.fullName }}</dd></div>
-        <div><dt>Correo</dt><dd>{{ info.email }}</dd></div>
+        @if (accountEmail(); as email) {
+          <div><dt>Correo de tu cuenta</dt><dd>{{ email }}</dd></div>
+        }
         <div><dt>Teléfono</dt><dd>{{ info.phone }}</dd></div>
       </dl>
     </section>
@@ -51,14 +53,23 @@
   </p>
 
   @if (errorMessage()) {
-    <p role="alert" class="checkout-review-error">{{ errorMessage() }}</p>
+    <div role="alert" class="checkout-review-error">
+      <p>{{ errorMessage() }}</p>
+      @if (fieldMessages().length > 0) {
+        <ul>
+          @for (message of fieldMessages(); track message) {
+            <li>{{ message }}</li>
+          }
+        </ul>
+      }
+    </div>
   }
 
   <div class="checkout-step-actions">
     <app-button type="button" variant="ghost" [disabled]="submitting()" (clicked)="goBack()">
       Atrás
     </app-button>
-    <app-button type="button" [loading]="submitting()" [disabled]="submitting()" (clicked)="submit()">
+    <app-button type="button" [loading]="submitting()" [disabled]="!canSubmit()" (clicked)="submit()">
       {{ submitting() ? 'Enviando…' : 'Confirmar y enviar pedido' }}
     </app-button>
   </div>

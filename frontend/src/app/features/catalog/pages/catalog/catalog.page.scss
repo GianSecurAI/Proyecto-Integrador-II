@@ -48,3 +48,11 @@
 .catalog-page__grid {
   min-width: 0;
 }
+
+.catalog-page__pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}

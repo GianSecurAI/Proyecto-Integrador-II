@@ -10,7 +10,9 @@
     label="Nombre del producto"
     [required]="true"
     [error]="
-      titleControl.invalid && titleControl.touched ? 'Ingresa el nombre del producto.' : null
+      titleControl.invalid && titleControl.touched
+        ? (serverError(titleControl) ?? 'Ingresa el nombre del producto (máx. 120 caracteres).')
+        : null
     "
   >
     <input
@@ -40,7 +42,7 @@
       [attr.aria-describedby]="categoryField.describedBy()"
     >
       @for (cat of categories; track cat) {
-        <option [value]="cat">{{ categoryLabels[cat] }}</option>
+        <option [value]="cat">{{ categoryLabel(cat) }}</option>
       }
     </select>
   </app-form-field>
@@ -51,7 +53,7 @@
     [required]="true"
     [error]="
       subcategoryControl.invalid && subcategoryControl.touched
-        ? 'Ingresa una subcategoría.'
+        ? (serverError(subcategoryControl) ?? 'Ingresa una subcategoría (máx. 80 caracteres).')
         : null
     "
   >
@@ -72,7 +74,7 @@
     [required]="true"
     [error]="
       descriptionControl.invalid && descriptionControl.touched
-        ? 'Ingresa una descripción del producto.'
+        ? (serverError(descriptionControl) ?? 'Ingresa una descripción (máx. 2000 caracteres).')
         : null
     "
   >
@@ -94,7 +96,7 @@
       [required]="true"
       [error]="
         priceControl.invalid && priceControl.touched
-          ? 'Ingresa un precio mayor a S/ 0.00.'
+          ? (serverError(priceControl) ?? 'Ingresa un precio entre S/ 0.01 y S/ 99999.99, con máximo 2 decimales.')
           : null
       "
     >
@@ -111,39 +113,18 @@
       />
     </app-form-field>
 
-    <app-form-field
-      #compareAtPriceField="appFormField"
-      label="Precio antes de descuento (S/, opcional)"
-      hint="Déjalo vacío si el producto no está en oferta."
-      [error]="
-        compareAtPriceControl.invalid && compareAtPriceControl.touched
-          ? 'Debe ser mayor a S/ 0.00.'
-          : null
-      "
-    >
-      <input
-        class="ui-input"
-        [id]="compareAtPriceField.inputId()"
-        type="number"
-        min="0.01"
-        step="0.01"
-        inputmode="decimal"
-        formControlName="compareAtPrice"
-        [attr.aria-invalid]="compareAtPriceField.hasError()"
-        [attr.aria-describedby]="compareAtPriceField.describedBy()"
-      />
-    </app-form-field>
   </div>
 
-  <label class="admin-product-form__checkbox">
-    <input class="ui-checkbox" type="checkbox" formControlName="personalizable" />
-    Personalizable (elegible para pedido personalizado vía WhatsApp)
-  </label>
 
   <app-form-field
     #characteristicsField="appFormField"
     label="Características (opcional)"
-    hint="Una característica por línea."
+    hint="Una característica por línea (máx. 20, de hasta 200 caracteres)."
+    [error]="
+      characteristicsControl.invalid && characteristicsControl.touched
+        ? (serverError(characteristicsControl) ?? 'Máximo 20 características de hasta 200 caracteres.')
+        : null
+    "
   >
     <textarea
       class="ui-input admin-product-form__textarea"

@@ -1,34 +1,23 @@
 import { Component, DestroyRef, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { Subscription } from 'rxjs';
+import { RouterLink } from '@angular/router';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { CardComponent } from '../../../../shared/ui/card/card.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state.component';
+import { orderKindLabel } from '../../../../shared/models/wire-enums';
 import { AccountNavComponent } from '../../components/account-nav/account-nav.component';
 import { OrderStatusBadgeComponent } from '../../components/order-status-badge/order-status-badge.component';
-import { OrderSummaryViewModel } from '../../models/order.model';
-import { CustomerOrdersMockService, OrdersMockState } from '../../services/customer-orders-mock.service';
+import { OrderKind, OrderSummaryViewModel } from '../../models/order.model';
+import { CustomerOrdersService } from '../../services/customer-orders.service';
 
 type LoadStatus = 'loading' | 'loaded' | 'error';
 
 /**
- * RF-05 ("Consulta de historial de pedidos", docs/discovery/06-system-definition.md line 54) and
- * RF-12 ("Consulta y seguimiento del estado del pedido", line 61), both "Confirmado". No
- * `spec.md` exists for orders yet and no backend `Pedido` entity exists at all — see
- * `../../mocks/customer-orders.mock.ts`'s doc comment for the full provenance/assumption trail.
- * Entirely frontend-only preview, mirroring `ProfilePage`'s mock-service pattern; no Figma frame
- * covers this screen at all (the only order-related frame, "Seguimiento" node 2:1993, is an
- * unauthenticated guest ID-search box — a different use case, out of scope here per the
- * orchestrator brief), so this reuses the existing light-theme design system
- * (`app-card`, `_tokens.scss`) like `ProfilePage` does.
- *
- * `?mockState=empty` / `?mockState=error` query params let a reviewer deterministically preview
- * every async state from the browser URL bar alone (see the on-screen notice in
- * order-history.page.html) — default is the populated mock list. Subscribing directly to
- * `route.queryParamMap` in the constructor (rather than an Angular `effect()`) mirrors the
- * existing async-subscribe-in-constructor idiom already used by `ProfilePage`/`CatalogPage`.
+ * RF-05 / RF-12: the signed-in customer's order history, backed by `GET /api/orders`. The server
+ * returns only the caller's own orders (newest first) and pages the result; this page just shows
+ * one server page at a time (prev/next). Loading, empty and error (retry) states are real.
  */
 @Component({
   selector: 'app-order-history-page',
@@ -47,14 +36,14 @@ type LoadStatus = 'loading' | 'loaded' | 'error';
   styleUrl: './order-history.page.scss',
 })
 export class OrderHistoryPage {
-  private readonly ordersService = inject(CustomerOrdersMockService);
-  private readonly route = inject(ActivatedRoute);
-  private readonly destroyRef = inject(DestroyRef);
+  private readonly ordersService = inject(CustomerOrdersService);
 
   readonly status = signal<LoadStatus>('loading');
   readonly orders = signal<OrderSummaryViewModel[]>([]);
+  readonly page = signal(0);
+  readonly totalPages = signal(0);
 
-  private currentMockState: OrdersMockState = 'populated';
+  private request: Subscription | null = null;
 
   private readonly dateFormatter = new Intl.DateTimeFormat('es-PE', {
     year: 'numeric',
@@ -63,34 +52,38 @@ export class OrderHistoryPage {
   });
 
   constructor() {
-    this.route.queryParamMap
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((params) => {
-        const value = params.get('mockState');
-        this.currentMockState = value === 'empty' || value === 'error' ? value : 'populated';
-        this.load(this.currentMockState);
-      });
+    this.load();
+    inject(DestroyRef).onDestroy(() => this.request?.unsubscribe());
   }
 
   retry(): void {
-    this.load(this.currentMockState);
+    this.load();
+  }
+
+  goToPage(page: number): void {
+    if (page < 0 || page >= this.totalPages()) return;
+    this.page.set(page);
+    this.load();
   }
 
   formatDate(date: Date): string {
     return this.dateFormatter.format(date);
   }
 
-  private load(mockState: OrdersMockState): void {
+  kindLabel(kind: OrderKind): string {
+    return `Pedido ${orderKindLabel(kind).toLowerCase()}`;
+  }
+
+  private load(): void {
+    this.request?.unsubscribe();
     this.status.set('loading');
-    this.ordersService
-      .getOrders(mockState)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (orders) => {
-          this.orders.set(orders);
-          this.status.set('loaded');
-        },
-        error: () => this.status.set('error'),
-      });
+    this.request = this.ordersService.list({ page: this.page() }).subscribe({
+      next: (result) => {
+        this.orders.set(result.content);
+        this.totalPages.set(result.totalPages);
+        this.status.set('loaded');
+      },
+      error: () => this.status.set('error'),
+    });
   }
 }

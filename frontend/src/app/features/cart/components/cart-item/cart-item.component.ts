@@ -1,6 +1,7 @@
 import { Component, computed, input, output } from '@angular/core';
 import { CardComponent } from '../../../../shared/ui/card/card.component';
-import { CartItem } from '../../models/cart-item.model';
+import { categoryLabel } from '../../../../shared/models/wire-enums';
+import { CART_QUANTITY_MAX, CartItem } from '../../models/cart-item.model';
 
 /**
  * One cart row: placeholder image (see `shared/ui/product-card`'s doc comment — this project has
@@ -23,9 +24,14 @@ import { CartItem } from '../../models/cart-item.model';
 })
 export class CartItemComponent {
   readonly item = input.required<CartItem>();
+  /** Set by the cart when the server no longer lists this product (see `revalidate`). */
+  readonly unavailable = input(false);
 
-  readonly quantityChange = output<{ productId: string; quantity: number }>();
-  readonly remove = output<string>();
+  readonly quantityChange = output<{ productId: number; quantity: number }>();
+  readonly remove = output<number>();
+
+  readonly maxQuantity = CART_QUANTITY_MAX;
+  readonly categoryLabel = computed(() => categoryLabel(this.item().category));
 
   /** Presentation-only line subtotal — see `CartStateService`'s doc comment on why totals here
    * are never authoritative. */
@@ -33,6 +39,7 @@ export class CartItemComponent {
 
   increment(): void {
     const current = this.item();
+    if (current.quantity >= CART_QUANTITY_MAX) return;
     this.quantityChange.emit({ productId: current.productId, quantity: current.quantity + 1 });
   }
 

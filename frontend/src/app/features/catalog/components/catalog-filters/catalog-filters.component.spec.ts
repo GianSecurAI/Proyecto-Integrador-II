@@ -14,28 +14,17 @@ describe('CatalogFiltersComponent', () => {
     fixture.detectChanges();
   });
 
-  it('emits a partial patch when "Solo en oferta" is toggled', () => {
-    const emitted: Record<string, unknown>[] = [];
-    fixture.componentInstance.filtersChange.subscribe((patch) => emitted.push(patch));
-
-    const checkbox: HTMLInputElement =
-      fixture.nativeElement.querySelectorAll('input[type="checkbox"]')[0];
-    checkbox.checked = true;
-    checkbox.dispatchEvent(new Event('change'));
-
-    expect(emitted).toEqual([{ onSaleOnly: true }]);
+  it('no longer offers the Figma-only on-sale / personalizable options (no backend support)', () => {
+    expect(fixture.nativeElement.querySelectorAll('input[type="checkbox"]').length).toBe(0);
   });
 
-  it('emits a partial patch when "Solo personalizable" is toggled', () => {
+  it('emits a sort patch using a backend sort token', () => {
     const emitted: Record<string, unknown>[] = [];
     fixture.componentInstance.filtersChange.subscribe((patch) => emitted.push(patch));
-
-    const checkbox: HTMLInputElement =
-      fixture.nativeElement.querySelectorAll('input[type="checkbox"]')[1];
-    checkbox.checked = true;
-    checkbox.dispatchEvent(new Event('change'));
-
-    expect(emitted).toEqual([{ personalizableOnly: true }]);
+    const select: HTMLSelectElement = fixture.nativeElement.querySelector('select');
+    select.value = 'price,asc';
+    select.dispatchEvent(new Event('change'));
+    expect(emitted).toEqual([{ sort: 'price,asc' }]);
   });
 
   it('emits a category patch when a radio option is selected', () => {
@@ -45,11 +34,11 @@ describe('CatalogFiltersComponent', () => {
     const radios: HTMLInputElement[] = Array.from(
       fixture.nativeElement.querySelectorAll('input[type="radio"]'),
     );
-    const pegatinasRadio = radios.find((radio) => radio.value === 'pegatinas')!;
+    const pegatinasRadio = radios.find((radio) => radio.value === 'PEGATINAS')!;
     pegatinasRadio.checked = true;
     pegatinasRadio.dispatchEvent(new Event('change'));
 
-    expect(emitted).toEqual([{ category: 'pegatinas' }]);
+    expect(emitted).toEqual([{ category: 'PEGATINAS' }]);
   });
 
   it('parses min/max price inputs to numbers, and empty strings to null', () => {

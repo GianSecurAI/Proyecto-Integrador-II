@@ -1,6 +1,6 @@
-import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
@@ -15,37 +15,20 @@ import {
   IncidentPriority,
   describeIncidentPriority,
 } from '../../models/admin-incident.model';
-import {
-  AdminIncidentsMockService,
-  AdminIncidentsMockState,
-} from '../../services/admin-incidents-mock.service';
+import { AdminIncidentsService } from '../../services/admin-incidents.service';
 import { IncidentStatus, describeIncidentStatus } from '../../../account/models/incident.model';
 
 type LoadStatus = 'loading' | 'loaded' | 'error';
 type StatusFilter = IncidentStatus | 'todos';
 type PriorityFilter = IncidentPriority | 'todos';
 
-const STATUS_FILTER_OPTIONS: readonly StatusFilter[] = ['todos', ...INCIDENT_STATUSES];
-const PRIORITY_FILTER_OPTIONS: readonly PriorityFilter[] = ['todos', ...INCIDENT_PRIORITIES];
+/** Delay before a typed search is sent to the server. */
+export const INCIDENT_SEARCH_DEBOUNCE_MS = 300;
 
 /**
- * Staff incident list (`/admin/incidents`) — RF-16 ("Gestión de estados de incidencias")/RF-17
- * ("Clasificación de prioridad")/RF-18 ("Registro de resolución"), actor Administrador/Asesor for
- * all three (`docs/discovery/06-system-definition.md` lines 64-67). Figma has ZERO relevant frames
- * (grepped for "incidencia"/"prioridad"/"resolución", zero matches — line 261-262 independently
- * confirms RF-15/RF-16-18 both have "No existe pantalla"), so this screen reuses the existing
- * admin design system (`AdminDataTableComponent`, `AdminPageHeaderComponent`) per Constitution
- * Principle XV, exactly like `AdminOrderListPage`.
- *
- * No REST contract exists yet — `AdminIncidentsMockService` is an isolated, frontend-only preview,
- * seeded with incidents across MULTIPLE customers/orders (reusing `AdminOrdersMockService`'s
- * seeded orders for the association, never a third parallel dataset).
- * `?mockState=empty`/`?mockState=error` preview those states, same convention as every other
- * admin list.
- *
- * Filtering (by description text, status, priority) is pure local narrowing of the already-fetched
- * list — the exact "search signal + filter signal(s) + computed filtered list" approach
- * `AdminOrderListPage`/`AdminProductListPage` already established.
+ * RF-16/RF-17 staff incident list (ASESOR and ADMINISTRADOR), backed by
+ * `GET /api/admin/incidents`. Search (`q`), status and priority are applied SERVER-side and the
+ * result is paged by the server (default order: newest reported first).
  */
 @Component({
   selector: 'app-admin-incident-list-page',
@@ -64,64 +47,64 @@ const PRIORITY_FILTER_OPTIONS: readonly PriorityFilter[] = ['todos', ...INCIDENT
   styleUrl: './admin-incident-list.page.scss',
 })
 export class AdminIncidentListPage {
-  private readonly incidentsService = inject(AdminIncidentsMockService);
-  private readonly route = inject(ActivatedRoute);
-  private readonly destroyRef = inject(DestroyRef);
+  private readonly incidentsService = inject(AdminIncidentsService);
 
   readonly status = signal<LoadStatus>('loading');
   readonly incidents = signal<AdminIncidentViewModel[]>([]);
+  readonly page = signal(0);
+  readonly totalPages = signal(0);
 
-  /** Matches against the incident description only, per this screen's own reasonable filter
-   * design (no Figma reference and no requirement dictates the exact search field). */
   readonly search = signal('');
   readonly statusFilter = signal<StatusFilter>('todos');
   readonly priorityFilter = signal<PriorityFilter>('todos');
 
-  readonly statusFilterOptions = STATUS_FILTER_OPTIONS;
-  readonly priorityFilterOptions = PRIORITY_FILTER_OPTIONS;
+  readonly statusFilterOptions: readonly StatusFilter[] = ['todos', ...INCIDENT_STATUSES];
+  readonly priorityFilterOptions: readonly PriorityFilter[] = ['todos', ...INCIDENT_PRIORITIES];
 
-  private currentMockState: AdminIncidentsMockState = 'populated';
-
-  readonly filteredIncidents = computed(() => {
-    const query = this.search().trim().toLowerCase();
-    const status = this.statusFilter();
-    const priority = this.priorityFilter();
-    return this.incidents().filter((incident) => {
-      if (status !== 'todos' && incident.status !== status) {
-        return false;
-      }
-      if (priority !== 'todos' && incident.priority !== priority) {
-        return false;
-      }
-      if (query && !incident.description.toLowerCase().includes(query)) {
-        return false;
-      }
-      return true;
-    });
-  });
+  private request: Subscription | null = null;
+  private timer: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
-    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
-      const value = params.get('mockState');
-      this.currentMockState = value === 'empty' || value === 'error' ? value : 'populated';
-      this.load(this.currentMockState);
+    this.load();
+    inject(DestroyRef).onDestroy(() => {
+      this.request?.unsubscribe();
+      if (this.timer) clearTimeout(this.timer);
     });
   }
 
   retry(): void {
-    this.load(this.currentMockState);
+    this.load();
   }
 
   updateSearch(value: string): void {
     this.search.set(value);
+    this.page.set(0);
+    if (this.timer) clearTimeout(this.timer);
+    this.timer = setTimeout(() => this.load(), INCIDENT_SEARCH_DEBOUNCE_MS);
   }
 
   updateStatusFilter(value: string): void {
     this.statusFilter.set(value as StatusFilter);
+    this.page.set(0);
+    this.load();
   }
 
   updatePriorityFilter(value: string): void {
     this.priorityFilter.set(value as PriorityFilter);
+    this.page.set(0);
+    this.load();
+  }
+
+  goToPage(page: number): void {
+    if (page < 0 || page >= this.totalPages()) return;
+    this.page.set(page);
+    this.load();
+  }
+
+  hasActiveFilters(): boolean {
+    return (
+      this.search().trim() !== '' || this.statusFilter() !== 'todos' || this.priorityFilter() !== 'todos'
+    );
   }
 
   statusLabel(status: IncidentStatus): string {
@@ -144,14 +127,26 @@ export class AdminIncidentListPage {
     return description.length > 90 ? `${description.slice(0, 90)}…` : description;
   }
 
-  private load(mockState: AdminIncidentsMockState): void {
+  private load(): void {
+    if (this.timer) {
+      clearTimeout(this.timer);
+      this.timer = null;
+    }
+    this.request?.unsubscribe();
     this.status.set('loading');
-    this.incidentsService
-      .getIncidents(mockState)
-      .pipe(takeUntilDestroyed(this.destroyRef))
+    const status = this.statusFilter();
+    const priority = this.priorityFilter();
+    this.request = this.incidentsService
+      .list({
+        q: this.search(),
+        status: status === 'todos' ? null : status,
+        priority: priority === 'todos' ? null : priority,
+        page: this.page(),
+      })
       .subscribe({
-        next: (incidents) => {
-          this.incidents.set(incidents);
+        next: (result) => {
+          this.incidents.set(result.content);
+          this.totalPages.set(result.totalPages);
           this.status.set('loaded');
         },
         error: () => this.status.set('error'),

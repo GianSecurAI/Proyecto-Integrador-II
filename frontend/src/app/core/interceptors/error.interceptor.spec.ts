@@ -41,6 +41,22 @@ describe('errorInterceptor', () => {
     expect(router.navigate).not.toHaveBeenCalled();
   });
 
+  it('does not redirect on a 401 from GET /auth/me (session probe: anonymous, handled by AuthService)', () => {
+    http.get('/api/auth/me').subscribe({ error: () => undefined });
+    httpMock
+      .expectOne('/api/auth/me')
+      .flush({ code: 'UNAUTHENTICATED', message: 'x', timestamp: 'x' }, { status: 401, statusText: 'Unauthorized' });
+    expect(router.navigate).not.toHaveBeenCalled();
+  });
+
+  it('does not go to /forbidden on a 403 ACCOUNT_DEACTIVATED from OTP verify (shown inline)', () => {
+    http.post('/api/auth/otp/verify', {}).subscribe({ error: () => undefined });
+    httpMock
+      .expectOne('/api/auth/otp/verify')
+      .flush({ code: 'ACCOUNT_DEACTIVATED', message: 'x', timestamp: 'x' }, { status: 403, statusText: 'Forbidden' });
+    expect(router.navigate).not.toHaveBeenCalled();
+  });
+
   it('does not redirect on a 429 from the OTP request endpoint', () => {
     http.post('/api/auth/otp/request', {}).subscribe({ error: () => undefined });
 

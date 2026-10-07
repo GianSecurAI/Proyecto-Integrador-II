@@ -1,16 +1,16 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { Subject, of, throwError } from 'rxjs';
-import { AUTH_PREVIEW, AuthPreview } from '../../services/auth-preview.service';
+import { AuthService } from '../../services/auth.service';
 import { RegisterPage } from './register.page';
 
 describe('RegisterPage', () => {
   let fixture: ComponentFixture<RegisterPage>;
   let component: RegisterPage;
-  let auth: jasmine.SpyObj<AuthPreview>;
+  let auth: jasmine.SpyObj<AuthService>;
   let router: Router;
   beforeEach(async () => {
-    auth = jasmine.createSpyObj<AuthPreview>('AuthPreview', [
+    auth = jasmine.createSpyObj<AuthService>('AuthService', [
       'requestOtp',
       'verifyOtp',
       'reset',
@@ -19,7 +19,7 @@ describe('RegisterPage', () => {
     auth.requestOtp.and.returnValue(of(undefined));
     await TestBed.configureTestingModule({
       imports: [RegisterPage],
-      providers: [provideRouter([]), { provide: AUTH_PREVIEW, useValue: auth }],
+      providers: [provideRouter([]), { provide: AuthService, useValue: auth }],
     }).compileComponents();
     fixture = TestBed.createComponent(RegisterPage);
     component = fixture.componentInstance;
@@ -39,16 +39,24 @@ describe('RegisterPage', () => {
   it('submits with only a valid email and navigates to verify-code', () => {
     component.emailControl.setValue('customer@example.com');
     component.submit();
-    expect(auth.requestOtp).toHaveBeenCalledWith('customer@example.com');
+    expect(auth.requestOtp).toHaveBeenCalledWith('customer@example.com', {
+      firstName: '',
+      lastName: '',
+      phone: '',
+    });
     expect(router.navigate).toHaveBeenCalledWith(['/auth/verify-code']);
   });
-  it('submits identically when all optional fields are also filled (FR-004 anti-enumeration)', () => {
+  it('sends the optional profile fields together with the email (backend OtpRequestDto accepts them)', () => {
     component.emailControl.setValue('customer@example.com');
     component.firstNameControl.setValue('María');
     component.lastNameControl.setValue('Gómez');
     component.phoneControl.setValue('987 654 321');
     component.submit();
-    expect(auth.requestOtp).toHaveBeenCalledOnceWith('customer@example.com');
+    expect(auth.requestOtp).toHaveBeenCalledOnceWith('customer@example.com', {
+      firstName: 'María',
+      lastName: 'Gómez',
+      phone: '987 654 321',
+    });
     expect(router.navigate).toHaveBeenCalledWith(['/auth/verify-code']);
   });
   it('rejects a missing/invalid email client-side and never calls requestOtp', () => {

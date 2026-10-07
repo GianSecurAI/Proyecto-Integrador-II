@@ -1,6 +1,7 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { apiErrorCode, httpStatus } from '../../../../core/models/api-error.model';
 import { SessionStateService } from '../../../../core/services/session-state.service';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { CardComponent } from '../../../../shared/ui/card/card.component';
@@ -15,10 +16,7 @@ import {
   IncidentPriority,
   describeIncidentPriority,
 } from '../../models/admin-incident.model';
-import {
-  AdminIncidentsMockService,
-  AdminIncidentsMockState,
-} from '../../services/admin-incidents-mock.service';
+import { AdminIncidentsService } from '../../services/admin-incidents.service';
 import { IncidentStatus, describeIncidentStatus } from '../../../account/models/incident.model';
 
 type LoadStatus = 'loading' | 'loaded' | 'not-found' | 'error';
@@ -29,26 +27,13 @@ type LoadStatus = 'loading' | 'loaded' | 'not-found' | 'error';
  * from `AdminIncidentListPage`. Same "no Figma frame exists, reuse the admin design system" basis
  * as that list page's doc comment.
  *
- * ROLE-AWARE UI, NOT A SECURITY BOUNDARY (read this before touching `canManage`): the parent
- * `/admin` route already guards this whole screen to `['ADMINISTRADOR', 'ASESOR']`
- * (`app.routes.ts`), so in the current preview every visitor of this component is already one of
- * those two roles — this component-level check is defense-in-depth/UX polish only, exactly as
- * Constitution Principle III states: "the frontend is never the source of truth" for permissions
- * (`.specify/memory/constitution.md`, Principle III, "Angular Frontend Architecture" — any
- * authoritative state, explicitly including "permissions", "MAY be optimistically rendered but
- * MUST always be re-validated by the backend before it is acted upon"). Real enforcement is
- * server-side and does not exist yet (no backend `Incidencia`/staff-auth endpoint). `canManage`
- * therefore only controls whether the three management controls (status update, priority update,
- * resolution form) RENDER at all — it is not, and must never be treated as, the actual
- * authorization check for the mutations it gates.
+ * ROLE-AWARE UI, NOT A SECURITY BOUNDARY: the parent `/admin` route guards this screen to
+ * ADMINISTRADOR/ASESOR and `canManage` only decides whether the management controls RENDER; the
+ * backend (`/api/admin/incidents/**`, STAFF only) is the real authorization (Principle III).
  *
- * RF-16/RF-17/RF-18 name Administrador and Asesor identically as the actor for all three
- * capabilities — no distinction is drawn between the two roles here (unlike `admin-order.model.ts`'s
- * three ADMINISTRADOR-only children of `/admin`), since no discovery document documents one.
- *
- * `:id` is read reactively from `route.paramMap`, same "navigating between two detail routes
- * reuses this component instance" reasoning as `AdminOrderDetailPage`. An unknown id is a REAL
- * not-found state; `?mockState=error` simulates a generic fetch failure instead.
+ * Backed by `GET /api/admin/incidents/{id}`, `PATCH` (status and/or priority) and
+ * `POST /{id}/resolution`. `:id` is read reactively from `route.paramMap`. 404 is the not-found
+ * state; other fetch failures show a retry.
  */
 @Component({
   selector: 'app-admin-incident-detail-page',
@@ -66,7 +51,7 @@ type LoadStatus = 'loading' | 'loaded' | 'not-found' | 'error';
   styleUrl: './admin-incident-detail.page.scss',
 })
 export class AdminIncidentDetailPage {
-  private readonly incidentsService = inject(AdminIncidentsMockService);
+  private readonly incidentsService = inject(AdminIncidentsService);
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
   private readonly sessionState = inject(SessionStateService);
@@ -108,9 +93,16 @@ export class AdminIncidentDetailPage {
     return role === 'ADMINISTRADOR' || role === 'ASESOR';
   });
 
+  /**
+   * Statuses offered in the change-status select: every status except the current one and
+   * RESUELTA (reachable ONLY through the resolution form/endpoint). The backend owns the
+   * lifecycle (ABIERTA -> EN_REVISION -> RECHAZADA) and answers 409 INVALID_STATUS_TRANSITION for
+   * anything else, so no transition table is duplicated here (`IncidentDto` carries no
+   * `allowedNextStatuses` — see docs/reviews/frontend-backend-integration.md).
+   */
   readonly otherStatuses = computed(() => {
     const current = this.incident();
-    return current ? this.allStatuses.filter((s) => s !== current.status) : [];
+    return current ? this.allStatuses.filter((s) => s !== current.status && s !== 'RESUELTA') : [];
   });
 
   readonly otherPriorities = computed(() => {
@@ -170,7 +162,7 @@ export class AdminIncidentDetailPage {
     this.statusSuccess.set(null);
 
     this.incidentsService
-      .updateStatus(current.id, nextStatus)
+      .triage(current.id, { status: nextStatus })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (updated) => {
@@ -179,9 +171,13 @@ export class AdminIncidentDetailPage {
           this.selectedStatus.set(null);
           this.statusSuccess.set('El estado de la incidencia se actualizó correctamente.');
         },
-        error: () => {
+        error: (err: unknown) => {
           this.updatingStatus.set(false);
-          this.statusError.set('No pudimos actualizar el estado. Inténtalo de nuevo más tarde.');
+          this.statusError.set(
+            apiErrorCode(err) === 'INVALID_STATUS_TRANSITION'
+              ? 'Ese cambio de estado no está permitido para la situación actual de la incidencia.'
+              : 'No pudimos actualizar el estado. Inténtalo de nuevo más tarde.',
+          );
         },
       });
   }
@@ -196,7 +192,7 @@ export class AdminIncidentDetailPage {
     this.prioritySuccess.set(null);
 
     this.incidentsService
-      .updatePriority(current.id, nextPriority)
+      .triage(current.id, { priority: nextPriority })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (updated) => {
@@ -222,7 +218,7 @@ export class AdminIncidentDetailPage {
     this.resolutionSuccess.set(null);
 
     this.incidentsService
-      .registerResolution(current.id, text)
+      .resolve(current.id, text)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (updated) => {
@@ -231,10 +227,14 @@ export class AdminIncidentDetailPage {
           this.resolutionText.set('');
           this.resolutionSuccess.set('La resolución se registró correctamente.');
         },
-        error: () => {
+        error: (err: unknown) => {
           this.registeringResolution.set(false);
           this.resolutionError.set(
-            'No pudimos registrar la resolución. Inténtalo de nuevo más tarde.',
+            apiErrorCode(err) === 'INVALID_STATUS_TRANSITION'
+              ? 'Solo una incidencia En revisión puede resolverse. Cambia primero su estado.'
+              : apiErrorCode(err) === 'VALIDATION_FAILED'
+                ? 'La resolución no es válida (máx. 1000 caracteres).'
+                : 'No pudimos registrar la resolución. Inténtalo de nuevo más tarde.',
           );
         },
       });
@@ -246,8 +246,6 @@ export class AdminIncidentDetailPage {
       this.status.set('not-found');
       return;
     }
-    const mockState: AdminIncidentsMockState =
-      this.route.snapshot.queryParamMap.get('mockState') === 'error' ? 'error' : 'populated';
     this.status.set('loading');
     this.selectedStatus.set(null);
     this.selectedPriority.set(null);
@@ -259,16 +257,16 @@ export class AdminIncidentDetailPage {
     this.resolutionError.set(null);
     this.resolutionSuccess.set(null);
     this.incidentsService
-      .getIncidentById(id, mockState)
+      .get(id)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (incident) => {
           this.incident.set(incident);
           this.status.set('loaded');
         },
-        error: () => {
+        error: (err: unknown) => {
           this.incident.set(null);
-          this.status.set(mockState === 'error' ? 'error' : 'not-found');
+          this.status.set(httpStatus(err) === 404 ? 'not-found' : 'error');
         },
       });
   }

@@ -19,7 +19,7 @@
       </app-error-state>
     }
     @default {
-      @if (incidents().length === 0) {
+      @if (incidents().length === 0 && !hasActiveFilters()) {
         <app-empty-state
           title="Todavía no hay incidencias"
           description="Cuando un cliente registre la primera incidencia, la verás aquí."
@@ -66,7 +66,7 @@
           </label>
         </div>
 
-        @if (filteredIncidents().length === 0) {
+        @if (incidents().length === 0) {
           <app-empty-state
             title="Ninguna incidencia coincide con los filtros"
             description="Ajusta la búsqueda, el estado o la prioridad seleccionada."
@@ -84,7 +84,7 @@
               </tr>
             </thead>
             <tbody>
-              @for (incident of filteredIncidents(); track incident.id) {
+              @for (incident of incidents(); track incident.id) {
                 <tr>
                   <td>{{ incident.orderId }}</td>
                   <td>{{ incident.customerEmail }}</td>
@@ -113,14 +113,30 @@
               }
             </tbody>
           </app-admin-data-table>
+          @if (totalPages() > 1) {
+            <nav class="admin-incident-list-page__pagination" aria-label="Paginación de incidencias">
+              <button
+                type="button"
+                class="ui-btn ui-btn--secondary ui-btn--sm"
+                [disabled]="page() === 0"
+                (click)="goToPage(page() - 1)"
+              >
+                Anterior
+              </button>
+              <span aria-live="polite">Página {{ page() + 1 }} de {{ totalPages() }}</span>
+              <button
+                type="button"
+                class="ui-btn ui-btn--secondary ui-btn--sm"
+                [disabled]="page() + 1 >= totalPages()"
+                (click)="goToPage(page() + 1)"
+              >
+                Siguiente
+              </button>
+            </nav>
+          }
         }
       }
     }
   }
 
-  <p class="admin-incident-list-page__notice">
-    Vista de demostración: estas incidencias no provienen de un servidor real. Para previsualizar
-    otros estados desde el navegador, añade <code>?mockState=empty</code> o
-    <code>?mockState=error</code> a esta URL.
-  </p>
 </div>

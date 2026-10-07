@@ -23,10 +23,15 @@ describe('checkoutConfirmationGuard', () => {
 
   it('allows navigation once an order has been placed', () => {
     checkoutState.setPlacedOrder({
-      id: 'PED-MOCK-1',
-      status: 'pendiente',
+      id: 'PED-1',
+      status: 'PENDIENTE',
+      kind: 'ESTANDAR',
       placedAt: new Date('2026-09-07T00:00:00Z'),
       summary: '1 unidad: Llavero A',
+      totalAmount: 10,
+      items: [],
+      delivery: null,
+      statusHistory: [],
     });
     const result = TestBed.runInInjectionContext(() => checkoutConfirmationGuard({} as never, {} as never));
     expect(result).toBe(true);

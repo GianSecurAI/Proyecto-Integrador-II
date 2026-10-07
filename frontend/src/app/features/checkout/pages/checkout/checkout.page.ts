@@ -1,4 +1,6 @@
-import { Component, computed, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { CartStateService } from '../../../cart/services/cart-state.service';
 import { CartReviewStepComponent } from '../../components/cart-review-step/cart-review-step.component';
 import { CustomerInfoStepComponent } from '../../components/customer-info-step/customer-info-step.component';
 import { DeliveryInfoStepComponent } from '../../components/delivery-info-step/delivery-info-step.component';
@@ -18,10 +20,9 @@ const STEP_LABELS: Record<CheckoutStep, string> = {
  * `/checkout` — the standard-catalog self-service checkout entry point (CLAUDE.md's "Business
  * clarification: purchasing flows" §"Standard catalog products", steps 3-5, EXCLUDING step 4
  * (payment gateway) — see `../../components/order-review-step/order-review-step.component.ts`'s
- * doc comment for why). Public, unguarded route EXCEPT for
- * `../../guards/checkout-cart-not-empty.guard.ts`, which redirects to `/cart` if the cart is
- * empty at the moment this route is entered — guest checkout, consistent with `/cart` itself
- * being unguarded.
+ * doc comment for why). Requires a signed-in CLIENTE
+ * (`authGuard`, UX only — the backend authorizes `POST /api/orders`) and, via
+ * `../../guards/checkout-cart-not-empty.guard.ts`, a non-empty cart.
  *
  * A single page walking through four steps (cart review -> customer info -> delivery info ->
  * final review) via a local `step` signal — chosen over separate sub-routes per step because
@@ -52,6 +53,14 @@ const STEP_LABELS: Record<CheckoutStep, string> = {
   styleUrl: './checkout.page.scss',
 })
 export class CheckoutPage {
+  private readonly cart = inject(CartStateService);
+
+  constructor() {
+    // Entering checkout re-checks the carted products against the server (ADR-cart-state
+    // follow-up 4): fresh prices, "no longer available" lines, "prices updated" notice.
+    this.cart.revalidate().pipe(takeUntilDestroyed()).subscribe();
+  }
+
   readonly stepOrder = STEP_ORDER;
   readonly stepLabels = STEP_LABELS;
 

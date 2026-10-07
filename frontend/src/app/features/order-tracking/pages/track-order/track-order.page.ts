@@ -2,6 +2,8 @@ import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
+import { httpStatus } from '../../../../core/models/api-error.model';
+import { orderKindLabel } from '../../../../shared/models/wire-enums';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
@@ -11,38 +13,26 @@ import { OrderStatusTimelineComponent } from '../../../../shared/ui/order-status
 import { StatusBadgeComponent } from '../../../../shared/ui/status-badge/status-badge.component';
 import {
   OrderDetailViewModel,
+  OrderKind,
   OrderStatus,
   describeOrderStatus,
 } from '../../../account/models/order.model';
-import {
-  CustomerOrdersMockService,
-  OrdersMockState,
-} from '../../../account/services/customer-orders-mock.service';
+import { CustomerOrdersService } from '../../../account/services/customer-orders.service';
 
 type TrackStatus = 'idle' | 'loading' | 'found' | 'not-found' | 'error';
 
 /**
- * Public, unauthenticated order-tracking screen (RF-12, "Consulta y seguimiento del estado del
- * pedido") — Figma "Seguimiento" frame (fileKey `e1l878xWPLq1W1KVJ0wHrx`, node `2:1993`), a
- * dark-background "Rastrea tu pedido" card with an "ID DE PEDIDO" input and an "Estado del
- * seguimiento" submit button. This is a DIFFERENT entry point from the authenticated customer's
- * own order list (`features/account/pages/order-history`/`order-detail`, behind `authGuard`):
- * here any visitor types an order id and looks it up, with no login required, matching the
- * business reality that a customer may want to check status from a link/email without signing
- * in again.
+ * Order-tracking lookup (RF-12, "Consulta y seguimiento del estado del pedido") — Figma
+ * "Seguimiento" frame (node `2:1993`): "Rastrea tu pedido" card with an "ID DE PEDIDO" input.
  *
- * Reuses the SAME status vocabulary, mock data source and view models as the authenticated order
- * screens (`features/account/models/order.model.ts`, `features/account/services/
- * customer-orders-mock.service.ts`) — deliberately NOT a second, competing mock "database" for
- * the same domain concept. `getOrderById`'s "not found" case is a REAL state reachable by typing
- * any id absent from the seed (e.g. any id other than `PED-2031`, `PED-2044`, `PED-2050`,
- * `PED-2012`, `PED-2061`); `?mockState=error` on this page's own URL forces the generic failure
- * state instead, for preview purposes only (documented on-screen), same convention as
- * `order-detail.page.ts`.
- *
- * No shipping/delivery section is rendered — `DireccionEnvio` is explicitly not modeled yet
- * (docs/discovery/06-system-definition.md line 147). No incident/report-issue action either —
- * the Figma frame contains no such affordance.
+ * INTEGRATION CHANGE: the backend has NO public tracking endpoint (decision D-07,
+ * docs/architecture/provisional-decisions.md PD-ORD-15): `GET /api/orders/{id}` requires the
+ * owner's CLIENTE session, and an id that does not exist or belongs to someone else is the same
+ * 404. So this route is now behind `authGuard` (CLIENTE) and the lookup shows the signed-in
+ * customer's own order with its server `statusHistory`; typing someone else's id simply yields
+ * "not found". The checkout confirmation links here with `?orderId=` as a pre-fill convenience
+ * (never auto-submitted). The status vocabulary and view models are shared with
+ * `features/account` (`order.model.ts`, `CustomerOrdersService`) — one source, no second mock.
  */
 @Component({
   selector: 'app-track-order-page',
@@ -61,7 +51,7 @@ type TrackStatus = 'idle' | 'loading' | 'found' | 'not-found' | 'error';
   styleUrl: './track-order.page.scss',
 })
 export class TrackOrderPage {
-  private readonly ordersService = inject(CustomerOrdersMockService);
+  private readonly ordersService = inject(CustomerOrdersService);
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -129,6 +119,10 @@ export class TrackOrderPage {
 
   /** Reuses the same lookup as `describeOrderStatus` so this screen and the authenticated order
    * screens never disagree on wording. */
+  kindLabel(kind: OrderKind): string {
+    return `Pedido ${orderKindLabel(kind).toLowerCase()}`;
+  }
+
   statusLabel(status: OrderStatus): string {
     return describeOrderStatus(status).label;
   }
@@ -138,21 +132,21 @@ export class TrackOrderPage {
   }
 
   private load(id: string): void {
-    const mockState: OrdersMockState =
-      this.route.snapshot.queryParamMap.get('mockState') === 'error' ? 'error' : 'populated';
     this.status.set('loading');
     this.order.set(null);
     this.ordersService
-      .getOrderById(id, mockState)
+      .get(id)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (order) => {
           this.order.set(order);
           this.status.set('found');
         },
-        error: () => {
+        error: (err: unknown) => {
           this.order.set(null);
-          this.status.set(mockState === 'error' ? 'error' : 'not-found');
+          // 404 = unknown id OR an order that belongs to another customer (by design the API does
+          // not tell them apart, and there is no public tracking endpoint — decision D-07).
+          this.status.set(httpStatus(err) === 404 ? 'not-found' : 'error');
         },
       });
   }

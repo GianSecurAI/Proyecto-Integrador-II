@@ -1,46 +1,27 @@
 import { Injectable, signal } from '@angular/core';
-import { OrderStatus } from '../../account/models/order.model';
+import { IdempotencyAttempt } from '../../../core/http/idempotency-attempt';
+import { OrderDetailViewModel } from '../../account/models/order.model';
 import { CustomerInfoFormValue, DeliveryInfoFormValue } from '../models/checkout-form.model';
-
-/** Non-sensitive reference to a just-placed order — an id, its (mock) initial status, when it was
- * placed, and its short presentation `summary` string (see `OrderSummaryViewModel`'s doc comment —
- * NOT an itemized line-item breakdown), set once by `OrderReviewStepComponent` right after a
- * successful `createStandardOrder(...)` call and read by both the confirmation page and its route
- * guard (`../guards/checkout-confirmation.guard.ts`). Deliberately still never carries
- * customer/delivery data (see that guard/page's own doc comments on why an order id alone is not
- * sensitive — the same reasoning applies to `placedAt`/`summary`, both purely order-facing, never
- * customer-identifying). */
-export interface PlacedOrderRef {
-  readonly id: string;
-  readonly status: OrderStatus;
-  readonly placedAt: Date;
-  readonly summary: string;
-}
 
 /**
  * Single source of truth for the IN-PROGRESS checkout form data (customer info, delivery info)
- * across the multi-step `/checkout` flow, mirroring `CartStateService`'s own "one place this
- * state lives" pattern (`features/cart/services/cart-state.service.ts`). No step component holds
- * its own disconnected copy of this data — every step reads its initial values from here and
- * writes back here before advancing, so navigating forward AND backward between steps never loses
- * what the visitor already typed.
- *
- * Plain Angular signals, `providedIn: 'root'` — no NgRx, same convention as every other stateful
- * service in this codebase. Purely in-memory: never touches `localStorage`/`sessionStorage` and
- * never logs any field (this data is customer-identifying/delivery-identifying — see
- * `docs/reviews/checkout-frontend.md`).
+ * across the multi-step `/checkout` flow, plus the confirmed order and the per-attempt
+ * `Idempotency-Key`. Plain signals, `providedIn: 'root'`; purely in-memory (never storage, never
+ * logged — this data is customer-identifying).
  */
 @Injectable({ providedIn: 'root' })
 export class CheckoutStateService {
   private readonly customerInfoState = signal<CustomerInfoFormValue | null>(null);
   private readonly deliveryInfoState = signal<DeliveryInfoFormValue | null>(null);
-  private readonly placedOrderState = signal<PlacedOrderRef | null>(null);
+  private readonly placedOrderState = signal<OrderDetailViewModel | null>(null);
+
+  private readonly attempt = new IdempotencyAttempt();
 
   readonly customerInfo = this.customerInfoState.asReadonly();
   readonly deliveryInfo = this.deliveryInfoState.asReadonly();
-  /** Set only after a real, successful mock order-creation response — see
-   * `../guards/checkout-confirmation.guard.ts`, which uses this to decide whether
-   * `/checkout/confirmacion` is currently reachable. */
+  /** The order exactly as the backend returned it after a confirmed creation (201/200). Set only
+   * then; `checkoutConfirmationGuard` uses it to decide whether `/checkout/confirmacion` is
+   * reachable. */
   readonly placedOrder = this.placedOrderState.asReadonly();
 
   setCustomerInfo(value: CustomerInfoFormValue): void {
@@ -51,7 +32,29 @@ export class CheckoutStateService {
     this.deliveryInfoState.set(value);
   }
 
-  setPlacedOrder(order: PlacedOrderRef): void {
+  setPlacedOrder(order: OrderDetailViewModel): void {
     this.placedOrderState.set(order);
+  }
+
+  /**
+   * The `Idempotency-Key` for the current checkout attempt. The same key is reused while the
+   * request body is unchanged (a retry after a network failure replays the original order), and
+   * a NEW key is generated as soon as the body differs — the server answers 409
+   * IDEMPOTENCY_KEY_REUSED when one key is sent with two different bodies.
+   */
+  idempotencyKeyFor(requestBody: unknown): string {
+    return this.attempt.keyFor(requestBody);
+  }
+
+  /** Forces a fresh key (e.g. after IDEMPOTENCY_KEY_REUSED). */
+  resetAttempt(): void {
+    this.attempt.reset();
+  }
+
+  /** Forgets the in-progress form data and attempt (after a confirmed order or a session end). */
+  resetForm(): void {
+    this.customerInfoState.set(null);
+    this.deliveryInfoState.set(null);
+    this.attempt.reset();
   }
 }

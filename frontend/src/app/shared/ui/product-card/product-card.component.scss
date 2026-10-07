@@ -24,19 +24,6 @@
   border-radius: var(--ar-radius-sm);
 }
 
-.product-card__badge {
-  align-self: flex-start;
-  margin: 0;
-  padding: var(--ar-space-1) var(--ar-space-2);
-  font-size: var(--ar-font-size-xs);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: var(--ar-letter-spacing-wide);
-  background: var(--ar-color-accent);
-  color: var(--ar-color-black);
-  border-radius: var(--ar-radius-sm);
-}
-
 .product-card__eyebrow {
   margin: 0;
   font-size: var(--ar-font-size-xs);
@@ -68,13 +55,6 @@
 
 .product-card__price-current {
   font-size: var(--ar-font-size-lg);
-}
-
-.product-card__price-compare {
-  font-size: var(--ar-font-size-sm);
-  font-weight: 400;
-  color: var(--ar-color-muted-on-light);
-  text-decoration: line-through;
 }
 
 .product-card__actions {
