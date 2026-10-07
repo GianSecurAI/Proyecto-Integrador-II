@@ -44,7 +44,9 @@ class InMemoryStorageGuardProfileTest {
                         "app.persistence.users=jpa",
                         "app.persistence.catalog=jpa",
                         "app.persistence.orders=jpa",
-                        "app.persistence.incidents=jpa")
+                        "app.persistence.incidents=jpa",
+                        "app.persistence.payments=jpa",
+                        "app.persistence.proofs=jpa")
                 .run(ctx -> assertThat(ctx).hasNotFailed());
     }
 }

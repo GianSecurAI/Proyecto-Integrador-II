@@ -37,4 +37,14 @@ public interface OrderRepository {
      * calls with the same expectation exactly one returns true.
      */
     boolean replaceIfStatus(Order updated, OrderStatus expectedCurrent);
+
+    /** The order created from the given checkout (unique), or empty. */
+    Optional<Order> findByCheckoutId(String checkoutId);
+
+    /**
+     * Stores {@code order} (which carries a non-null {@code checkoutId}) only if NO order exists yet for that
+     * checkout; returns false and stores nothing otherwise. Atomic: of N concurrent calls for one checkout exactly
+     * one returns true (a JPA adapter relies on the UNIQUE {@code checkout_id} constraint).
+     */
+    boolean insertIfCheckoutAbsent(Order order);
 }

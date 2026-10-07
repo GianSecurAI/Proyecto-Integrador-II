@@ -11,8 +11,12 @@ import java.util.List;
  * Order aggregate (contract review 4.6). Immutable. {@code id} is the business code
  * {@code PED-######}. The total is derived from the lines, never stored independently, so the two
  * cannot disagree. {@code registeredBy} is set only for personalized orders. {@code history} is the
- * append-only status history, oldest first; its last entry always equals {@code status}. No payment
- * fields exist on purpose (PD-ORD-01).
+ * append-only status history, oldest first; its last entry always equals {@code status}.
+ *
+ * <p>{@code checkoutId} (unique across orders) and {@code paymentReference} (the short reference of the verified Yape/Plin payment, shown
+ * to staff only) are set only on a STANDARD order created from a
+ * payment verified by an administrator (ADR-005); both are null for a personalized order. No card or wallet data is
+ * ever stored.
  */
 public record Order(
         String id,
@@ -24,7 +28,9 @@ public record Order(
         ContactInfo contact,
         Instant createdAt,
         Long registeredBy,
-        List<StatusHistoryEntry> history) {
+        List<StatusHistoryEntry> history,
+        String checkoutId,
+        String paymentReference) {
 
     /** Status every standard order starts in (docs/architecture/order-lifecycle.md). */
     public static final OrderStatus INITIAL_STANDARD_STATUS = OrderStatus.CONFIRMADO;
@@ -40,14 +46,33 @@ public record Order(
         history = List.copyOf(history);
     }
 
-    /** A new standard catalog order in its initial status; the customer is the actor of the creation entry. */
+    /**
+     * A standard catalog order created from a CONFIRMED payment: the only production creation path (ADR-004 2.2
+     * step 5, ADR-005). Initial status {@code CONFIRMADO}; the creation history entry is by the administrator who verified the payment.
+     */
+    public static Order placeFromCheckout(
+            String id, Long customerId, String checkoutId, String paymentReference, List<OrderLine> lines,
+            DeliveryInfo delivery, ContactInfo contact, Long actorId, Rol actorRole, Instant now) {
+        if (lines.isEmpty()) {
+            throw new IllegalArgumentException("An order needs at least one line");
+        }
+        return new Order(id, customerId, OrderKind.ESTANDAR, INITIAL_STANDARD_STATUS, lines, delivery, contact, now, null,
+                List.of(new StatusHistoryEntry(null, INITIAL_STANDARD_STATUS, actorId, actorRole, now, null)),
+                checkoutId, paymentReference);
+    }
+
+    /**
+     * A standard order without payment attributes (the customer is the actor of the creation entry). Plain domain
+     * factory kept for fixtures; production code creates orders through {@link #placeFromCheckout}.
+     */
     public static Order placeStandard(
             String id, Long customerId, List<OrderLine> lines, DeliveryInfo delivery, ContactInfo contact, Instant now) {
         if (lines.isEmpty()) {
             throw new IllegalArgumentException("An order needs at least one line");
         }
         return new Order(id, customerId, OrderKind.ESTANDAR, INITIAL_STANDARD_STATUS, lines, delivery, contact, now, null,
-                List.of(new StatusHistoryEntry(null, INITIAL_STANDARD_STATUS, customerId, Rol.CLIENTE, now, null)));
+                List.of(new StatusHistoryEntry(null, INITIAL_STANDARD_STATUS, customerId, Rol.CLIENTE, now, null)),
+                null, null);
     }
 
     /**
@@ -62,7 +87,8 @@ public record Order(
         return new Order(
                 id, customerId, OrderKind.PERSONALIZADO, INITIAL_PERSONALIZED_STATUS,
                 List.of(new OrderLine(null, description, agreedAmount, 1)), null, null, now, registeredBy,
-                List.of(new StatusHistoryEntry(null, INITIAL_PERSONALIZED_STATUS, registeredBy, staffRole, now, null)));
+                List.of(new StatusHistoryEntry(null, INITIAL_PERSONALIZED_STATUS, registeredBy, staffRole, now, null)),
+                null, null);
     }
 
     /**
@@ -78,7 +104,8 @@ public record Order(
         String cleanNote = normalizeNote(note);
         List<StatusHistoryEntry> entries = new ArrayList<>(history);
         entries.add(new StatusHistoryEntry(status, newStatus, actorId, actorRole, now, cleanNote));
-        return new Order(id, customerId, kind, newStatus, lines, delivery, contact, createdAt, registeredBy, entries);
+        return new Order(id, customerId, kind, newStatus, lines, delivery, contact, createdAt, registeredBy, entries,
+                checkoutId, paymentReference);
     }
 
     /** Trims; blank becomes null; rejects over-long text and control characters (log and display safety). */

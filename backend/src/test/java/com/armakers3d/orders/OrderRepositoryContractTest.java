@@ -163,6 +163,41 @@ public abstract class OrderRepositoryContractTest {
         assertThat(repository.replaceIfStatus(confirmed, OrderStatus.CONFIRMADO)).isFalse();
     }
 
+    // ---------- one order per checkout (BE-09) ----------
+
+    private Order forCheckout(String checkoutId) {
+        return Order.placeFromCheckout(
+                repository.nextOrderNumber(), 1L, checkoutId, "pay-1", List.of(new OrderLine(1L, "A", new BigDecimal("1.00"), 1)),
+                new DeliveryInfo("Calle 1", "Surco", null), new ContactInfo("Ana", "999888777"), 9L, com.armakers3d.auth.domain.Rol.ADMINISTRADOR, Instant.EPOCH);
+    }
+
+    @Test
+    void insertIfCheckoutAbsentStoresTheFirstOrderAndRejectsASecondForTheSameCheckout() {
+        Order first = forCheckout("co-1");
+        assertThat(repository.insertIfCheckoutAbsent(first)).isTrue();
+        assertThat(repository.insertIfCheckoutAbsent(forCheckout("co-1"))).isFalse();
+        assertThat(repository.findByCheckoutId("co-1")).contains(first);
+        assertThat(repository.findById(first.id())).contains(first);
+        assertThat(repository.findByCustomerId(1L)).containsExactly(first);
+        assertThat(repository.findByCheckoutId("co-unknown")).isEmpty();
+    }
+
+    @Test
+    void ofManyConcurrentInsertsForOneCheckoutExactlyOneWins() throws Exception {
+        ExecutorService pool = Executors.newFixedThreadPool(8);
+        List<Future<Boolean>> futures = new java.util.ArrayList<>();
+        for (int i = 0; i < 40; i++) {
+            futures.add(pool.submit(() -> repository.insertIfCheckoutAbsent(forCheckout("co-race"))));
+        }
+        int winners = 0;
+        for (Future<Boolean> f : futures) {
+            winners += f.get() ? 1 : 0;
+        }
+        pool.shutdown();
+        assertThat(winners).isEqualTo(1);
+        assertThat(repository.findByCustomerId(1L)).hasSize(1);
+    }
+
     @Test
     void replaceIfStatusOnAnUnknownOrderIsFalseAndStoresNothing() {
         Order ghost = order("PED-424242", 1L, Instant.EPOCH);

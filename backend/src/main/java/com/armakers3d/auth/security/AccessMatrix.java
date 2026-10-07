@@ -10,9 +10,8 @@ import java.util.List;
  * that matches no rule is denied (401 anonymous / 403 authenticated), so a new controller is
  * unreachable until someone adds a rule here on purpose.
  *
- * <p>STATUS: the matrix is PROPOSED, derived from the SPA route guards and
- * {@code frontend-backend-contract-review.md} section 4.0; it is not approved by the Product Owner.
- * See {@code docs/architecture/rbac-matrix.md}. Ownership (object-level) rules are not expressed
+ * <p>STATUS: APPROVED-BY-SOURCES (ADR-004, 2026-10-07); this list and {@code docs/architecture/rbac-matrix.md}
+ * sections 2 and 6 change together (BE-11). Ownership (object-level) rules are not expressed
  * here: they are enforced from the principal in the services (or {@code @PreAuthorize} where the
  * id is in the path).
  */
@@ -52,10 +51,26 @@ public final class AccessMatrix {
             new Rule("/api/auth/me", Access.ANY_ROLE),
             // Customer self-service (own data only, enforced from the principal)
             new Rule("/api/customers/me", Access.CLIENTE), // GET/PUT; GET /api/customers/{id} retired (BE-06)
-            // Customer orders: submit (POST), list (GET) and detail/tracking (GET /{id}). Own orders only; the owner
-            // is the principal; not-owned ids are 404. Explicit paths on purpose (no /api/orders/**).
+            // Customer orders: list (GET) and detail/tracking (GET /{id}), read only (POST /api/orders was removed by
+            // BE-10: standard orders are created from a confirmed payment). Own orders only; the owner is the
+            // principal; not-owned ids are 404. Explicit paths on purpose (no /api/orders/**).
             new Rule("/api/orders", Access.CLIENTE),
             new Rule("/api/orders/*", Access.CLIENTE),
+            // Standard checkout (ADR-005): create (POST /api/checkout), owner-only read (GET /{id}), proof upload
+            // (POST /{id}/proof, multipart), own proof image (GET /{id}/proof/{attemptId}) and cancel (POST /{id}/cancel).
+            // CLIENTE only; explicit paths on purpose (no /api/checkout/**); ownership is enforced in the service (404).
+            new Rule("/api/checkout", Access.CLIENTE),
+            new Rule("/api/checkout/*", Access.CLIENTE),
+            new Rule("/api/checkout/*/proof", Access.CLIENTE),
+            new Rule("/api/checkout/*/proof/*", Access.CLIENTE),
+            new Rule("/api/checkout/*/cancel", Access.CLIENTE),
+            // Manual payment verification (ADR-005): ADMINISTRADOR only (ASESOR denied, DECIDED-BY-DEFAULT; switching to
+            // STAFF is a change of these five rules). Proof images are served only through these and the owner paths above.
+            new Rule("/api/admin/payments", Access.ADMIN),
+            new Rule("/api/admin/payments/*", Access.ADMIN),
+            new Rule("/api/admin/payments/*/proof/*", Access.ADMIN),
+            new Rule("/api/admin/payments/*/approve", Access.ADMIN),
+            new Rule("/api/admin/payments/*/reject", Access.ADMIN),
             // Staff order management (E24-E27): list, detail, status change, personalized registration.
             new Rule("/api/admin/orders", Access.STAFF),
             new Rule("/api/admin/orders/personalized", Access.STAFF),

@@ -95,6 +95,11 @@ public final class OrderEmailTemplates {
     }
 
     static String sanitize(String raw) {
+        return sanitize(raw, NAME_MAX);
+    }
+
+    /** Same neutralization with a caller-chosen length cap (e.g. the payment rejection reason). */
+    static String sanitize(String raw, int maxLength) {
         if (raw == null) {
             return "";
         }
@@ -107,6 +112,6 @@ public final class OrderEmailTemplates {
             }
         }
         String clean = sb.toString().trim().replaceAll("\\s+", " ");
-        return clean.length() > NAME_MAX ? clean.substring(0, NAME_MAX).trim() : clean;
+        return clean.length() > maxLength ? clean.substring(0, maxLength).trim() : clean;
     }
 }

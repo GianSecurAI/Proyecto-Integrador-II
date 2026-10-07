@@ -11,7 +11,7 @@ class InMemoryStorageGuardTest {
 
     @Test
     void refusesWhenCatalogIsStillInMemory() {
-        var env = new MockEnvironment().withProperty("app.persistence.users", "jpa").withProperty("app.persistence.catalog", "memory").withProperty("app.persistence.orders", "jpa").withProperty("app.persistence.incidents", "jpa");
+        var env = new MockEnvironment().withProperty("app.persistence.users", "jpa").withProperty("app.persistence.catalog", "memory").withProperty("app.persistence.orders", "jpa").withProperty("app.persistence.incidents", "jpa").withProperty("app.persistence.payments", "jpa").withProperty("app.persistence.proofs", "jpa");
         assertThatThrownBy(() -> new InMemoryStorageGuard(env).refuse())
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("catalog");
@@ -19,7 +19,7 @@ class InMemoryStorageGuardTest {
 
     @Test
     void refusesWhenUsersIsStillInMemory() {
-        var env = new MockEnvironment().withProperty("app.persistence.users", "memory").withProperty("app.persistence.catalog", "jpa").withProperty("app.persistence.orders", "jpa").withProperty("app.persistence.incidents", "jpa");
+        var env = new MockEnvironment().withProperty("app.persistence.users", "memory").withProperty("app.persistence.catalog", "jpa").withProperty("app.persistence.orders", "jpa").withProperty("app.persistence.incidents", "jpa").withProperty("app.persistence.payments", "jpa").withProperty("app.persistence.proofs", "jpa");
         assertThatThrownBy(() -> new InMemoryStorageGuard(env).refuse())
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("users");
@@ -27,7 +27,7 @@ class InMemoryStorageGuardTest {
 
     @Test
     void refusesWhenOrdersIsStillInMemory() {
-        var env = new MockEnvironment().withProperty("app.persistence.users", "jpa").withProperty("app.persistence.catalog", "jpa").withProperty("app.persistence.orders", "memory").withProperty("app.persistence.incidents", "jpa");
+        var env = new MockEnvironment().withProperty("app.persistence.users", "jpa").withProperty("app.persistence.catalog", "jpa").withProperty("app.persistence.orders", "memory").withProperty("app.persistence.incidents", "jpa").withProperty("app.persistence.payments", "jpa").withProperty("app.persistence.proofs", "jpa");
         assertThatThrownBy(() -> new InMemoryStorageGuard(env).refuse())
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("orders");
@@ -35,12 +35,27 @@ class InMemoryStorageGuardTest {
 
     @Test
     void refusesWhenIncidentsIsStillInMemory() {
-        var env = new MockEnvironment().withProperty("app.persistence.users", "jpa").withProperty("app.persistence.catalog", "jpa").withProperty("app.persistence.orders", "jpa").withProperty("app.persistence.incidents", "memory");
+        var env = new MockEnvironment().withProperty("app.persistence.users", "jpa").withProperty("app.persistence.catalog", "jpa").withProperty("app.persistence.orders", "jpa").withProperty("app.persistence.incidents", "memory").withProperty("app.persistence.payments", "jpa").withProperty("app.persistence.proofs", "jpa");
         assertThatThrownBy(() -> new InMemoryStorageGuard(env).refuse())
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("incidents");
     }
 
+    @Test
+    void refusesWhenPaymentsIsStillInMemory() {
+        var env = new MockEnvironment().withProperty("app.persistence.users", "jpa").withProperty("app.persistence.catalog", "jpa").withProperty("app.persistence.orders", "jpa").withProperty("app.persistence.incidents", "jpa").withProperty("app.persistence.payments", "memory").withProperty("app.persistence.proofs", "jpa");
+        assertThatThrownBy(() -> new InMemoryStorageGuard(env).refuse())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("payments");
+    }
+
+    @Test
+    void refusesWhenPaymentProofStorageIsStillInMemory() {
+        var env = new MockEnvironment().withProperty("app.persistence.users", "jpa").withProperty("app.persistence.catalog", "jpa").withProperty("app.persistence.orders", "jpa").withProperty("app.persistence.incidents", "jpa").withProperty("app.persistence.payments", "jpa").withProperty("app.persistence.proofs", "memory");
+        assertThatThrownBy(() -> new InMemoryStorageGuard(env).refuse())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("proofs");
+    }
     @Test
     void aMissingPropertyCountsAsMemoryBecauseThatIsTheDefault() {
         assertThatThrownBy(() -> new InMemoryStorageGuard(new MockEnvironment()).refuse())
@@ -49,7 +64,7 @@ class InMemoryStorageGuardTest {
 
     @Test
     void allowsBootOnlyWhenEveryGuardedFeatureIsDatabaseBacked() {
-        var env = new MockEnvironment().withProperty("app.persistence.users", "jpa").withProperty("app.persistence.catalog", "jpa").withProperty("app.persistence.orders", "jpa").withProperty("app.persistence.incidents", "jpa");
+        var env = new MockEnvironment().withProperty("app.persistence.users", "jpa").withProperty("app.persistence.catalog", "jpa").withProperty("app.persistence.orders", "jpa").withProperty("app.persistence.incidents", "jpa").withProperty("app.persistence.payments", "jpa").withProperty("app.persistence.proofs", "jpa");
         assertThatCode(() -> new InMemoryStorageGuard(env).refuse()).doesNotThrowAnyException();
     }
 }

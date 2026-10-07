@@ -133,9 +133,45 @@ class DefaultDenyCoverageTest extends AbstractNoDbRbacTest {
         // No public tracking and no deeper or wildcard customer path exists (D-07).
         assertThat(ruleFor("/api/orders/PED-000001/tracking")).isEmpty();
         assertThat(ruleFor("/api/orders/PED-000001/status")).isEmpty();
-        assertThat(apiEndpoints()).anyMatch(e -> e.method().equals("POST") && e.pattern().equals("/api/orders"));
+        // BE-10: the interim customer-facing POST /api/orders is gone; orders are created from a confirmed payment.
+        assertThat(apiEndpoints()).noneMatch(e -> e.pattern().startsWith("/api/orders") && !e.method().equals("GET"));
         assertThat(apiEndpoints()).anyMatch(e -> e.method().equals("GET") && e.pattern().equals("/api/orders"));
         assertThat(apiEndpoints()).anyMatch(e -> e.method().equals("GET") && e.pattern().equals("/api/orders/{orderId}"));
+    }
+
+
+    @Test
+    void checkoutEndpointsAreCustomerOnlyAndPaymentVerificationIsAdministratorOnlyOnExplicitPaths() {
+        String id = "3f2b8c1e-0000-4000-8000-000000000000";
+        for (String path : List.of("/api/checkout", "/api/checkout/" + id, "/api/checkout/" + id + "/proof",
+                "/api/checkout/" + id + "/proof/" + id, "/api/checkout/" + id + "/cancel")) {
+            assertThat(ruleFor(path)).as(path).get().extracting(AccessMatrix.Rule::access).isEqualTo(AccessMatrix.Access.CLIENTE);
+        }
+        for (String path : List.of("/api/admin/payments", "/api/admin/payments/" + id, "/api/admin/payments/" + id + "/proof/" + id,
+                "/api/admin/payments/" + id + "/approve", "/api/admin/payments/" + id + "/reject")) {
+            assertThat(ruleFor(path)).as(path).get().extracting(AccessMatrix.Rule::access).isEqualTo(AccessMatrix.Access.ADMIN);
+        }
+        // no deeper or wildcard path exists, and there is no provider webhook any more (ADR-005)
+        assertThat(ruleFor("/api/checkout/abc/confirm")).isEmpty();
+        assertThat(ruleFor("/api/checkout/abc/proof/x/y")).isEmpty();
+        assertThat(ruleFor("/api/admin/payments/abc/refund")).isEmpty();
+        assertThat(ruleFor("/api/payments")).isEmpty();
+        assertThat(ruleFor("/api/payments/webhooks/mercadopago")).isEmpty();
+        assertThat(AccessMatrix.RULES).noneMatch(r -> r.pattern().startsWith("/api/payments"));
+        assertThat(apiEndpoints()).noneMatch(e -> e.pattern().startsWith("/api/payments"));
+
+        assertThat(apiEndpoints()).anyMatch(e -> e.method().equals("POST") && e.pattern().equals("/api/checkout"));
+        assertThat(apiEndpoints()).anyMatch(e -> e.method().equals("GET") && e.pattern().equals("/api/checkout/{checkoutId}"));
+        assertThat(apiEndpoints()).anyMatch(e -> e.method().equals("POST") && e.pattern().equals("/api/checkout/{checkoutId}/proof"));
+        assertThat(apiEndpoints()).anyMatch(e -> e.method().equals("GET") && e.pattern().equals("/api/checkout/{checkoutId}/proof/{attemptId}"));
+        assertThat(apiEndpoints()).anyMatch(e -> e.method().equals("POST") && e.pattern().equals("/api/checkout/{checkoutId}/cancel"));
+        assertThat(apiEndpoints()).noneMatch(e -> e.pattern().startsWith("/api/checkout")
+                && !e.method().equals("GET") && !e.method().equals("POST"));
+        assertThat(apiEndpoints().stream().filter(e -> e.pattern().startsWith("/api/admin/payments")).map(e -> e.method() + " " + e.pattern()))
+                .containsExactlyInAnyOrder(
+                        "GET /api/admin/payments", "GET /api/admin/payments/{checkoutId}",
+                        "GET /api/admin/payments/{checkoutId}/proof/{attemptId}",
+                        "POST /api/admin/payments/{checkoutId}/approve", "POST /api/admin/payments/{checkoutId}/reject");
     }
 
     @Test

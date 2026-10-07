@@ -9,7 +9,10 @@ import java.util.List;
 /**
  * Contract AdminOrderDetail (E25, E26, E27): OrderDetail + owner contact + {@code allowedNextStatuses}
  * (server-authoritative, the SPA must use it) + {@code agreedAmount} (personalized only). {@code description}
- * (personalized only) and {@code registeredBy} (staff email, personalized only) are additive; no payment data.
+ * (personalized only) and {@code registeredBy} (staff email, personalized only) are additive.
+ * {@code paymentReference} (BE-07) is the Yape/Plin payment reference of a standard order (ADR-005), STAFF ONLY, so
+ * staff can match it with the wallet app; null for personalized orders and absent from every customer DTO.
+ * No card or payment-method data exists anywhere.
  */
 public record AdminOrderDetailDto(
         String id,
@@ -27,4 +30,5 @@ public record AdminOrderDetailDto(
         String customerPhone,
         String registeredBy,
         List<OrderHistoryEntryDto> statusHistory,
-        List<OrderStatus> allowedNextStatuses) {}
+        List<OrderStatus> allowedNextStatuses,
+        String paymentReference) {}

@@ -1,19 +1,14 @@
 package com.armakers3d.orders.mapper;
 
 import com.armakers3d.auth.domain.Rol;
-import com.armakers3d.orders.domain.ContactInfo;
-import com.armakers3d.orders.domain.DeliveryInfo;
 import com.armakers3d.orders.domain.Order;
-import com.armakers3d.orders.domain.RequestedItem;
 import com.armakers3d.orders.domain.StatusHistoryEntry;
 import com.armakers3d.orders.dto.AdminOrderDetailDto;
 import com.armakers3d.orders.dto.AdminOrderSummaryDto;
 import com.armakers3d.orders.dto.OrderHistoryEntryDto;
 import com.armakers3d.orders.dto.OrderResponseDto;
 import com.armakers3d.orders.dto.OrderSummaryDto;
-import com.armakers3d.orders.dto.PlaceOrderRequestDto;
 import com.armakers3d.orders.service.OrderQueryService.StaffOrderView;
-import com.armakers3d.orders.service.PlaceOrderCommand;
 import com.armakers3d.orders.service.RegisteredPersonalizedOrder;
 import java.util.List;
 import java.util.Map;
@@ -28,23 +23,7 @@ public final class OrderDtoMapper {
 
     private OrderDtoMapper() {}
 
-    /** {@code customerId} comes from the authenticated principal, never from the body. */
-    public static PlaceOrderCommand toCommand(Long customerId, String idempotencyKey, PlaceOrderRequestDto dto) {
-        List<RequestedItem> items = dto.items() == null
-                ? null
-                : dto.items().stream()
-                        .map(i -> i == null ? null : new RequestedItem(i.productId(), i.quantity()))
-                        .toList();
-        var delivery = dto.delivery() == null
-                ? null
-                : new DeliveryInfo(dto.delivery().address(), dto.delivery().district(), dto.delivery().notes());
-        var contact = dto.contact() == null
-                ? null
-                : new ContactInfo(dto.contact().fullName(), dto.contact().phone());
-        return new PlaceOrderCommand(customerId, idempotencyKey, items, delivery, contact);
-    }
-
-    /** Customer-facing detail (E21, and the E18 creation response): staff identity is never exposed. */
+    /** Customer-facing detail (E21): staff identity is never exposed. */
     public static OrderResponseDto toResponse(Order o) {
         var delivery = o.delivery() == null
                 ? null
@@ -93,7 +72,7 @@ public final class OrderDtoMapper {
                 personalized ? line.unitPrice() : null, personalized ? line.title() : null, items(o), delivery,
                 customerEmail, name, phone,
                 personalized ? actorEmails.get(o.registeredBy()) : null,
-                history, o.status().allowedNext());
+                history, o.status().allowedNext(), o.paymentReference());
     }
 
     private static List<OrderResponseDto.Item> items(Order o) {

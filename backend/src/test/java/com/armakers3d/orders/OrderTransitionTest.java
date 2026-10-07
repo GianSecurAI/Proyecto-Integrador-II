@@ -47,7 +47,7 @@ class OrderTransitionTest {
                 "PED-000001", 7L, List.of(new OrderLine(1L, "A", new BigDecimal("2.00"), 1)),
                 new DeliveryInfo("Calle 1", "Surco", null), new ContactInfo("Ana", "999888777"), T0);
         return new Order(base.id(), base.customerId(), base.kind(), status, base.lines(), base.delivery(),
-                base.contact(), base.createdAt(), null, base.history());
+                base.contact(), base.createdAt(), null, base.history(), null, null);
     }
 
     static Stream<Arguments> allowed() {

@@ -5,7 +5,7 @@ import java.util.Locale;
 import java.util.regex.Pattern;
 
 /** Shared parsing of the optional {@code Idempotency-Key} header (standard and personalized order creation). */
-final class IdempotencyKeys {
+public final class IdempotencyKeys {
 
     private static final Pattern UUID_FORMAT =
             Pattern.compile("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
@@ -13,7 +13,7 @@ final class IdempotencyKeys {
     private IdempotencyKeys() {}
 
     /** Null when absent; otherwise a lower-cased UUID. A present but malformed key is rejected, not ignored. */
-    static String normalize(String raw) {
+    public static String normalize(String raw) {
         if (raw == null) {
             return null;
         }

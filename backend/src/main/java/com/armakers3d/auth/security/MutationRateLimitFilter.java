@@ -26,8 +26,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * Per-account fixed-window limiter for authenticated mutating requests (BE-05, ADR-004 5.5). It runs AFTER
  * {@link SessionAuthenticationFilter}: the key is the account id of the authenticated principal, so one
  * compromised or buggy client cannot flood the write endpoints and one account never affects another.
- * Scope: POST, PUT, PATCH and DELETE under {@code /api/**}, except {@code /api/auth/**} (own limiters) and
- * {@code /api/payments/webhooks/**} (server to server, no account). Reads are never limited. Anonymous
+ * Scope: POST, PUT, PATCH and DELETE under {@code /api/**}, except {@code /api/auth/**} (own limiters). This includes
+ * the multipart payment-proof upload (ADR-005). Reads are never limited. Anonymous
  * requests have no account and are skipped (they are denied by the role matrix anyway).
  *
  * <p>In-memory, bounded to {@value #MAX_TRACKED_KEYS} keys and per instance (single-instance deployment,
@@ -58,8 +58,7 @@ public class MutationRateLimitFilter extends OncePerRequestFilter {
         String uri = request.getRequestURI();
         return !MUTATING.contains(request.getMethod())
                 || !uri.startsWith("/api/")
-                || uri.startsWith("/api/auth/")
-                || uri.startsWith("/api/payments/webhooks/");
+                || uri.startsWith("/api/auth/");
     }
 
     @Override

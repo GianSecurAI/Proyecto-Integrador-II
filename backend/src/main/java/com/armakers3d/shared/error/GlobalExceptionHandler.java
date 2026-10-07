@@ -19,6 +19,9 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
@@ -124,6 +127,26 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiError> handleUnsupportedMediaType(HttpMediaTypeNotSupportedException ex) {
         return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE)
                 .body(ApiError.of("UNSUPPORTED_MEDIA_TYPE", "Content type not supported."));
+    }
+
+    /** Multipart body above {@code spring.servlet.multipart.*} (payment proof upload, ADR-005): 413, nothing is stored. */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiError> handleUploadTooLarge(MaxUploadSizeExceededException ex) {
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
+                .body(ApiError.of("PAYLOAD_TOO_LARGE", "The uploaded file is too large (maximum 5 MB)."));
+    }
+
+    /** A required multipart part (the {@code file} of a proof upload) is missing. */
+    @ExceptionHandler(MissingServletRequestPartException.class)
+    public ResponseEntity<ApiError> handleMissingPart(MissingServletRequestPartException ex) {
+        return validationFailed(List.of(new ApiError.FieldError(ex.getRequestPartName(), "is required")));
+    }
+
+    /** A malformed multipart body (broken boundary, truncated stream): never a 500, never the parser's message. */
+    @ExceptionHandler(MultipartException.class)
+    public ResponseEntity<ApiError> handleMalformedMultipart(MultipartException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiError.of("MALFORMED_REQUEST", "The multipart request could not be read."));
     }
 
     @ExceptionHandler(NoResourceFoundException.class)

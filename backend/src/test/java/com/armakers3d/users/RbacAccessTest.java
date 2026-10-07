@@ -71,6 +71,59 @@ class RbacAccessTest extends AbstractNoDbRbacTest {
     }
 
     @Test
+    void checkoutIsCustomerOnlyAndTheInterimOrderPostIsGone() throws Exception {
+        Cookie cliente = signInAs(Rol.CLIENTE);
+        String validBody = "{\"items\":[{\"productId\":1,\"quantity\":1}],\"delivery\":{\"address\":\"A\",\"district\":\"B\"},"
+                + "\"contact\":{\"fullName\":\"N\",\"phone\":\"123456\"}}";
+        for (Rol rol : new Rol[] {Rol.ASESOR, Rol.ADMINISTRADOR}) {
+            Cookie staff = signInAs(rol);
+            mockMvc.perform(post("/api/checkout").cookie(staff).contentType(MediaType.APPLICATION_JSON).content(validBody))
+                    .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("FORBIDDEN"));
+            mockMvc.perform(get("/api/checkout/3f2b8c1e-0000-4000-8000-000000000000").cookie(staff))
+                    .andExpect(status().isForbidden());
+        }
+        mockMvc.perform(post("/api/checkout").contentType(MediaType.APPLICATION_JSON).content(validBody))
+                .andExpect(status().isUnauthorized()).andExpect(jsonPath("$.code").value(UNAUTHENTICATED));
+        mockMvc.perform(get("/api/checkout/3f2b8c1e-0000-4000-8000-000000000000"))
+                .andExpect(status().isUnauthorized());
+        // BE-10: nobody can create an order directly any more (the route is now only readable: POST is not allowed)
+        mockMvc.perform(post("/api/orders").cookie(cliente).contentType(MediaType.APPLICATION_JSON).content(validBody))
+                .andExpect(status().isMethodNotAllowed());
+        mockMvc.perform(post("/api/orders").contentType(MediaType.APPLICATION_JSON).content(validBody))
+                .andExpect(status().isUnauthorized());
+    }
+
+
+    @Test
+    void paymentVerificationIsAdministratorOnlyAndTheGatewayWebhookNoLongerExists() throws Exception {
+        String id = "3f2b8c1e-0000-4000-8000-000000000000";
+        Cookie asesor = signInAs(Rol.ASESOR);
+        Cookie cliente = signInAs(Rol.CLIENTE);
+        for (Cookie cookie : new Cookie[] {asesor, cliente}) {
+            mockMvc.perform(get("/api/admin/payments").cookie(cookie)).andExpect(status().isForbidden());
+            mockMvc.perform(get("/api/admin/payments/" + id).cookie(cookie)).andExpect(status().isForbidden());
+            mockMvc.perform(get("/api/admin/payments/" + id + "/proof/" + id).cookie(cookie)).andExpect(status().isForbidden());
+            mockMvc.perform(post("/api/admin/payments/" + id + "/approve").cookie(cookie)).andExpect(status().isForbidden());
+            mockMvc.perform(post("/api/admin/payments/" + id + "/reject").cookie(cookie)
+                    .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"x\"}")).andExpect(status().isForbidden());
+        }
+        mockMvc.perform(get("/api/admin/payments")).andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/api/admin/payments/" + id + "/approve")).andExpect(status().isUnauthorized());
+        // the customer-only proof endpoints are closed to staff
+        for (Rol rol : new Rol[] {Rol.ASESOR, Rol.ADMINISTRADOR}) {
+            Cookie staff = signInAs(rol);
+            mockMvc.perform(get("/api/checkout/" + id + "/proof/" + id).cookie(staff)).andExpect(status().isForbidden());
+            mockMvc.perform(post("/api/checkout/" + id + "/cancel").cookie(staff)).andExpect(status().isForbidden());
+        }
+        // ADR-005: no provider webhook route exists: denied by default like any unknown path
+        mockMvc.perform(post("/api/payments/webhooks/fake").contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/api/payments/webhooks/fake").cookie(signInAs(Rol.ADMINISTRADOR))
+                        .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void everyProtectedRouteAnswers401WithTheEnvelopeWhenAnonymous() throws Exception {
         for (MockHttpServletRequestBuilder request : adminRequests()) {
             mockMvc.perform(request).andExpect(status().isUnauthorized()).andExpect(jsonPath("$.code").value(UNAUTHENTICATED));

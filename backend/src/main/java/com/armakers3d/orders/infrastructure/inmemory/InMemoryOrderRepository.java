@@ -28,6 +28,7 @@ import org.springframework.stereotype.Repository;
 public class InMemoryOrderRepository implements OrderRepository {
 
     private final Map<String, Order> byId = new ConcurrentHashMap<>();
+    private final Map<String, String> byCheckoutId = new ConcurrentHashMap<>();
     private final AtomicLong sequence = new AtomicLong();
 
     @Override
@@ -61,6 +62,25 @@ public class InMemoryOrderRepository implements OrderRepository {
                 .sorted(sort.comparator())
                 .toList();
         return Page.of(matching, pageRequest);
+    }
+
+    @Override
+    public synchronized Optional<Order> findByCheckoutId(String checkoutId) {
+        String orderId = byCheckoutId.get(checkoutId);
+        return orderId == null ? Optional.empty() : Optional.ofNullable(byId.get(orderId));
+    }
+
+    @Override
+    public synchronized boolean insertIfCheckoutAbsent(Order order) {
+        if (order.checkoutId() == null) {
+            throw new IllegalArgumentException("An order created for a checkout needs a checkoutId");
+        }
+        // Synchronized with findByCheckoutId so a loser never sees the claim without the order.
+        if (byCheckoutId.putIfAbsent(order.checkoutId(), order.id()) != null) {
+            return false;
+        }
+        byId.put(order.id(), order);
+        return true;
     }
 
     @Override

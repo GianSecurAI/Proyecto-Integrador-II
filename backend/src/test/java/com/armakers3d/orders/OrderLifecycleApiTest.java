@@ -581,27 +581,52 @@ class OrderLifecycleApiTest extends AbstractNoDbRbacTest {
         return read(getAs(null, "/api/catalog/products?size=1")).get("content").get(0).get("id").asLong();
     }
 
-    @Test
-    void standardOrderCreatedThroughTheApiHasItsInitialHistoryEntry() throws Exception {
-        String email = uniqueEmail("buyer");
-        Cookie me = signIn(email);
+    /** Last approving administrator of {@link #orderThroughCheckout}, so tests can assert the history actor. */
+    private Long approvingAdminId;
+
+    /** Customer checkout + Yape proof upload + administrator approval (ADR-005); returns the order code. */
+    private String orderThroughCheckout(Cookie customer) throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("items", List.of(Map.of("productId", firstCatalogProductId(), "quantity", 1)));
         body.put("delivery", Map.of("address", "Av. Siempre Viva 123", "district", "Miraflores"));
         body.put("contact", Map.of("fullName", "Ana Perez", "phone", "+51 999 888 777"));
-        JsonNode created = read(mockMvc.perform(post("/api/orders").cookie(me).contentType(MediaType.APPLICATION_JSON).content(json(body)))
+        String checkoutId = read(mockMvc.perform(post("/api/checkout").cookie(customer).contentType(MediaType.APPLICATION_JSON).content(json(body)))
                 .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value("AWAITING_PAYMENT_PROOF"))).get("checkoutId").asText();
+
+        java.awt.image.BufferedImage image = new java.awt.image.BufferedImage(64, 64, java.awt.image.BufferedImage.TYPE_INT_RGB);
+        image.setRGB(3, 3, 0xABCDEF);
+        java.io.ByteArrayOutputStream jpeg = new java.io.ByteArrayOutputStream();
+        javax.imageio.ImageIO.write(image, "jpg", jpeg);
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart("/api/checkout/" + checkoutId + "/proof")
+                        .file(new org.springframework.mock.web.MockMultipartFile("file", "p.jpg", "image/jpeg", jpeg.toByteArray()))
+                        .param("method", "YAPE").cookie(customer))
+                .andExpect(status().isOk());
+
+        String adminEmail = uniqueEmail("admin");
+        Cookie admin = staff(Rol.ADMINISTRADOR, adminEmail);
+        approvingAdminId = idOf(adminEmail);
+        return read(mockMvc.perform(post("/api/admin/payments/" + checkoutId + "/approve").cookie(admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("PAID"))).get("orderId").asText();
+    }
+
+    @Test
+    void standardOrderCreatedFromAnApprovedPaymentHasItsInitialHistoryEntryByTheApprovingAdministrator() throws Exception {
+        String email = uniqueEmail("buyer");
+        Cookie me = signIn(email);
+        String orderId = orderThroughCheckout(me);
+        getAs(me, "/api/orders/" + orderId).andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CONFIRMADO"))
                 .andExpect(jsonPath("$.statusHistory.length()").value(1))
                 .andExpect(jsonPath("$.statusHistory[0].newStatus").value("CONFIRMADO"))
                 .andExpect(jsonPath("$.statusHistory[0].previousStatus").doesNotExist())
-                .andExpect(jsonPath("$.statusHistory[0].responsible").value("Sistema")));
+                .andExpect(jsonPath("$.statusHistory[0].responsible").value("Equipo Ar Makers 3D"));
 
-        var entry = orders.findById(created.get("id").asText()).orElseThrow().history().get(0);
-        assertThat(entry.actorId()).isEqualTo(idOf(email));
-        assertThat(entry.actorRole()).isEqualTo(Rol.CLIENTE);
+        var entry = orders.findById(orderId).orElseThrow().history().get(0);
+        assertThat(entry.actorId()).isEqualTo(approvingAdminId);
+        assertThat(entry.actorRole()).isEqualTo(Rol.ADMINISTRADOR);
         assertThat(entry.at()).isEqualTo(clock.instant());
-        getAs(me, "/api/orders/" + created.get("id").asText()).andExpect(status().isOk())
-                .andExpect(jsonPath("$.statusHistory.length()").value(1));
     }
 
     @Test
@@ -664,12 +689,7 @@ class OrderLifecycleApiTest extends AbstractNoDbRbacTest {
     void creationPublishesAnEventWithNoPreviousStatus() throws Exception {
         String email = uniqueEmail("buyer");
         Cookie me = signIn(email);
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("items", List.of(Map.of("productId", firstCatalogProductId(), "quantity", 1)));
-        body.put("delivery", Map.of("address", "Av. Siempre Viva 123", "district", "Miraflores"));
-        body.put("contact", Map.of("fullName", "Ana Perez", "phone", "+51 999 888 777"));
-        String id = read(mockMvc.perform(post("/api/orders").cookie(me).contentType(MediaType.APPLICATION_JSON).content(json(body)))
-                .andExpect(status().isCreated())).get("id").asText();
+        String id = orderThroughCheckout(me);
         assertThat(events.stream(OrderStatusChanged.class).filter(e -> e.orderId().equals(id)))
                 .singleElement()
                 .satisfies(e -> {

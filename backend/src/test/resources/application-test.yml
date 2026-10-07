@@ -50,6 +50,8 @@ logging:
 
 app:
   frontend-base-url: http://localhost:4200
+  payments:
+    expiry-job-enabled: false
 
 # No scheduled timers in tests; the purge service is called directly with a fixed clock.
 purge:

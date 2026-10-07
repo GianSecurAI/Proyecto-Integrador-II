@@ -82,6 +82,25 @@ class MutationRateLimitFilterTest {
         assertThat(call("GET", "/api/orders").getStatus()).isEqualTo(200);
     }
 
+
+    @Test
+    void theAuthPathsAreNeverCounted() throws Exception {
+        authenticateAs(1);
+        for (int i = 0; i < 200; i++) {
+            assertThat(call("POST", "/api/auth/logout").getStatus()).isEqualTo(200);
+        }
+        assertThat(call("POST", "/api/checkout").getStatus()).isEqualTo(200); // checkout creation IS counted, not yet limited
+    }
+
+    @Test
+    void theProofUploadIsCountedLikeAnyOtherMutation() throws Exception {
+        authenticateAs(1);
+        String proof = "/api/checkout/3f2b8c1e-0000-4000-8000-000000000000/proof";
+        for (int i = 0; i < 60; i++) {
+            assertThat(call("POST", proof).getStatus()).isEqualTo(200);
+        }
+        assertThat(call("POST", proof).getStatus()).isEqualTo(429);
+    }
     @Test
     void anotherAccountIsUnaffected() throws Exception {
         authenticateAs(1);
@@ -109,11 +128,10 @@ class MutationRateLimitFilterTest {
     }
 
     @Test
-    void authAndWebhookPathsAreExcludedAndAnonymousRequestsAreSkipped() throws Exception {
+    void authPathsAreExcludedAndAnonymousRequestsAreSkipped() throws Exception {
         authenticateAs(1);
         for (int i = 0; i < 200; i++) {
             assertThat(call("POST", "/api/auth/logout").getStatus()).isEqualTo(200);
-            assertThat(call("POST", "/api/payments/webhooks/fake").getStatus()).isEqualTo(200);
         }
         SecurityContextHolder.clearContext();
         for (int i = 0; i < 200; i++) {
