@@ -112,4 +112,13 @@ describe('authGuard', () => {
     expect(result instanceof UrlTree).toBe(true);
     expect(router.serializeUrl(result)).toContain('/auth/request-code');
   });
+
+  it('keeps the query string of the attempted URL in returnUrl (e.g. ?checkoutId=)', () => {
+    session.clear();
+    const snapshot = { data: {}, pathFromRoot: [] } as unknown as ActivatedRouteSnapshot;
+    const result = TestBed.runInInjectionContext(() =>
+      authGuard(snapshot, { url: '/checkout/confirmacion?checkoutId=abc' } as never),
+    ) as UrlTree;
+    expect(result.queryParams['returnUrl']).toBe('/checkout/confirmacion?checkoutId=abc');
+  });
 });

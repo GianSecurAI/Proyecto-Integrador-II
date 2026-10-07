@@ -1,6 +1,7 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { apiErrorCode, httpStatus, withRateLimit } from '../../../../core/models/api-error.model';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { CardComponent } from '../../../../shared/ui/card/card.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
@@ -14,7 +15,7 @@ import {
   AdminUserViewModel,
   describeAdminUserRole,
 } from '../../models/admin-user.model';
-import { AdminUsersMockService, AdminUsersMockState } from '../../services/admin-users-mock.service';
+import { AdminUsersService } from '../../services/admin-users.service';
 
 type LoadStatus = 'loading' | 'loaded' | 'not-found' | 'error';
 
@@ -41,7 +42,7 @@ type PendingAction = { readonly type: 'role-change'; readonly newRole: AdminUser
  * ROLE CHANGE: a `<select>` of the three `AdminUserRole` values, defaulting to the user's current
  * role. Submitting when the selection differs from the current role opens
  * `AdminConfirmDialogComponent` (REUSED, not a new dialog) showing "from X to Y" before calling
- * `AdminUsersMockService.changeRole`. Submitting with the already-current role selected is a
+ * `PATCH /api/admin/users/{id}/role` (`AdminUsersService.changeRole`). Submitting with the already-current role selected is a
  * deliberate no-op — no dialog, no service call — since there is nothing to confirm.
  *
  * ACCOUNT STATUS: follows the exact asymmetric pattern already established for product
@@ -69,7 +70,7 @@ type PendingAction = { readonly type: 'role-change'; readonly newRole: AdminUser
   styleUrl: './admin-user-detail.page.scss',
 })
 export class AdminUserDetailPage {
-  private readonly usersService = inject(AdminUsersMockService);
+  private readonly usersService = inject(AdminUsersService);
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -94,7 +95,7 @@ export class AdminUserDetailPage {
     day: 'numeric',
   });
 
-  private currentId = '';
+  private currentId: number | null = null;
 
   readonly dialogTitle = computed(() => {
     const action = this.pendingAction();
@@ -117,12 +118,25 @@ export class AdminUserDetailPage {
 
   constructor() {
     this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
-      this.load(params.get('id') ?? '');
+      const raw = params.get('id') ?? '';
+      this.load(/^\d+$/.test(raw) ? Number(raw) : null);
     });
   }
 
   retry(): void {
     this.load(this.currentId);
+  }
+
+  /** Spanish copy for the guard rails the backend enforces (409 codes). */
+  private conflictMessage(err: unknown, fallback: string): string {
+    const code = apiErrorCode(err);
+    if (code === 'SELF_MODIFICATION_NOT_ALLOWED') {
+      return 'No puedes cambiar tu propio rol ni desactivar tu propia cuenta.';
+    }
+    if (code === 'LAST_ADMINISTRATOR') {
+      return 'Debe quedar al menos un administrador activo. Asigna otro administrador primero.';
+    }
+    return withRateLimit(err, fallback);
   }
 
   roleLabel(role: AdminUserRole): string {
@@ -182,7 +196,7 @@ export class AdminUserDetailPage {
     }
   }
 
-  private applyRoleChange(id: string, newRole: AdminUserRole): void {
+  private applyRoleChange(id: number, newRole: AdminUserRole): void {
     this.roleChanging.set(true);
     this.roleError.set(null);
     this.usersService
@@ -195,14 +209,16 @@ export class AdminUserDetailPage {
           this.selectedRole.set(updated.role);
           this.roleSuccess.set('El rol del usuario se actualizó correctamente.');
         },
-        error: () => {
+        error: (err: unknown) => {
           this.roleChanging.set(false);
-          this.roleError.set('No pudimos actualizar el rol. Inténtalo de nuevo más tarde.');
+          this.roleError.set(
+            this.conflictMessage(err, 'No pudimos actualizar el rol. Inténtalo de nuevo más tarde.'),
+          );
         },
       });
   }
 
-  private applyActive(id: string, active: boolean): void {
+  private applyActive(id: number, active: boolean): void {
     this.activeChanging.set(true);
     this.activeError.set(null);
     this.usersService
@@ -213,28 +229,31 @@ export class AdminUserDetailPage {
           this.activeChanging.set(false);
           this.user.set(updated);
         },
-        error: () => {
+        error: (err: unknown) => {
           this.activeChanging.set(false);
-          this.activeError.set('No pudimos actualizar el estado de la cuenta. Inténtalo de nuevo más tarde.');
+          this.activeError.set(
+            this.conflictMessage(
+              err,
+              'No pudimos actualizar el estado de la cuenta. Inténtalo de nuevo más tarde.',
+            ),
+          );
         },
       });
   }
 
-  private load(id: string): void {
+  private load(id: number | null): void {
     this.currentId = id;
-    if (!id) {
+    if (id === null) {
       this.status.set('not-found');
       return;
     }
-    const mockState: AdminUsersMockState =
-      this.route.snapshot.queryParamMap.get('mockState') === 'error' ? 'error' : 'populated';
     this.status.set('loading');
     this.pendingAction.set(null);
     this.roleError.set(null);
     this.roleSuccess.set(null);
     this.activeError.set(null);
     this.usersService
-      .getUserById(id, mockState)
+      .get(id)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (user) => {
@@ -242,9 +261,9 @@ export class AdminUserDetailPage {
           this.selectedRole.set(user.role);
           this.status.set('loaded');
         },
-        error: () => {
+        error: (err: unknown) => {
           this.user.set(null);
-          this.status.set(mockState === 'error' ? 'error' : 'not-found');
+          this.status.set(httpStatus(err) === 404 ? 'not-found' : 'error');
         },
       });
   }

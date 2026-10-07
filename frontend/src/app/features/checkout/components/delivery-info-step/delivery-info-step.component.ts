@@ -2,14 +2,13 @@ import { Component, inject, output } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { FormFieldComponent } from '../../../../shared/ui/form-field/form-field.component';
-import { DeliveryInfoFormValue } from '../../models/checkout-form.model';
+import { CHECKOUT_LIMITS, DeliveryInfoFormValue } from '../../models/checkout-form.model';
 import { CheckoutStateService } from '../../state/checkout-state.service';
 
 /**
  * Checkout step 3 of 4 — delivery information. Deliberately minimal (address line + district +
  * optional delivery notes) per this feature's explicit scope note — no structured multi-field
- * address system, no Peru-districts dropdown/lookup; see `../../models/checkout-form.model.ts`'s
- * doc comment for the full field-provenance/ASSUMPTION disclaimer.
+ * address system, no Peru-districts dropdown/lookup. Maps to the order request's `delivery.*`.
  *
  * Same "read initial value from `CheckoutStateService`, write back before advancing" pattern as
  * `CustomerInfoStepComponent` — see that component's doc comment.
@@ -28,9 +27,19 @@ export class DeliveryInfoStepComponent {
   readonly next = output<void>();
 
   readonly form = new FormGroup({
-    address: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
-    district: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
-    notes: new FormControl('', { nonNullable: true }),
+    // Limits mirror `the checkout request DTO.Delivery` (UX only — the backend re-validates).
+    address: new FormControl('', {
+      nonNullable: true,
+      validators: [Validators.required, Validators.maxLength(CHECKOUT_LIMITS.address)],
+    }),
+    district: new FormControl('', {
+      nonNullable: true,
+      validators: [Validators.required, Validators.maxLength(CHECKOUT_LIMITS.district)],
+    }),
+    notes: new FormControl('', {
+      nonNullable: true,
+      validators: [Validators.maxLength(CHECKOUT_LIMITS.notes)],
+    }),
   });
 
   get addressControl() {

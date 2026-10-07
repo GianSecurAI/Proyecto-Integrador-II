@@ -13,13 +13,16 @@ import com.armakers3d.auth.service.exception.OtpAttemptLimitExceededException;
 import com.armakers3d.auth.service.exception.OtpExpiredException;
 import com.armakers3d.auth.service.exception.OtpRequestThrottledException;
 import com.armakers3d.shared.error.ApiException;
+import com.armakers3d.shared.notification.EmailDeliveryException;
 import com.armakers3d.shared.notification.EmailSender;
+import com.armakers3d.shared.util.EmailAddress;
 import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.locks.ReentrantLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -54,6 +57,21 @@ public class OtpService {
     // (Principle II: no new mechanism without justification).
     private final PasswordEncoder codeEncoder = new BCryptPasswordEncoder();
 
+    /**
+     * Hash compared against when no code exists for the email, so that "never requested a code" costs the
+     * same BCrypt work as "wrong code" (security review M6, timing oracle). Not derived from any secret.
+     */
+    private final String dummyHash = codeEncoder.encode("000000");
+
+    /**
+     * Per-email critical section for issuance (security review M4): count-then-insert is not atomic, so
+     * parallel requests could each pass the throttle and exceed the limit (or leave two PENDING codes).
+     * Striped by email hash; deliberately held OUTSIDE any transaction (see requestOtp) so a waiter always
+     * sees the previous holder's committed row. In-process, hence single-instance only, like the other
+     * in-memory guards; a multi-instance deployment needs a database-level guard.
+     */
+    private final ReentrantLock[] issueLocks = newLocks(64);
+
     public OtpService(
             ClienteRepository clienteRepository,
             CodigoOtpRepository codigoOtpRepository,
@@ -75,36 +93,52 @@ public class OtpService {
      * regardless of whether the email is already registered. Never throws for "email not
      * registered" — throttling is the only rejection reason, and it must use the exact same
      * exception/wording an existing-email throttle would (FR-004 extends to the throttled case).
+     *
+     * <p>Not {@code @Transactional} on purpose (M4): the per-email lock must be taken and released
+     * outside any transaction, otherwise the lock could be released before the insert commits and the
+     * next request would still count the old state. Each repository call commits on its own, which is
+     * safe here (a failure between superseding and saving only leaves the older code superseded).
+     * The email is sent after the lock is released so a slow SMTP server cannot stall other requests.
      */
-    @Transactional
     public void requestOtp(String rawEmail) {
         String email = normalize(rawEmail);
         Instant now = clock.instant();
-
-        long recentRequests =
-                codigoOtpRepository.countByEmailAndIssuedAtAfter(
-                        email, now.minus(Duration.ofMinutes(policy.getRequestWindowMinutes())));
-        if (recentRequests >= policy.getMaxRequestsPerWindow()) {
-            log.info("otp.request.throttled email={}", email);
-            throw new OtpRequestThrottledException();
-        }
-
-        superseceExistingPendingCodes(email);
+        String masked = EmailAddress.mask(email);
 
         String code = generateCode();
         String codeHash = codeEncoder.encode(code);
-        CodigoOtp codigoOtp =
-                new CodigoOtp(email, codeHash, now, now.plus(Duration.ofMinutes(policy.getExpiryMinutes())));
-        codigoOtpRepository.save(codigoOtp);
+
+        ReentrantLock lock = issueLocks[Math.floorMod(email.hashCode(), issueLocks.length)];
+        lock.lock();
+        try {
+            long recentRequests =
+                    codigoOtpRepository.countIssuedAfter(
+                            email, now.minus(Duration.ofMinutes(policy.getRequestWindowMinutes())));
+            if (recentRequests >= policy.getMaxRequestsPerWindow()) {
+                log.info("otp.request.throttled email={}", masked);
+                throw new OtpRequestThrottledException();
+            }
+            superseceExistingPendingCodes(email);
+            codigoOtpRepository.save(
+                    new CodigoOtp(email, codeHash, now, now.plus(Duration.ofMinutes(policy.getExpiryMinutes()))));
+        } finally {
+            lock.unlock();
+        }
 
         // FR-002/FR-017: the plaintext code is used only transiently, for hashing and for the
         // outbound email body — it is never logged and never persisted in reversible form.
-        emailSender.send(
-                email,
-                "Your Ar Makers 3D verification code",
-                "Your one-time code is " + code + ". It expires in " + policy.getExpiryMinutes() + " minutes.");
+        try {
+            emailSender.send(
+                    email,
+                    "Your Ar Makers 3D verification code",
+                    "Your one-time code is " + code + ". It expires in " + policy.getExpiryMinutes() + " minutes.");
+        } catch (EmailDeliveryException ex) {
+            // The response stays the generic acknowledgment (no delivery diagnostics, spec Edge Cases);
+            // only the class is logged because the body carries the code (FR-002/FR-017).
+            log.warn("Email dispatch failed ({}); caller response remains generic.", ex.getClass().getSimpleName());
+        }
 
-        log.info("otp.request.issued email={}", email);
+        log.info("otp.request.issued email={}", masked);
     }
 
     /**
@@ -123,19 +157,28 @@ public class OtpService {
     @Transactional(noRollbackFor = ApiException.class)
     public VerificationResult verifyOtp(String rawEmail, String submittedCode) {
         String email = normalize(rawEmail);
+        String masked = EmailAddress.mask(email);
         Instant now = clock.instant();
 
-        CodigoOtp codigoOtp =
-                codigoOtpRepository
-                        .findFirstByEmailOrderByIssuedAtDescIdDesc(email)
-                        .orElseThrow(
-                                () -> {
-                                    log.info("otp.verify.failed email={} reason=no_code_issued", email);
-                                    return new InvalidOtpCodeException();
-                                });
+        // M1: cumulative failed-attempt cap per email across ALL recent codes, checked before anything else
+        // so a fresh code cannot be used to reset the guess budget. Locks even the correct code.
+        long recentFailures = codigoOtpRepository.sumFailedAttemptsIssuedAfter(
+                email, now.minus(Duration.ofMinutes(policy.getFailedAttemptsWindowMinutes())));
+        if (recentFailures >= policy.getMaxFailedAttemptsPerEmail()) {
+            log.info("otp.verify.lockout email={} reason=cumulative_failures", masked);
+            throw new OtpAttemptLimitExceededException();
+        }
+
+        CodigoOtp codigoOtp = codigoOtpRepository.findLatestByEmail(email).orElse(null);
+        if (codigoOtp == null) {
+            // M6: same BCrypt cost as a wrong code, so response time does not reveal "no code was ever requested".
+            codeEncoder.matches(submittedCode, dummyHash);
+            log.info("otp.verify.failed email={} reason=no_code_issued", masked);
+            throw new InvalidOtpCodeException();
+        }
 
         if (codigoOtp.getStatus() == CodigoOtpStatus.VERIFIED) {
-            log.info("otp.verify.failed email={} reason=already_used", email);
+            log.info("otp.verify.failed email={} reason=already_used", masked);
             throw new OtpAlreadyUsedException();
         }
         if (codigoOtp.getStatus() == CodigoOtpStatus.SUPERSEDED) {
@@ -144,64 +187,75 @@ public class OtpService {
             // user compares against the *newer* latest row instead and naturally falls through
             // to the hash-mismatch branch below. This guard only protects against a future bug
             // that might load the wrong row.
-            log.info("otp.verify.failed email={} reason=superseded", email);
+            log.info("otp.verify.failed email={} reason=superseded", masked);
             throw new OtpExpiredException();
         }
         if (codigoOtp.getStatus() == CodigoOtpStatus.PENDING && codigoOtp.isExpiredAt(now)) {
             codigoOtp.markExpired();
             codigoOtpRepository.save(codigoOtp);
-            log.info("otp.verify.failed email={} reason=expired", email);
+            log.info("otp.verify.failed email={} reason=expired", masked);
             throw new OtpExpiredException();
         }
         if (codigoOtp.getStatus() == CodigoOtpStatus.EXPIRED) {
-            log.info("otp.verify.failed email={} reason=expired", email);
+            log.info("otp.verify.failed email={} reason=expired", masked);
             throw new OtpExpiredException();
         }
 
-        // FR-011: the limit check happens before comparing this submission's code, so the attempt
-        // that *reaches* the limit still gets its true rejection reason (401), and only the
-        // *next* one is blocked outright (429) — matching contracts/otp-auth-api.md.
-        if (codigoOtp.getAttemptCount() >= policy.getMaxAttempts()) {
-            log.info("otp.verify.lockout email={}", email);
+        // FR-011: every submission consumes one attempt atomically BEFORE the code is compared, so
+        // parallel guesses cannot exceed the limit. The attempt that *reaches* the limit still
+        // gets its true rejection reason (401); only the *next* one is blocked outright (429),
+        // matching contracts/otp-auth-api.md. The correct code is also refused once locked out.
+        int attemptNumber = codigoOtpRepository.incrementAttemptCount(codigoOtp.getId());
+        if (attemptNumber > policy.getMaxAttempts()) {
+            log.info("otp.verify.lockout email={}", masked);
             throw new OtpAttemptLimitExceededException();
         }
 
         boolean matches = codeEncoder.matches(submittedCode, codigoOtp.getCodeHash());
         if (!matches) {
-            codigoOtp.incrementAttemptCount();
-            codigoOtpRepository.save(codigoOtp);
-            log.info("otp.verify.failed email={} reason=invalid_code attemptCount={}", email, codigoOtp.getAttemptCount());
+            log.info("otp.verify.failed email={} reason=invalid_code attemptCount={}", masked, attemptNumber);
             throw new InvalidOtpCodeException();
         }
 
-        // FR-010: mark VERIFIED (and therefore terminally unusable) before evaluating anything
-        // else, so the code is single-use regardless of what happens next (e.g. a deactivated
-        // account still consumes the code; it must not remain replayable).
-        codigoOtp.markVerified(now);
-        codigoOtpRepository.save(codigoOtp);
+        // FR-010: the code is consumed (VERIFIED, terminally unusable) before anything else is
+        // evaluated, via an atomic PENDING->VERIFIED transition so that two concurrent
+        // submissions of the correct code cannot both succeed. A deactivated account still
+        // consumes the code; it must not remain replayable.
+        if (!codigoOtpRepository.markVerifiedIfPending(codigoOtp.getId(), now)) {
+            log.info("otp.verify.failed email={} reason=already_used", masked);
+            throw new OtpAlreadyUsedException();
+        }
 
         Cliente cliente = clienteRepository.findByEmail(email).orElse(null);
         boolean accountJustCreated = cliente == null;
         if (cliente == null) {
             cliente = clienteRepository.save(new Cliente(email, now));
         } else if (!cliente.isActive()) {
-            log.info("otp.verify.failed email={} reason=account_deactivated", email);
+            log.info("otp.verify.failed email={} reason=account_deactivated", masked);
             throw new AccountDeactivatedException();
         }
 
         log.info(
                 "otp.verify.success email={} accountStatus={}",
-                email,
+                masked,
                 accountJustCreated ? "created" : "existing");
         return new VerificationResult(cliente, accountJustCreated);
     }
 
     private void superseceExistingPendingCodes(String email) {
-        List<CodigoOtp> pending = codigoOtpRepository.findAllByEmailAndStatus(email, CodigoOtpStatus.PENDING);
+        List<CodigoOtp> pending = codigoOtpRepository.findByEmailAndStatus(email, CodigoOtpStatus.PENDING);
         for (CodigoOtp existing : pending) {
             existing.markSuperseded();
+            codigoOtpRepository.save(existing);
         }
-        codigoOtpRepository.saveAll(pending);
+    }
+
+    private static ReentrantLock[] newLocks(int n) {
+        ReentrantLock[] locks = new ReentrantLock[n];
+        for (int i = 0; i < n; i++) {
+            locks[i] = new ReentrantLock();
+        }
+        return locks;
     }
 
     private String generateCode() {
@@ -215,6 +269,6 @@ public class OtpService {
      * case-folding logic in repository queries or the database schema (Prohibited Practices #3).
      */
     private String normalize(String email) {
-        return email.trim().toLowerCase(Locale.ROOT);
+        return EmailAddress.normalize(email);
     }
 }

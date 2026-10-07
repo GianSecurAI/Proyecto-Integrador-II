@@ -1,0 +1,209 @@
+<div class="admin-payment-detail-page">
+  <nav aria-label="Ruta de navegación" class="admin-payment-detail-page__breadcrumb">
+    <a routerLink="/admin/payments">Pagos por verificar</a>
+  </nav>
+
+  @switch (status()) {
+    @case ('loading') {
+      <app-loading-state message="Cargando el pago…" />
+    }
+    @case ('error') {
+      <app-error-state
+        title="No se pudo cargar el pago"
+        description="Ocurrió un problema al conectar con el servidor. Inténtalo de nuevo."
+      >
+        <app-button errorStateAction variant="secondary" (clicked)="retry()">Reintentar</app-button>
+      </app-error-state>
+    }
+    @case ('not-found') {
+      <h1>Pago no encontrado</h1>
+      <app-empty-state
+        title="No encontramos este pago"
+        description="Vuelve a la lista para ver los pagos disponibles."
+      >
+        <a emptyStateAction class="ui-btn ui-btn--primary ui-btn--md" routerLink="/admin/payments">
+          Volver a pagos
+        </a>
+      </app-empty-state>
+    }
+    @default {
+      @if (payment(); as p) {
+        <h1 class="visually-hidden">Verificar pago {{ p.reference }}</h1>
+
+        @if (p.duplicateProofWarning) {
+          <div class="admin-payment-detail-page__warning" role="alert" data-testid="duplicate-warning">
+            <strong>Captura repetida:</strong> alguna de las imágenes de este pago ya fue enviada
+            en otro pago. Verifica con cuidado en la app de Yape/Plin antes de aprobar.
+          </div>
+        }
+
+        <app-card>
+          <div class="admin-payment-detail-page__header">
+            <div>
+              <p class="admin-payment-detail-page__reference">{{ p.reference }}</p>
+              <p class="admin-payment-detail-page__muted">Creado el {{ formatDate(p.createdAt) }}</p>
+            </div>
+            <app-status-badge [label]="statusBadge(p.status).label" [tone]="statusBadge(p.status).tone" />
+          </div>
+
+          <dl class="admin-payment-detail-page__facts">
+            <div><dt>Monto esperado</dt><dd><strong>S/ {{ p.totalAmount.toFixed(2) }}</strong> ({{ p.currency }})</dd></div>
+            <div><dt>Cliente</dt><dd>{{ p.contact.fullName }}</dd></div>
+            <div><dt>Teléfono</dt><dd>{{ p.contact.phone }}</dd></div>
+            @if (p.paidAt) {
+              <div><dt>Pagado el</dt><dd>{{ formatDate(p.paidAt) }}</dd></div>
+            }
+            @if (p.orderId) {
+              <div>
+                <dt>Pedido</dt>
+                <dd><a [routerLink]="['/admin/orders', p.orderId]">{{ p.orderId }}</a></dd>
+              </div>
+            }
+          </dl>
+
+          <table class="admin-payment-detail-page__table">
+            <caption class="visually-hidden">Productos</caption>
+            <thead>
+              <tr>
+                <th scope="col">Producto</th>
+                <th scope="col">Cant.</th>
+                <th scope="col">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of p.items; track item.productId) {
+                <tr>
+                  <td>{{ item.title }}</td>
+                  <td>{{ item.quantity }}</td>
+                  <td>S/ {{ item.lineTotal.toFixed(2) }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </app-card>
+
+        @if (approvedOrderId(); as orderId) {
+          <div class="admin-payment-detail-page__success" role="status">
+            Pago aprobado. Pedido creado:
+            <a [routerLink]="['/admin/orders', orderId]">{{ orderId }}</a>.
+          </div>
+        }
+
+        <app-card>
+          <h2>Intentos de comprobante</h2>
+          @if (p.attempts.length === 0) {
+            <p class="admin-payment-detail-page__muted">El cliente todavía no subió ningún comprobante.</p>
+          } @else {
+            <table class="admin-payment-detail-page__table">
+              <caption class="visually-hidden">Intentos de comprobante</caption>
+              <thead>
+                <tr>
+                  <th scope="col">N.º</th>
+                  <th scope="col">Método</th>
+                  <th scope="col">Operación</th>
+                  <th scope="col">Enviado</th>
+                  <th scope="col">Tamaño</th>
+                  <th scope="col">Decisión</th>
+                  <th scope="col">Imagen</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (a of p.attempts; track a.attemptId) {
+                  <tr>
+                    <td>{{ a.number }}</td>
+                    <td>{{ methodLabel(a.method) }}</td>
+                    <td>{{ a.operationCode ?? '—' }}</td>
+                    <td>{{ formatDate(a.submittedAt) }}</td>
+                    <td>{{ formatSize(a.sizeBytes) }}</td>
+                    <td>
+                      <app-status-badge
+                        [label]="decisionBadge(a.decision).label"
+                        [tone]="decisionBadge(a.decision).tone"
+                      />
+                      @if (a.rejectionReason) {
+                        <div class="admin-payment-detail-page__muted">{{ a.rejectionReason }}</div>
+                      }
+                      @if (a.duplicateProofWarning) {
+                        <app-status-badge label="Captura repetida" tone="danger" />
+                      }
+                    </td>
+                    <td>
+                      <button
+                        type="button"
+                        class="ui-btn ui-btn--ghost ui-btn--sm"
+                        [attr.aria-pressed]="selectedAttemptId() === a.attemptId"
+                        (click)="selectAttempt(a.attemptId)"
+                      >
+                        {{ selectedAttemptId() === a.attemptId ? 'Viendo' : 'Ver' }}
+                      </button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+
+            @if (proofLoader(); as loader) {
+              <div class="admin-payment-detail-page__proof">
+                <h3>Comprobante seleccionado</h3>
+                <app-proof-image [loader]="loader" alt="Comprobante de pago enviado por el cliente" />
+              </div>
+            }
+          }
+        </app-card>
+
+        @if (actionError(); as message) {
+          <p class="admin-payment-detail-page__error" role="alert">{{ message }}</p>
+        }
+
+        @if (canDecide()) {
+          <app-card>
+            <h2>Decisión</h2>
+            <p class="admin-payment-detail-page__muted">
+              Compara monto, referencia y cuenta receptora con la app de Yape/Plin antes de decidir.
+            </p>
+            <div class="admin-payment-detail-page__actions">
+              <app-button [loading]="submitting()" [disabled]="submitting()" (clicked)="openApprove()">
+                Aprobar pago
+              </app-button>
+              <app-button variant="danger" [disabled]="submitting()" (clicked)="toggleReject()">
+                Rechazar
+              </app-button>
+            </div>
+
+            @if (rejectFormOpen()) {
+              <form class="admin-payment-detail-page__reject" (submit)="$event.preventDefault(); reject()" novalidate>
+                <label for="reject-reason">Motivo del rechazo (se muestra al cliente y se envía por correo)</label>
+                <textarea
+                  id="reject-reason"
+                  class="ui-input"
+                  rows="3"
+                  [attr.maxlength]="reasonMax"
+                  [value]="reason()"
+                  [disabled]="submitting()"
+                  aria-describedby="reject-reason-counter"
+                  (input)="updateReason($any($event.target).value)"
+                ></textarea>
+                <p id="reject-reason-counter" class="admin-payment-detail-page__muted" aria-live="polite">
+                  {{ reasonLength() }} / {{ reasonMax }}
+                </p>
+                <app-button type="submit" variant="danger" [loading]="submitting()" [disabled]="!reasonValid() || submitting()">
+                  Confirmar rechazo
+                </app-button>
+              </form>
+            }
+          </app-card>
+        }
+
+        <app-admin-confirm-dialog
+          [open]="approveDialogOpen()"
+          title="¿Aprobar este pago?"
+          [description]="'Confirma que recibiste S/ ' + p.totalAmount.toFixed(2) + ' con la referencia ' + p.reference + ' en la app de Yape/Plin. Al aprobar se crea el pedido del cliente.'"
+          confirmLabel="Aprobar pago"
+          [danger]="false"
+          (confirmed)="approve()"
+          (cancelled)="closeApprove()"
+        />
+      }
+    }
+  }
+</div>

@@ -3,10 +3,12 @@
   <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
     <app-form-field
       #addressField="appFormField"
-      label="Dirección"
+      label="Dirección de entrega"
       [required]="true"
       [error]="
-        addressControl.invalid && addressControl.touched ? 'Ingresa tu dirección de entrega.' : null
+        addressControl.invalid && addressControl.touched
+          ? (addressControl.errors?.['maxlength'] ? 'Máximo 200 caracteres.' : 'Ingresa tu dirección de entrega.')
+          : null
       "
     >
       <input
@@ -26,7 +28,9 @@
       label="Distrito"
       [required]="true"
       [error]="
-        districtControl.invalid && districtControl.touched ? 'Ingresa tu distrito.' : null
+        districtControl.invalid && districtControl.touched
+          ? (districtControl.errors?.['maxlength'] ? 'Máximo 80 caracteres.' : 'Ingresa tu distrito.')
+          : null
       "
     >
       <input
@@ -45,6 +49,7 @@
       #notesField="appFormField"
       label="Referencia / notas de entrega (opcional)"
       hint="Ej. un punto de referencia cercano."
+      [error]="notesControl.invalid && notesControl.touched ? 'Máximo 300 caracteres.' : null"
     >
       <textarea
         class="ui-input checkout-delivery-notes"
@@ -60,8 +65,4 @@
     </div>
   </form>
 
-  <p class="checkout-delivery-notice">
-    Vista de demostración: escribe <code>__mock_fail__</code> en el campo Dirección para
-    previsualizar un error al registrar el pedido.
-  </p>
 </section>

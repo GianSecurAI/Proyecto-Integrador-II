@@ -1,42 +1,48 @@
 import { Component, effect, input, output } from '@angular/core';
-import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  AbstractControl,
+  FormControl,
+  FormGroup,
+  ReactiveFormsModule,
+  ValidationErrors,
+  Validators,
+} from '@angular/forms';
+import { applyFieldErrors, serverError } from '../../../../core/errors/form-errors';
+import { categoryLabel, ProductCategory } from '../../../../shared/models/wire-enums';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { FormFieldComponent } from '../../../../shared/ui/form-field/form-field.component';
-import { CATALOG_CATEGORY_LABELS, CatalogCategory } from '../../../catalog/models/catalog-filters.model';
 import {
   EMPTY_PRODUCT_FORM_VALUE,
   PRODUCT_FORM_CATEGORIES,
+  PRODUCT_LIMITS,
   ProductFormValue,
+  splitCharacteristics,
 } from '../../models/admin-product.model';
 
-/** Reactive form shape backing the `FormGroup` below — every control is non-nullable so
- * `getRawValue()` matches `ProductFormValue` directly (mirrors `ProfilePage`'s
- * `{ [K in keyof ProfileFormValue]: FormControl<...> }` typing convention), except `price`/
- * `compareAtPrice` which stay nullable while empty so `Validators.required` can reject an
- * unfilled price. */
 interface ProductFormControls {
   title: FormControl<string>;
-  category: FormControl<Exclude<CatalogCategory, 'todo'>>;
+  category: FormControl<ProductCategory>;
   subcategory: FormControl<string>;
   description: FormControl<string>;
   price: FormControl<number | null>;
-  compareAtPrice: FormControl<number | null>;
-  personalizable: FormControl<boolean>;
   characteristics: FormControl<string>;
 }
 
+/** UX mirror of the backend limits on the characteristics list (<= 20 items of <= 200 chars). */
+function characteristicsValidator(control: AbstractControl<string>): ValidationErrors | null {
+  const items = splitCharacteristics(control.value ?? '');
+  if (items.length > PRODUCT_LIMITS.characteristicsMaxItems) return { tooManyItems: true };
+  if (items.some((item) => item.length > PRODUCT_LIMITS.characteristicMax)) return { itemTooLong: true };
+  return null;
+}
+
 /**
- * Shared, presentational create/edit reactive form for `AdminProductCreatePage` and
- * `AdminProductDetailPage`'s edit mode — factored out because both call sites need the exact same
- * moderate-sized field set (title, category, subcategory, description, price, compareAtPrice,
- * personalizable, characteristics) and duplicating it would be meaningful duplication (8 fields +
- * validation), unlike e.g. a two-field form. Deliberately excludes `available` — see
- * `ProductFormValue`'s doc comment: availability is a separate, dedicated,
- * confirmation-gated control (`AdminConfirmDialogComponent`), never part of this form.
- *
- * Client-side validation here (required title/category/subcategory/description, price > 0) is a
- * UX convenience only — mirrors, never replaces, server-side validation (Constitution Prohibited
- * Practice #6); no real backend endpoint exists yet for this mock-only preview feature.
+ * Shared create/edit product form (`AdminProductCreatePage`, `AdminProductDetailPage`). Fields map
+ * 1:1 onto the backend `ProductWriteRequestDto` (title, category, subcategory, description, price,
+ * characteristics) — the Figma/mock-only compare-at price and personalizable flag are gone because
+ * the backend has neither. Validation here is UX only and mirrors the DTO limits; the parent shows
+ * the server's `400 VALIDATION_FAILED` messages on the matching field through `applyServerErrors`.
+ * Emits intent only (`submitted` / `cancelled`); the parent talks to the API.
  */
 @Component({
   selector: 'app-admin-product-form',
@@ -50,30 +56,45 @@ export class AdminProductFormComponent {
   readonly submitting = input(false);
   readonly submitLabel = input('Guardar producto');
   readonly showCancel = input(true);
-  /** Generic submission error to render inline (e.g. a failed mock create/update) — this
-   * component never talks to a service itself, the parent page owns the HTTP/mock call. */
   readonly errorMessage = input<string | null>(null);
 
   readonly submitted = output<ProductFormValue>();
   readonly cancelled = output<void>();
 
   readonly categories = PRODUCT_FORM_CATEGORIES;
-  readonly categoryLabels = CATALOG_CATEGORY_LABELS;
+  readonly categoryLabel = categoryLabel;
+  readonly limits = PRODUCT_LIMITS;
+  readonly serverError = serverError;
 
   readonly form = new FormGroup<ProductFormControls>({
-    title: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
-    category: new FormControl<Exclude<CatalogCategory, 'todo'>>('llavero', {
+    title: new FormControl('', {
+      nonNullable: true,
+      validators: [Validators.required, Validators.maxLength(PRODUCT_LIMITS.titleMax)],
+    }),
+    category: new FormControl<ProductCategory>('LLAVERO', {
       nonNullable: true,
       validators: [Validators.required],
     }),
-    subcategory: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
-    description: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
-    price: new FormControl<number | null>(null, {
-      validators: [Validators.required, Validators.min(0.01)],
+    subcategory: new FormControl('', {
+      nonNullable: true,
+      validators: [Validators.required, Validators.maxLength(PRODUCT_LIMITS.subcategoryMax)],
     }),
-    compareAtPrice: new FormControl<number | null>(null, { validators: [Validators.min(0.01)] }),
-    personalizable: new FormControl(false, { nonNullable: true }),
-    characteristics: new FormControl('', { nonNullable: true }),
+    description: new FormControl('', {
+      nonNullable: true,
+      validators: [Validators.required, Validators.maxLength(PRODUCT_LIMITS.descriptionMax)],
+    }),
+    price: new FormControl<number | null>(null, {
+      validators: [
+        Validators.required,
+        Validators.min(0.01),
+        Validators.max(PRODUCT_LIMITS.priceMax),
+        Validators.pattern(/^\d+(\.\d{1,2})?$/),
+      ],
+    }),
+    characteristics: new FormControl('', {
+      nonNullable: true,
+      validators: [characteristicsValidator],
+    }),
   });
 
   get titleControl() {
@@ -91,20 +112,13 @@ export class AdminProductFormComponent {
   get priceControl() {
     return this.form.controls.price;
   }
-  get compareAtPriceControl() {
-    return this.form.controls.compareAtPrice;
-  }
   get characteristicsControl() {
     return this.form.controls.characteristics;
   }
 
   constructor() {
-    // Re-fills the form whenever the parent hands over a new `initialValue` reference — the
-    // initial fetch (create page's static default, or detail page's `toProductFormValue(product)`
-    // once loaded) and every subsequent "cancel editing" reset (the parent re-passes the same
-    // computed value, unchanged), mirroring `ProfilePage.startEditing()`'s pre-fill/`cancel()`'s
-    // revert, but expressed as reactive re-fill since this is a signal `input()`, not a
-    // constructor-only value.
+    // Re-fills the form whenever the parent hands over a new `initialValue` reference (initial
+    // fetch, and every "cancel editing" reset).
     effect(() => {
       const value = this.initialValue();
       this.form.reset({
@@ -113,11 +127,15 @@ export class AdminProductFormComponent {
         subcategory: value.subcategory,
         description: value.description,
         price: value.price,
-        compareAtPrice: value.compareAtPrice,
-        personalizable: value.personalizable,
         characteristics: value.characteristics,
       });
     });
+  }
+
+  /** Shows a backend `400 VALIDATION_FAILED` on the matching controls; returns the messages that
+   * could not be attached to a control. */
+  applyServerErrors(err: unknown): string[] {
+    return applyFieldErrors(this.form, err);
   }
 
   submit(): void {
@@ -133,8 +151,6 @@ export class AdminProductFormComponent {
       subcategory: raw.subcategory.trim(),
       description: raw.description.trim(),
       price: raw.price!,
-      compareAtPrice: raw.compareAtPrice,
-      personalizable: raw.personalizable,
       characteristics: raw.characteristics,
     };
     this.submitted.emit(value);

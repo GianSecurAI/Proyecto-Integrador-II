@@ -27,7 +27,7 @@
       </app-error-state>
     }
     @default {
-      @if (products().length === 0) {
+      @if (products().length === 0 && !hasActiveFilters()) {
         <app-empty-state
           title="Todavía no hay productos"
           description="Cuando crees el primer producto del catálogo, lo verás aquí."
@@ -44,6 +44,7 @@
               class="ui-input"
               type="search"
               placeholder="Ej. llavero"
+              maxlength="100"
               [value]="search()"
               (input)="updateSearch($any($event.target).value)"
             />
@@ -55,9 +56,22 @@
               [value]="categoryFilter()"
               (change)="updateCategoryFilter($any($event.target).value)"
             >
+              <option value="todo">Todas</option>
               @for (cat of categories; track cat) {
-                <option [value]="cat">{{ categoryLabels[cat] }}</option>
+                <option [value]="cat">{{ categoryLabel(cat) }}</option>
               }
+            </select>
+          </label>
+          <label class="admin-product-list-page__filter">
+            <span>Disponibilidad</span>
+            <select
+              class="ui-select"
+              [value]="availabilityFilter()"
+              (change)="updateAvailabilityFilter($any($event.target).value)"
+            >
+              <option value="todos">Todas</option>
+              <option value="disponibles">Disponibles</option>
+              <option value="no-disponibles">No disponibles</option>
             </select>
           </label>
         </div>
@@ -66,7 +80,7 @@
           <p role="alert" class="admin-product-list-page__error">{{ availabilityError() }}</p>
         }
 
-        @if (filteredProducts().length === 0) {
+        @if (products().length === 0) {
           <app-empty-state
             title="Ningún producto coincide con los filtros"
             description="Ajusta la búsqueda o la categoría seleccionada."
@@ -83,7 +97,7 @@
               </tr>
             </thead>
             <tbody>
-              @for (product of filteredProducts(); track product.id) {
+              @for (product of products(); track product.id) {
                 <tr>
                   <td>
                     <a [routerLink]="['/admin/products', product.id]">{{ product.title }}</a>
@@ -127,16 +141,32 @@
               }
             </tbody>
           </app-admin-data-table>
+          @if (totalPages() > 1) {
+            <nav class="admin-product-list-page__pagination" aria-label="Paginación de productos">
+              <button
+                type="button"
+                class="ui-btn ui-btn--secondary ui-btn--sm"
+                [disabled]="page() === 0"
+                (click)="goToPage(page() - 1)"
+              >
+                Anterior
+              </button>
+              <span aria-live="polite">Página {{ page() + 1 }} de {{ totalPages() }}</span>
+              <button
+                type="button"
+                class="ui-btn ui-btn--secondary ui-btn--sm"
+                [disabled]="page() + 1 >= totalPages()"
+                (click)="goToPage(page() + 1)"
+              >
+                Siguiente
+              </button>
+            </nav>
+          }
         }
       }
     }
   }
 
-  <p class="admin-product-list-page__notice">
-    Vista de demostración: estos productos no provienen de un servidor real. Para previsualizar
-    otros estados desde el navegador, añade <code>?mockState=empty</code> o
-    <code>?mockState=error</code> a esta URL.
-  </p>
 
   <app-admin-confirm-dialog
     [open]="pendingDeactivation() !== null"

@@ -19,6 +19,6 @@ class AuthorizationAdminDeniedTest extends AbstractOtpIntegrationTest {
         String email = uniqueEmail("customer-not-admin");
         Cookie sessionCookie = registerAndGetSessionCookie(email);
 
-        getWithCookie("/api/customers", sessionCookie).andExpect(status().isForbidden());
+        getWithCookie("/api/admin/users", sessionCookie).andExpect(status().isForbidden());
     }
 }

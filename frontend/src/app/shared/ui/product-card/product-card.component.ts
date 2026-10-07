@@ -1,7 +1,8 @@
-import { Component, inject, input, signal } from '@angular/core';
+import { Component, computed, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CartStateService } from '../../../features/cart/services/cart-state.service';
 import { CatalogProduct } from '../../models/catalog-product.model';
+import { categoryLabel } from '../../models/wire-enums';
 import { CardComponent } from '../card/card.component';
 
 /**
@@ -18,11 +19,9 @@ import { CardComponent } from '../card/card.component';
  *   to this project. This renders a plain `--ar-color-surface-dark` placeholder box instead
  *   (that token's own comment already documents this exact use case), with `aria-hidden="true"`
  *   since it carries no content.
- * - No "VENTA" sale badge, no wishlist heart icon. Both imply unconfirmed business functions
- *   (an active discount engine, a favorites feature) per 05-figma-analysis's own
- *   business-function-suggestions list. `badge` is a purely cosmetic, optional label only —
- *   never wired to a real discount calculation here.
- * - "Ver más" navigates to the mock-backed detail route. Custom requests use the detail's
+ * - No "VENTA" sale badge / compare-at price and no wishlist heart icon: the backend has no
+ *   discounts (D-08) and no favorites feature, so the card shows only real catalog fields.
+ * - "Ver más" navigates to the product detail route. Custom requests use the detail's
  *   dedicated WhatsApp CTA, never a cart or checkout.
  *
  * "Añadir al carrito" (added alongside "Ver más" when the standard-catalog cart was built, see
@@ -44,6 +43,7 @@ export class ProductCardComponent {
   private readonly cart = inject(CartStateService);
 
   readonly product = input.required<CatalogProduct>();
+  readonly categoryLabel = computed(() => categoryLabel(this.product().category));
 
   readonly addedFeedback = signal(false);
 

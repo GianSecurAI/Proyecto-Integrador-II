@@ -1,3 +1,4 @@
+import { AuthService } from '../../features/auth/services/auth.service';
 import { Component, computed, inject } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { SessionStateService } from '../../core/services/session-state.service';
@@ -22,13 +23,10 @@ import { CartStateService } from '../../features/cart/services/cart-state.servic
  * The auth entry point reflects `SessionStateService` (already used by the OTP feature) rather
  * than a hardcoded "Acceder" label, so this is real client state, not mock content.
  *
- * `logout()` (staff-auth widening task) clears the local session flag and returns the visitor to
- * the public home page — a reasonable, non-surprising public destination for every role
- * (Cliente/Asesor/Administrador alike). This is client-side UX only: it merely stops the frontend
- * from *believing* it is signed in (Constitution Principle III — the frontend is never
- * authoritative). A real backend session (the httpOnly cookie `SessionStateService`'s own doc
- * comment describes) would need its own real logout endpoint to actually invalidate server-side;
- * no such endpoint exists yet, consistent with this whole feature staying mock/preview-only.
+ * `logout()` calls `POST /api/auth/logout` (idempotent 204: the server revokes the session and
+ * expires the cookie), then clears the local session mirror — which also empties the signed-in
+ * user's cart (`CartStateService`) — and returns the visitor to the public home page. The local
+ * state is cleared even if the request fails. Client-side state is UX only (Principle III).
  */
 @Component({
   selector: 'app-header',
@@ -40,6 +38,7 @@ import { CartStateService } from '../../features/cart/services/cart-state.servic
 export class HeaderComponent {
   private readonly session = inject(SessionStateService);
   private readonly router = inject(Router);
+  private readonly auth = inject(AuthService);
   private readonly cart = inject(CartStateService);
 
   readonly isAuthenticated = this.session.isAuthenticated;
@@ -58,7 +57,7 @@ export class HeaderComponent {
   });
 
   logout(): void {
-    this.session.clear();
-    void this.router.navigateByUrl('/');
+    // Revokes the server-side session (POST /api/auth/logout) and clears local state either way.
+    this.auth.logout().subscribe(() => void this.router.navigateByUrl('/'));
   }
 }

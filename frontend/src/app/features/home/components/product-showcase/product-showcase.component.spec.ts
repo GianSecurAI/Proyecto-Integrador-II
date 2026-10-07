@@ -4,8 +4,8 @@ import { CatalogProduct } from '../../../../shared/models/catalog-product.model'
 import { ProductShowcaseComponent } from './product-showcase.component';
 
 const PRODUCTS: CatalogProduct[] = [
-  { id: 'p1', category: 'Llaveros', subcategory: 'Llaveros', title: 'Producto 1', price: 10 },
-  { id: 'p2', category: 'Llaveros', subcategory: 'Llaveros', title: 'Producto 2', price: 12 },
+  { id: 1, category: 'LLAVERO', subcategory: 'LLAVERO', title: 'Producto 1', price: 10 },
+  { id: 2, category: 'LLAVERO', subcategory: 'LLAVERO', title: 'Producto 2', price: 12 },
 ];
 
 describe('ProductShowcaseComponent', () => {

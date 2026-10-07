@@ -12,6 +12,14 @@ ng serve
 
 Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
 
+### Talking to the backend
+
+The SPA calls the real REST API under `environment.apiBaseUrl` (`/api`). In development `ng serve` uses
+`proxy.conf.json` to forward `/api` to the Spring Boot server on `http://localhost:8080`, so the
+browser sees ONE origin and the `SameSite=Strict` session cookie works (no CORS changes needed).
+Start the backend first (see `docs/reviews/frontend-backend-integration.md`, "How to run both apps").
+Unit tests: `npm run test:ci` (headless Chrome, single run).
+
 ## Code scaffolding
 
 Angular CLI includes powerful code scaffolding tools. To generate a new component, run:

@@ -4,6 +4,8 @@
     <app-account-nav />
     @if (loading()) {
       <p role="status">Cargando tu perfil…</p>
+    } @else if (loadFailed()) {
+      <p role="alert">No pudimos cargar tu perfil. Inténtalo de nuevo más tarde.</p>
     } @else {
       <app-card>
         @if (!editing()) {
@@ -92,10 +94,6 @@
           }
         }
       </app-card>
-      <p class="profile-page__notice">
-        Vista de demostración: los cambios no se guardan en un servidor real. Para simular un
-        error al guardar, escribe "000-000-000" en el campo Teléfono.
-      </p>
     }
   </div>
 </main>

@@ -1,41 +1,33 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import {
-  ActivatedRoute,
-  ActivatedRouteSnapshot,
-  ParamMap,
-  convertToParamMap,
-  provideRouter,
-} from '@angular/router';
+import { HttpErrorResponse } from '@angular/common/http';
+import { provideRouter } from '@angular/router';
 import { Subject, of, throwError } from 'rxjs';
+import { Page } from '../../../../core/models/page.model';
 import { IncidentViewModel } from '../../models/incident.model';
 import { OrderSummaryViewModel } from '../../models/order.model';
-import { CustomerIncidentsMockService } from '../../services/customer-incidents-mock.service';
-import { CustomerOrdersMockService } from '../../services/customer-orders-mock.service';
+import { CustomerIncidentsService } from '../../services/customer-incidents.service';
+import { CustomerOrdersService } from '../../services/customer-orders.service';
 import { IncidentsPage } from './incidents.page';
 
-/** Lightweight `ActivatedRoute` fake — only exposes what `IncidentsPage` actually reads
- * (`queryParamMap`), mirroring the convention already used in `order-history.page.spec.ts`. */
-function fakeActivatedRoute(queryParams: Record<string, string> = {}): Partial<ActivatedRoute> {
-  const map: ParamMap = convertToParamMap(queryParams);
-  return {
-    queryParamMap: of(map),
-    snapshot: { queryParamMap: map } as ActivatedRouteSnapshot,
-  };
+function page<T>(content: T[]): Page<T> {
+  return { content, page: 0, size: 100, totalElements: content.length, totalPages: 1 };
 }
 
 const SEED_ORDERS: OrderSummaryViewModel[] = [
   {
     id: 'PED-2031',
     placedAt: new Date('2026-06-02T15:04:00Z'),
-    status: 'entregado',
-    kind: 'estandar',
+    status: 'ENTREGADO',
+    kind: 'ESTANDAR',
+    totalAmount: 10,
     summary: 'Set de 3 llaveros personalizados con silueta de mascota',
   },
   {
     id: 'PED-2050',
     placedAt: new Date('2026-08-20T09:30:00Z'),
-    status: 'pendiente',
-    kind: 'estandar',
+    status: 'CONFIRMADO',
+    kind: 'ESTANDAR',
+    totalAmount: 10,
     summary: 'Organizador de escritorio modular (2 unidades)',
   },
 ];
@@ -46,7 +38,7 @@ const SEED_INCIDENTS: IncidentViewModel[] = [
     orderId: 'PED-2031',
     orderSummary: 'Set de 3 llaveros personalizados con silueta de mascota',
     description: 'Uno de los llaveros llegó con una fisura visible en la base.',
-    status: 'resuelta',
+    status: 'RESUELTA',
     resolution: 'Se coordinó el reenvío sin costo adicional de la pieza dañada.',
     reportedAt: new Date('2026-06-10T09:00:00Z'),
     resolvedAt: new Date('2026-06-12T16:00:00Z'),
@@ -56,15 +48,20 @@ const SEED_INCIDENTS: IncidentViewModel[] = [
     orderId: 'PED-2050',
     orderSummary: 'Organizador de escritorio modular (2 unidades)',
     description: 'Todavía no recibo actualizaciones sobre el estado del pedido.',
-    status: 'abierta',
+    status: 'ABIERTA',
     resolution: null,
     reportedAt: new Date('2026-09-05T10:30:00Z'),
     resolvedAt: null,
   },
 ];
 
-type OrdersDouble = { getOrders: jasmine.Spy };
-type IncidentsDouble = { getIncidents: jasmine.Spy; submitIncident: jasmine.Spy };
+interface OrdersDouble {
+  list: jasmine.Spy;
+}
+interface IncidentsDouble {
+  list: jasmine.Spy;
+  register: jasmine.Spy;
+}
 
 describe('IncidentsPage', () => {
   let fixture: ComponentFixture<IncidentsPage>;
@@ -72,14 +69,13 @@ describe('IncidentsPage', () => {
   let ordersService: OrdersDouble;
   let incidentsService: IncidentsDouble;
 
-  function setup(queryParams: Record<string, string> = {}): void {
+  function setup(): void {
     TestBed.configureTestingModule({
       imports: [IncidentsPage],
       providers: [
         provideRouter([]),
-        { provide: ActivatedRoute, useValue: fakeActivatedRoute(queryParams) },
-        { provide: CustomerOrdersMockService, useValue: ordersService },
-        { provide: CustomerIncidentsMockService, useValue: incidentsService },
+        { provide: CustomerOrdersService, useValue: ordersService },
+        { provide: CustomerIncidentsService, useValue: incidentsService },
       ],
     });
     fixture = TestBed.createComponent(IncidentsPage);
@@ -87,18 +83,18 @@ describe('IncidentsPage', () => {
   }
 
   beforeEach(() => {
-    ordersService = { getOrders: jasmine.createSpy('getOrders').and.returnValue(of(SEED_ORDERS)) };
+    ordersService = { list: jasmine.createSpy('list').and.returnValue(of(page(SEED_ORDERS))) };
     incidentsService = {
-      getIncidents: jasmine.createSpy('getIncidents').and.returnValue(of(SEED_INCIDENTS)),
-      submitIncident: jasmine.createSpy('submitIncident'),
+      list: jasmine.createSpy('list').and.returnValue(of(page(SEED_INCIDENTS))),
+      register: jasmine.createSpy('register'),
     };
   });
 
-  it('populates the order-select control from CustomerOrdersMockService, not a second mock list', () => {
+  it('populates the order-select control from the customer orders endpoint, not a second list', () => {
     setup();
     fixture.detectChanges();
 
-    expect(ordersService.getOrders).toHaveBeenCalled();
+    expect(ordersService.list).toHaveBeenCalled();
     const options: HTMLOptionElement[] = Array.from(
       fixture.nativeElement.querySelectorAll('select option'),
     );
@@ -106,7 +102,7 @@ describe('IncidentsPage', () => {
     expect(options.some((option) => option.textContent?.includes('PED-2050'))).toBeTrue();
   });
 
-  it('renders every seeded incident with order reference, status badge and reported date', () => {
+  it('renders every incident with order reference, status badge and reported date', () => {
     setup();
     fixture.detectChanges();
 
@@ -144,7 +140,7 @@ describe('IncidentsPage', () => {
     component.submit();
     fixture.detectChanges();
 
-    expect(incidentsService.submitIncident).not.toHaveBeenCalled();
+    expect(incidentsService.register).not.toHaveBeenCalled();
     expect(component.orderIdControl.invalid).toBeTrue();
     expect(component.descriptionControl.invalid).toBeTrue();
 
@@ -162,12 +158,12 @@ describe('IncidentsPage', () => {
       orderId: 'PED-2031',
       orderSummary: 'Set de 3 llaveros personalizados con silueta de mascota',
       description: 'El empaque llegó dañado y una de las piezas se rompió en el transporte.',
-      status: 'abierta',
+      status: 'ABIERTA',
       resolution: null,
       reportedAt: new Date('2026-09-07T10:00:00Z'),
       resolvedAt: null,
     };
-    incidentsService.submitIncident.and.returnValue(of(created));
+    incidentsService.register.and.returnValue(of(created));
     setup();
     fixture.detectChanges();
 
@@ -176,7 +172,7 @@ describe('IncidentsPage', () => {
     component.submit();
     fixture.detectChanges();
 
-    expect(incidentsService.submitIncident).toHaveBeenCalledWith({
+    expect(incidentsService.register).toHaveBeenCalledWith({
       orderId: 'PED-2031',
       description: created.description,
     });
@@ -187,8 +183,14 @@ describe('IncidentsPage', () => {
   });
 
   it('shows a generic, non-leaking error message on submit failure', () => {
-    incidentsService.submitIncident.and.returnValue(
-      throwError(() => new Error('Internal constraint: fk_incidencia_pedido violated')),
+    incidentsService.register.and.returnValue(
+      throwError(
+        () =>
+          new HttpErrorResponse({
+            status: 500,
+            error: { code: 'INTERNAL_ERROR', message: 'Internal constraint: fk_incidencia_pedido violated', timestamp: 't' },
+          }),
+      ),
     );
     setup();
     fixture.detectChanges();
@@ -208,7 +210,7 @@ describe('IncidentsPage', () => {
 
   describe('incident list async states', () => {
     it('renders a loading indicator before the incidents resolve', () => {
-      incidentsService.getIncidents.and.returnValue(new Subject<IncidentViewModel[]>());
+      incidentsService.list.and.returnValue(new Subject<Page<IncidentViewModel>>());
       setup();
       fixture.detectChanges();
 
@@ -217,7 +219,7 @@ describe('IncidentsPage', () => {
     });
 
     it('renders a friendly empty state without blocking the submission form above it', () => {
-      incidentsService.getIncidents.and.returnValue(of([]));
+      incidentsService.list.and.returnValue(of(page<IncidentViewModel>([])));
       setup();
       fixture.detectChanges();
 
@@ -228,29 +230,29 @@ describe('IncidentsPage', () => {
     });
 
     it('renders the error state with a retry action, which re-invokes the service', () => {
-      incidentsService.getIncidents.and.returnValue(throwError(() => new Error('boom')));
+      incidentsService.list.and.returnValue(throwError(() => new Error('boom')));
       setup();
       fixture.detectChanges();
 
-      expect(incidentsService.getIncidents).toHaveBeenCalledTimes(1);
+      expect(incidentsService.list).toHaveBeenCalledTimes(1);
       const historySection = fixture.nativeElement.querySelector('.incidents-page__history');
       expect(historySection.querySelector('app-error-state')).toBeTruthy();
 
-      incidentsService.getIncidents.and.returnValue(of(SEED_INCIDENTS));
+      incidentsService.list.and.returnValue(of(page(SEED_INCIDENTS)));
       const retryButton = (
         Array.from(historySection.querySelectorAll('button')) as HTMLButtonElement[]
       ).find((button) => button.textContent?.includes('Reintentar'))!;
       retryButton.click();
       fixture.detectChanges();
 
-      expect(incidentsService.getIncidents).toHaveBeenCalledTimes(2);
+      expect(incidentsService.list).toHaveBeenCalledTimes(2);
       expect(fixture.nativeElement.querySelector('.incidents-page__list')).toBeTruthy();
     });
   });
 
   describe('order-select async states', () => {
     it('shows a loading message while the orders for the select are being fetched', () => {
-      ordersService.getOrders.and.returnValue(new Subject<OrderSummaryViewModel[]>());
+      ordersService.list.and.returnValue(new Subject<Page<OrderSummaryViewModel>>());
       setup();
       fixture.detectChanges();
 
@@ -259,13 +261,13 @@ describe('IncidentsPage', () => {
     });
 
     it('shows an error state with retry when the orders for the select fail to load', () => {
-      ordersService.getOrders.and.returnValue(throwError(() => new Error('boom')));
+      ordersService.list.and.returnValue(throwError(() => new Error('boom')));
       setup();
       fixture.detectChanges();
 
       expect(fixture.nativeElement.querySelector('select')).toBeNull();
 
-      ordersService.getOrders.and.returnValue(of(SEED_ORDERS));
+      ordersService.list.and.returnValue(of(page(SEED_ORDERS)));
       const retryButton = (
         Array.from(fixture.nativeElement.querySelectorAll('button')) as HTMLButtonElement[]
       ).find((button) => button.textContent?.includes('Reintentar'))!;
@@ -276,10 +278,41 @@ describe('IncidentsPage', () => {
     });
   });
 
-  it('reflects ?mockState=empty on the incident list only, from the real mock service default wiring', () => {
-    setup({ mockState: 'empty' });
-    fixture.detectChanges();
+  describe('backend rejections of POST /api/incidents', () => {
+    function submitWith(error: HttpErrorResponse): void {
+      incidentsService.register.and.returnValue(throwError(() => error));
+      setup();
+      fixture.detectChanges();
+      component.orderIdControl.setValue('PED-2031');
+      component.descriptionControl.setValue('Descripción suficientemente larga para pasar la validación.');
+      component.submit();
+      fixture.detectChanges();
+    }
 
-    expect(incidentsService.getIncidents).toHaveBeenCalledWith('empty');
+    it('explains 404 (unknown order or an order of another customer)', () => {
+      submitWith(new HttpErrorResponse({ status: 404, error: { code: 'NOT_FOUND', message: 'x', timestamp: 't' } }));
+      expect(component.submitError()).toContain('No encontramos ese pedido');
+    });
+
+    it('explains 409 CONFLICT (duplicate open incident / cap of 5 per order)', () => {
+      submitWith(new HttpErrorResponse({ status: 409, error: { code: 'CONFLICT', message: 'x', timestamp: 't' } }));
+      expect(component.submitError()).toContain('incidencia abierta');
+    });
+
+    it('shows 400 VALIDATION_FAILED field errors on the matching control', () => {
+      submitWith(
+        new HttpErrorResponse({
+          status: 400,
+          error: {
+            code: 'VALIDATION_FAILED',
+            message: 'x',
+            timestamp: 't',
+            fieldErrors: [{ field: 'description', message: 'must be at least 20 characters' }],
+          },
+        }),
+      );
+      expect(component.descriptionControl.errors?.['server']).toBe('must be at least 20 characters');
+      expect(component.submitError()).toContain('Revisa los datos');
+    });
   });
 });

@@ -11,8 +11,8 @@ import { CartItem } from '../../models/cart-item.model';
 import { CartPage } from './cart.page';
 
 const PRODUCT: CatalogProduct = {
-  id: 'p-a',
-  category: 'Llaveros',
+  id: 1,
+  category: 'LLAVERO',
   subcategory: 'Personalizados',
   title: 'Llavero A',
   price: 19.9,
@@ -66,7 +66,8 @@ describe('CartPage', () => {
     const text: string = fixture.nativeElement.textContent;
     expect(text).toContain('Llavero A');
     expect(text).toContain('S/ 39.80'); // subtotal and total both equal this
-    expect(text).toContain('Se calcula en el checkout');
+    expect(text).not.toContain('Se calcula');
+    expect(text).not.toContain('Envío');
     expect(text).not.toContain('FREE');
     expect(text).not.toContain('SSL');
   });
@@ -85,7 +86,7 @@ describe('CartPage', () => {
     setup();
     cart.addItem(PRODUCT, 1);
     fixture.detectChanges();
-    cart.removeItem('p-a');
+    cart.removeItem(1);
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('Tu carrito está vacío');

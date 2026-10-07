@@ -1,16 +1,17 @@
-﻿import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Subject, of, throwError } from 'rxjs';
-import { AUTH_PREVIEW, AuthPreview } from '../../services/auth-preview.service';
+import { AuthService } from '../../services/auth.service';
 import { RequestCodePage } from './request-code.page';
 
 describe('RequestCodePage', () => {
   let fixture: ComponentFixture<RequestCodePage>;
   let component: RequestCodePage;
-  let auth: jasmine.SpyObj<AuthPreview>;
+  let auth: jasmine.SpyObj<AuthService>;
   let router: Router;
   beforeEach(async () => {
-    auth = jasmine.createSpyObj<AuthPreview>('AuthPreview', [
+    auth = jasmine.createSpyObj<AuthService>('AuthService', [
       'requestOtp',
       'verifyOtp',
       'reset',
@@ -19,7 +20,7 @@ describe('RequestCodePage', () => {
     auth.requestOtp.and.returnValue(of(undefined));
     await TestBed.configureTestingModule({
       imports: [RequestCodePage],
-      providers: [provideRouter([]), { provide: AUTH_PREVIEW, useValue: auth }],
+      providers: [provideRouter([]), { provide: AuthService, useValue: auth }],
     }).compileComponents();
     fixture = TestBed.createComponent(RequestCodePage);
     component = fixture.componentInstance;
@@ -50,7 +51,7 @@ describe('RequestCodePage', () => {
     component.emailControl.setValue('  customer@example.com  ');
     component.submit();
     expect(auth.requestOtp).toHaveBeenCalledWith('customer@example.com');
-    expect(router.navigate).toHaveBeenCalledWith(['/auth/verify-code']);
+    expect(router.navigate).toHaveBeenCalledWith(['/auth/verify-code'], { queryParamsHandling: 'preserve' });
     expect(component.emailControl.value).toBe('');
   });
   it('shows loading and prevents duplicate submits', () => {
@@ -69,6 +70,22 @@ describe('RequestCodePage', () => {
     );
     expect(link).toBeTruthy();
     expect(link.textContent).toContain('Crea una');
+  });
+  it('shows a throttling message on 429 without leaking server details', () => {
+    auth.requestOtp.and.returnValue(
+      throwError(
+        () =>
+          new HttpErrorResponse({
+            status: 429,
+            error: { code: 'OTP_REQUEST_THROTTLED', message: 'internal detail', timestamp: 't' },
+          }),
+      ),
+    );
+    component.emailControl.setValue('customer@example.com');
+    component.submit();
+    fixture.detectChanges();
+    expect(component.errorMessage()).toContain('Demasiados intentos');
+    expect(fixture.nativeElement.textContent).not.toContain('internal detail');
   });
   it('never displays error details that could disclose account existence', () => {
     auth.requestOtp.and.returnValue(throwError(() => new Error('Account does not exist')));

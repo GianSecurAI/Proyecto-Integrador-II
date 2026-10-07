@@ -2,7 +2,6 @@ import { Routes } from '@angular/router';
 import { ADMIN_ONLY_ROLES, CUSTOMER_ROLES, STAFF_ROLES } from './core/auth/roles';
 import { authGuard } from './core/guards/auth.guard';
 import { checkoutCartNotEmptyGuard } from './features/checkout/guards/checkout-cart-not-empty.guard';
-import { checkoutConfirmationGuard } from './features/checkout/guards/checkout-confirmation.guard';
 
 export const routes: Routes = [
   {
@@ -36,38 +35,46 @@ export const routes: Routes = [
   },
   {
     // Standard-catalog self-service checkout (CLAUDE.md's "Business clarification: purchasing
-    // flows", steps 3-5 — EXCLUDING the payment-gateway step 4, not implemented by this
-    // frontend-only mock; see `features/checkout/pages/checkout/checkout.page.ts`'s doc comment).
-    // Public, unguarded — guest checkout, same reasoning as `/cart`. Blocked at the route level
-    // when the cart is empty (`checkoutCartNotEmptyGuard`, redirects to `/cart`).
+    // flows", steps 3-5; payment is a manual Yape/Plin proof verified by an administrator,
+    // ADR-005). Requires a
+    // signed-in CLIENTE (see below) and a non-empty cart (`checkoutCartNotEmptyGuard`, redirects
+    // to `/cart`).
     path: 'checkout',
-    canActivate: [checkoutCartNotEmptyGuard],
+    // The backend only accepts `POST /api/checkout` from a signed-in CLIENTE, so the route requires
+    // that session (a guest is sent to the OTP login and returned here, cart intact). UX guard
+    // only — the API re-authorizes the request.
+    canActivate: [authGuard, checkoutCartNotEmptyGuard],
+    data: { role: CUSTOMER_ROLES },
     loadComponent: () =>
       import('./features/checkout/pages/checkout/checkout.page').then((m) => m.CheckoutPage),
     title: 'Checkout — Ar Makers 3D',
   },
   {
-    // Reachable only right after a real, successful mock order submission
-    // (`checkoutConfirmationGuard`, redirects to `/cart` otherwise) — see
-    // `features/checkout/pages/confirmation/checkout-confirmation.page.ts`'s doc comment.
+    // Payment + status page of one checkout (ADR-005, FE-04): QR, proof upload, "en
+    // verificación", PAID with the order link. Needs the signed-in CLIENTE (UX only — the API
+    // answers 404 for a checkout that is not the caller's); `?checkoutId=` is also the link in
+    // the proof-rejected email, and `authGuard` keeps it as `returnUrl` through the OTP login.
     path: 'checkout/confirmacion',
-    canActivate: [checkoutConfirmationGuard],
+    canActivate: [authGuard],
+    data: { role: CUSTOMER_ROLES },
     loadComponent: () =>
       import('./features/checkout/pages/confirmation/checkout-confirmation.page').then(
         (m) => m.CheckoutConfirmationPage,
       ),
-    title: 'Pedido registrado — Ar Makers 3D',
+    title: 'Pago de tu pedido — Ar Makers 3D',
   },
   {
     path: 'auth',
     loadChildren: () => import('./features/auth/auth.routes').then((m) => m.AUTH_ROUTES),
   },
   {
-    // Public, unauthenticated order-tracking entry point (RF-12), distinct from the
-    // authenticated customer's own order list under `/account/orders` — see
-    // `features/order-tracking/pages/track-order/track-order.page.ts` for the full rationale.
-    // Deliberately NOT nested under `/account` and NOT guarded.
+    // Order-tracking lookup by id (RF-12). The backend has NO public tracking endpoint (D-07), so
+    // this now requires the owner's CLIENTE session — see
+    // `features/order-tracking/pages/track-order/track-order.page.ts`. Not nested under `/account`
+    // because it is a distinct, linkable entry point.
     path: 'track-order',
+    canActivate: [authGuard],
+    data: { role: CUSTOMER_ROLES },
     loadComponent: () =>
       import('./features/order-tracking/pages/track-order/track-order.page').then(
         (m) => m.TrackOrderPage,
@@ -125,8 +132,8 @@ export const routes: Routes = [
     // shell now that Asesor has approved capabilities within it (RF-11/RF-13). The same OTP flow
     // used by customers now resolves a staff role after verification (see
     // `features/auth/pages/verify-code/verify-code.page.ts`), so this route is genuinely
-    // reachable in the running preview (still no fake "staff session" bypass — role is only ever
-    // discovered from a real, if mocked, OTP verification; see `SessionStateService`/`authGuard`).
+    // reachable (there is no "staff session" bypass — the role is only ever reported by the server
+    // after a real OTP verification, `GET /api/auth/me`; see `SessionStateService`/`authGuard`).
     // `loadComponent` here supplies the admin-only chrome (topbar + sidebar) that replaces the
     // public header/footer under this path (see `layout/shell/shell.component.ts`'s
     // `isAdminArea` signal).
@@ -135,7 +142,7 @@ export const routes: Routes = [
     // Administrador-ONLY by their own requirement grounding (products — RF-07; reports — RF-19,
     // "exclusivos para Administrador"; users — RF-03, role management) each carry their OWN
     // stricter child-level guard below (`role: ADMIN_ONLY_ROLES`) so Asesor cannot reach them as a
-    // side effect of the parent widening. `orders`/`quotations`/`incidents` need no extra guard —
+    // side effect of the parent widening. `orders`/`incidents` need no extra guard —
     // they correctly, and intentionally, inherit the parent's broader `STAFF_ROLES`.
     path: 'admin',
     canActivate: [authGuard],
@@ -221,19 +228,6 @@ export const routes: Routes = [
         title: 'Detalle del pedido — Administración — Ar Makers 3D',
       },
       {
-        path: 'quotations',
-        loadComponent: () =>
-          import('./features/admin/pages/placeholder/admin-placeholder.page').then(
-            (m) => m.AdminPlaceholderPage,
-          ),
-        data: {
-          title: 'Cotizaciones',
-          description:
-            'Gestión de cotizaciones — Próximamente. Esta sección se implementará cuando el backend de cotizaciones (RF-10) esté disponible.',
-        },
-        title: 'Cotizaciones — Administración — Ar Makers 3D',
-      },
-      {
         // RF-16/RF-17/RF-18 ("Gestión de estados de incidencias"/"Clasificación de
         // prioridad"/"Registro de resolución") staff incident list — actor Administrador/Asesor,
         // see `pages/incident-list/admin-incident-list.page.ts`'s doc comment. Inherits the
@@ -255,9 +249,8 @@ export const routes: Routes = [
       },
       {
         // Administrador-ONLY — RF-19 (line 209: "Reportes... exclusivos para Administrador"). See
-        // the parent route's doc comment above. Loads `AdminReportsPage` (client-side aggregation
-        // over `AdminOrdersMockService`/`AdminIncidentsMockService` — `Reporte` is not a persisted
-        // entity, see that page's doc comment), replacing the earlier generic placeholder.
+        // the parent route's doc comment above. Loads `AdminReportsPage`, which renders the
+        // counts/amounts returned by `GET /api/admin/reports/*` (see that page's doc comment).
         path: 'reports',
         canActivate: [authGuard],
         loadComponent: () =>
@@ -282,6 +275,28 @@ export const routes: Routes = [
             (m) => m.AdminUserListPage,
           ),
         title: 'Usuarios — Administración — Ar Makers 3D',
+      },
+      {
+        // FE-11 (ADR-005): manual Yape/Plin payment verification queue — Administrador-ONLY
+        // (ASESOR gets 403 from the API and no menu entry). UX guard only.
+        path: 'payments',
+        canActivate: [authGuard],
+        data: { role: ADMIN_ONLY_ROLES },
+        loadComponent: () =>
+          import('./features/admin/pages/payment-list/admin-payment-list.page').then(
+            (m) => m.AdminPaymentListPage,
+          ),
+        title: 'Pagos por verificar — Administración — Ar Makers 3D',
+      },
+      {
+        path: 'payments/:id',
+        canActivate: [authGuard],
+        data: { role: ADMIN_ONLY_ROLES },
+        loadComponent: () =>
+          import('./features/admin/pages/payment-detail/admin-payment-detail.page').then(
+            (m) => m.AdminPaymentDetailPage,
+          ),
+        title: 'Verificar pago — Administración — Ar Makers 3D',
       },
       {
         // Administrador-ONLY, same as 'users' above.

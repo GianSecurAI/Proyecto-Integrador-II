@@ -3,24 +3,19 @@ import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { FormFieldComponent } from '../../../../shared/ui/form-field/form-field.component';
 import { SessionStateService } from '../../../../core/services/session-state.service';
-import { CustomerInfoFormValue } from '../../models/checkout-form.model';
+import { CHECKOUT_LIMITS, CustomerInfoFormValue } from '../../models/checkout-form.model';
 import { CheckoutStateService } from '../../state/checkout-state.service';
 
 /**
- * Checkout step 2 of 4 — customer information. A reactive form whose validation is UX-convenience
- * only (Constitution Prohibited Practice #6 — never advertised as sufficient on its own; no real
- * backend endpoint exists yet for this frontend-only mock checkout).
+ * Checkout step 2 of 4 — contact information (`contact.fullName`, `contact.phone` of the order
+ * request). Validation is UX-only and mirrors `the checkout request DTO` (the backend re-validates).
  *
- * Guest checkout: reachable with no prior login (`/cart` and `/checkout` are both unguarded
- * routes). If `SessionStateService.currentEmail()` is already set (the visitor happens to be
- * signed in), the email field is PRE-FILLED but stays fully editable/confirmable — never
- * read-only — matching this feature's "pre-fill-and-confirm when known, plain provide when not"
- * requirement.
+ * The checkout now requires a signed-in CLIENTE (`/checkout` is behind `authGuard`; the backend
+ * rejects anonymous order creation), so the customer's EMAIL is the account email reported by the
+ * session — shown read-only for confirmation and never sent in the order request.
  *
- * Reads its initial values from `CheckoutStateService` (so returning to this step after going
- * forward, then back, shows exactly what was already typed) and writes back to it before
- * advancing — this component holds no disconnected copy of checkout state beyond the live
- * `FormGroup` itself.
+ * Reads its initial values from `CheckoutStateService` and writes back before advancing, so
+ * navigating forward and back never loses what was typed.
  */
 @Component({
   selector: 'app-checkout-customer-info-step',
@@ -37,44 +32,36 @@ export class CustomerInfoStepComponent {
   readonly next = output<void>();
 
   readonly form = new FormGroup({
-    fullName: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
-    email: new FormControl('', {
+    fullName: new FormControl('', {
       nonNullable: true,
-      validators: [Validators.required, Validators.email],
+      validators: [Validators.required, Validators.maxLength(CHECKOUT_LIMITS.fullName)],
     }),
-    // Required (unlike the optional phone in `RegisterFormValue`) — a standard order needs a way
-    // to reach the customer about delivery. Same loose, academic-project-appropriate shape.
+    // Required: a standard order needs a way to reach the customer about delivery.
     phone: new FormControl('', {
       nonNullable: true,
-      validators: [Validators.required, Validators.pattern(/^[0-9+\-\s()]{6,20}$/)],
+      validators: [Validators.required, Validators.pattern(CHECKOUT_LIMITS.phoneRegex)],
     }),
   });
 
   get fullNameControl() {
     return this.form.controls.fullName;
   }
-  get emailControl() {
-    return this.form.controls.email;
-  }
   get phoneControl() {
     return this.form.controls.phone;
   }
+
+  /** Account email from the session (read-only, informational). */
+  readonly accountEmail = this.session.currentEmail;
 
   constructor() {
     const saved = this.checkoutState.customerInfo();
     if (saved) {
       this.form.setValue(saved);
-      return;
-    }
-    const prefillEmail = this.session.currentEmail();
-    if (prefillEmail) {
-      this.emailControl.setValue(prefillEmail);
     }
   }
 
   submit(): void {
     this.fullNameControl.setValue(this.fullNameControl.value.trim());
-    this.emailControl.setValue(this.emailControl.value.trim());
     this.phoneControl.setValue(this.phoneControl.value.trim());
     if (this.form.invalid) {
       this.form.markAllAsTouched();

@@ -25,7 +25,7 @@ describe('CatalogToolbarComponent', () => {
     const pills: HTMLButtonElement[] = Array.from(
       fixture.nativeElement.querySelectorAll('.catalog-toolbar__pill'),
     );
-    expect(pills.length).toBe(4);
+    expect(pills.length).toBe(3); // Todo + the two backend categories
     const active = pills.find((pill) => pill.classList.contains('catalog-toolbar__pill--active'));
     expect(active?.textContent).toContain('Todo');
     expect(active?.getAttribute('aria-pressed')).toBe('true');
@@ -41,7 +41,7 @@ describe('CatalogToolbarComponent', () => {
     const llaveroPill = pills.find((pill) => pill.textContent?.includes('Llavero'));
     llaveroPill?.click();
 
-    expect(emitted).toEqual(['llavero']);
+    expect(emitted).toEqual(['LLAVERO']);
   });
 
   it('emits queryChange as the user types in the search box', () => {
@@ -49,10 +49,10 @@ describe('CatalogToolbarComponent', () => {
     fixture.componentInstance.queryChange.subscribe((query) => emitted.push(query));
 
     const input: HTMLInputElement = fixture.nativeElement.querySelector('input[type="search"]');
-    input.value = 'llavero';
+    input.value = 'LLAVERO';
     input.dispatchEvent(new Event('input'));
 
-    expect(emitted).toEqual(['llavero']);
+    expect(emitted).toEqual(['LLAVERO']);
   });
 
   it('labels the search input accessibly', () => {

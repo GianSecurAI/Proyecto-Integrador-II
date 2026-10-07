@@ -33,7 +33,7 @@ class OtpNeverExposedInResponseTest extends AbstractOtpIntegrationTest {
         MockHttpServletResponse response = verifyOtp(email, issuedCode).andReturn().getResponse();
 
         String storedHash =
-                codigoOtpRepository.findFirstByEmailOrderByIssuedAtDescIdDesc(email).orElseThrow().getCodeHash();
+                codigoOtpRepository.findLatestByEmail(email).orElseThrow().getCodeHash();
 
         assertThat(response.getContentAsString()).doesNotContain(issuedCode);
         assertThat(response.getContentAsString()).doesNotContain(storedHash);
@@ -49,7 +49,7 @@ class OtpNeverExposedInResponseTest extends AbstractOtpIntegrationTest {
         MockHttpServletResponse response = verifyOtp(email, wrongCode).andReturn().getResponse();
 
         String storedHash =
-                codigoOtpRepository.findFirstByEmailOrderByIssuedAtDescIdDesc(email).orElseThrow().getCodeHash();
+                codigoOtpRepository.findLatestByEmail(email).orElseThrow().getCodeHash();
 
         assertThat(response.getContentAsString()).doesNotContain(issuedCode);
         assertThat(response.getContentAsString()).doesNotContain(wrongCode);

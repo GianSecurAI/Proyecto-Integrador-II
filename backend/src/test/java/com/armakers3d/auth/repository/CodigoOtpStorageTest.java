@@ -19,7 +19,7 @@ class CodigoOtpStorageTest extends AbstractOtpIntegrationTest {
         requestOtp(email);
         String plaintextCode = emailSender.lastCodeFor(email);
 
-        CodigoOtp persisted = codigoOtpRepository.findFirstByEmailOrderByIssuedAtDescIdDesc(email).orElseThrow();
+        CodigoOtp persisted = codigoOtpRepository.findLatestByEmail(email).orElseThrow();
         String storedHash = persisted.getCodeHash();
 
         assertThat(storedHash).isNotEqualTo(plaintextCode);

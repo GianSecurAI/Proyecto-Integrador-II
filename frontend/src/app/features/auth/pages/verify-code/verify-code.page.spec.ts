@@ -7,16 +7,9 @@ import {
   provideRouter,
   Router,
 } from '@angular/router';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Subject, of, throwError } from 'rxjs';
-import { SessionStateService } from '../../../../core/services/session-state.service';
-import {
-  AUTH_PREVIEW,
-  AuthPreview,
-  AuthPreviewError,
-  MOCK_EXPIRED_OTP,
-  MOCK_INVALID_OTP,
-  VerifyOtpResult,
-} from '../../services/auth-preview.service';
+import { AuthService, VerifyOtpResult } from '../../services/auth.service';
 import { VerifyCodePage } from './verify-code.page';
 
 /** Lightweight `ActivatedRoute` fake, same narrow-mocking convention already used by
@@ -27,19 +20,18 @@ function fakeActivatedRoute(queryParams: Record<string, string> = {}): Partial<A
   return { snapshot: { queryParamMap: map } as ActivatedRouteSnapshot };
 }
 
-const CLIENTE_RESULT: VerifyOtpResult = { role: 'CLIENTE', email: 'customer@example.com' };
-const ASESOR_RESULT: VerifyOtpResult = { role: 'ASESOR', email: 'asesor.andrea@armakers3d.com' };
-const ADMIN_RESULT: VerifyOtpResult = { role: 'ADMINISTRADOR', email: 'admin.principal@armakers3d.com' };
+const CLIENTE_RESULT: VerifyOtpResult = { role: 'CLIENTE', email: 'customer@example.com', accountStatus: 'existing' };
+const ASESOR_RESULT: VerifyOtpResult = { role: 'ASESOR', email: 'asesor.andrea@armakers3d.com', accountStatus: 'existing' };
+const ADMIN_RESULT: VerifyOtpResult = { role: 'ADMINISTRADOR', email: 'admin.principal@armakers3d.com', accountStatus: 'existing' };
 
 describe('VerifyCodePage', () => {
   let fixture: ComponentFixture<VerifyCodePage>;
   let component: VerifyCodePage;
-  let auth: jasmine.SpyObj<AuthPreview>;
+  let auth: jasmine.SpyObj<AuthService>;
   let router: Router;
-  let session: SessionStateService;
 
   async function setup(queryParams: Record<string, string> = {}) {
-    auth = jasmine.createSpyObj<AuthPreview>('AuthPreview', [
+    auth = jasmine.createSpyObj<AuthService>('AuthService', [
       'requestOtp',
       'verifyOtp',
       'reset',
@@ -52,14 +44,13 @@ describe('VerifyCodePage', () => {
       imports: [VerifyCodePage],
       providers: [
         provideRouter([]),
-        { provide: AUTH_PREVIEW, useValue: auth },
+        { provide: AuthService, useValue: auth },
         { provide: ActivatedRoute, useValue: fakeActivatedRoute(queryParams) },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(VerifyCodePage);
     component = fixture.componentInstance;
     router = TestBed.inject(Router);
-    session = TestBed.inject(SessionStateService);
     spyOn(router, 'navigateByUrl').and.resolveTo(true);
     spyOn(router, 'navigate').and.resolveTo(true);
   }
@@ -95,7 +86,7 @@ describe('VerifyCodePage', () => {
     expect(fixture.nativeElement.querySelector('button[type="submit"]').disabled).toBeTrue();
   });
 
-  it('announces mock completion, marks the session and navigates to the CLIENTE default', () => {
+  it('announces completion and navigates to the CLIENTE default (session is recorded by AuthService)', () => {
     fixture.detectChanges();
     component.codeControl.setValue('123456');
     component.submit();
@@ -105,9 +96,6 @@ describe('VerifyCodePage', () => {
       'verificó',
     );
     expect(component.codeControl.value).toBe('');
-    expect(session.isAuthenticated()).toBeTrue();
-    expect(session.currentRole()).toBe('CLIENTE');
-    expect(session.currentEmail()).toBe('customer@example.com');
     expect(router.navigateByUrl).toHaveBeenCalledWith('/account');
   });
 
@@ -117,7 +105,6 @@ describe('VerifyCodePage', () => {
     component.codeControl.setValue('123456');
     component.submit();
     fixture.detectChanges();
-    expect(session.currentRole()).toBe('ASESOR');
     expect(router.navigateByUrl).toHaveBeenCalledWith('/admin');
   });
 
@@ -127,8 +114,17 @@ describe('VerifyCodePage', () => {
     component.codeControl.setValue('123456');
     component.submit();
     fixture.detectChanges();
-    expect(session.currentRole()).toBe('ADMINISTRADOR');
     expect(router.navigateByUrl).toHaveBeenCalledWith('/admin');
+  });
+
+  it('ignores an unsafe returnUrl (open-redirect guard) and uses the role default', async () => {
+    TestBed.resetTestingModule();
+    await setup({ returnUrl: 'https://evil.example/x' });
+    fixture.detectChanges();
+    component.codeControl.setValue('123456');
+    component.submit();
+    fixture.detectChanges();
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/account');
   });
 
   it('honors an explicit returnUrl over the per-role default', async () => {
@@ -151,10 +147,9 @@ describe('VerifyCodePage', () => {
     expect(component.errorMessage()).toContain('No pudimos verificar');
     expect(component.codeControl.value).toBe('');
     expect(fixture.nativeElement.textContent).not.toContain('Secret detail');
-    expect(session.isAuthenticated()).toBeFalse();
   });
 
-  it('cancels verification and resets preview on leaving', () => {
+  it('cancels verification and resets the OTP challenge on leaving', () => {
     const pending = new Subject<VerifyOtpResult>();
     auth.verifyOtp.and.returnValue(pending);
     fixture.detectChanges();
@@ -167,22 +162,34 @@ describe('VerifyCodePage', () => {
     expect(component.codeControl.value).toBe('');
   });
 
-  it('shows a distinct message when the mock expired code is used', () => {
-    auth.verifyOtp.and.returnValue(throwError(() => new AuthPreviewError('expired')));
+  function apiError(status: number, code: string): HttpErrorResponse {
+    return new HttpErrorResponse({ status, error: { code, message: 'x', timestamp: 't' } });
+  }
+
+  it('shows a distinct message for OTP_EXPIRED (410)', () => {
+    auth.verifyOtp.and.returnValue(throwError(() => apiError(410, 'OTP_EXPIRED')));
     fixture.detectChanges();
-    component.codeControl.setValue(MOCK_EXPIRED_OTP);
+    component.codeControl.setValue('123456');
     component.submit();
     fixture.detectChanges();
     expect(component.errorMessage()).toBe('Este código expiró. Solicita uno nuevo.');
   });
 
-  it('shows a distinct message when the mock invalid code is used', () => {
-    auth.verifyOtp.and.returnValue(throwError(() => new AuthPreviewError('invalid')));
+  it('shows a distinct message for OTP_INVALID (401)', () => {
+    auth.verifyOtp.and.returnValue(throwError(() => apiError(401, 'OTP_INVALID')));
     fixture.detectChanges();
-    component.codeControl.setValue(MOCK_INVALID_OTP);
+    component.codeControl.setValue('123456');
     component.submit();
     fixture.detectChanges();
     expect(component.errorMessage()).toBe('El código ingresado no es válido.');
+  });
+
+  it('shows the attempt-limit message for OTP_ATTEMPTS_EXCEEDED (429)', () => {
+    auth.verifyOtp.and.returnValue(throwError(() => apiError(429, 'OTP_ATTEMPTS_EXCEEDED')));
+    fixture.detectChanges();
+    component.codeControl.setValue('123456');
+    component.submit();
+    expect(component.errorMessage()).toContain('intentos');
   });
 
   it('resends in place without navigating away', () => {

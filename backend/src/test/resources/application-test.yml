@@ -27,6 +27,10 @@ otp:
   max-attempts: 5
   max-requests-per-window: 3
   request-window-minutes: 15
+  max-failed-attempts-per-email: 10
+  failed-attempts-window-minutes: 60
+  ip-max-request-calls: 1000000
+  ip-max-verify-calls: 1000000
 
 session:
   ttl-hours: 24
@@ -43,3 +47,18 @@ web:
 logging:
   level:
     com.armakers3d: DEBUG
+
+app:
+  frontend-base-url: http://localhost:4200
+  payments:
+    expiry-job-enabled: false
+
+# No scheduled timers in tests; the purge service is called directly with a fixed clock.
+purge:
+  enabled: false
+
+# Generous default so the many mutations of the integration tests never trip the limiter; the limiter tests set
+# their own values (MutationRateLimit*Test).
+ratelimit:
+  mutations-per-window: 1000000
+  window-minutes: 10

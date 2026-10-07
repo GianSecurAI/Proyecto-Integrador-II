@@ -1,6 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { HOME_STATS } from '../../mocks/home-stats.mock';
 import { HeroComponent } from './hero.component';
 
 describe('HeroComponent', () => {
@@ -27,11 +26,8 @@ describe('HeroComponent', () => {
     expect(cta.getAttribute('href')).toBe('/catalog');
   });
 
-  it('renders every mock trust stat', () => {
-    const text: string = fixture.nativeElement.textContent;
-    for (const stat of HOME_STATS) {
-      expect(text).toContain(stat.value);
-      expect(text).toContain(stat.label);
-    }
+  it('shows no hard-coded business statistics (counts, ratings)', () => {
+    expect(fixture.nativeElement.querySelector('.hero__stats')).toBeNull();
+    expect(fixture.nativeElement.textContent).not.toMatch(/\d+\+|★/);
   });
 });

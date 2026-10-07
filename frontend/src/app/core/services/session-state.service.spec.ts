@@ -15,13 +15,19 @@ describe('SessionStateService', () => {
     service = TestBed.inject(SessionStateService);
   });
 
-  it('starts signed out, with no role/email and a resolved (non-"checking") authStatus', () => {
-    // Resolution is synchronous today (see the class doc comment on why there is no real
-    // session-restoration check yet), so by the time this runs it must already be settled —
-    // never left dangling in "checking".
+  it('starts signed out, with no role/email/id and a "checking" status until GET /api/auth/me settles', () => {
     expect(service.isAuthenticated()).toBeFalse();
     expect(service.currentRole()).toBeNull();
     expect(service.currentEmail()).toBeNull();
+    expect(service.currentUserId()).toBeNull();
+    expect(service.authStatus()).toBe('checking');
+  });
+
+  it('records the server-assigned user id and forgets it on clear()', () => {
+    service.markAuthenticated('CLIENTE', 'c@x.pe', 42);
+    expect(service.currentUserId()).toBe(42);
+    service.clear();
+    expect(service.currentUserId()).toBeNull();
     expect(service.authStatus()).toBe('anonymous');
   });
 

@@ -1,5 +1,5 @@
 import { inject } from '@angular/core';
-import { ActivatedRouteSnapshot, CanActivateFn, Router } from '@angular/router';
+import { ActivatedRouteSnapshot, CanActivateFn, Router, RouterStateSnapshot } from '@angular/router';
 import { SessionStateService } from '../services/session-state.service';
 
 /**
@@ -27,14 +27,16 @@ import { SessionStateService } from '../services/session-state.service';
  * verdict if this guard's optimistic local state ever turns out to be stale (e.g. session
  * expired server-side, or another tab logged out).
  */
-export const authGuard: CanActivateFn = (route: ActivatedRouteSnapshot) => {
+export const authGuard: CanActivateFn = (route: ActivatedRouteSnapshot, state?: RouterStateSnapshot) => {
   const session = inject(SessionStateService);
   const router = inject(Router);
 
   if (!session.isAuthenticated()) {
     return router.createUrlTree(['/auth/request-code'], {
       queryParams: {
-        returnUrl: route.pathFromRoot.map((s) => s.url.join('/')).join('/') || undefined,
+        // `state.url` keeps the query string (e.g. `?checkoutId=` from the rejection email).
+        returnUrl:
+          state?.url ?? (route.pathFromRoot.map((s) => s.url.join('/')).join('/') || undefined),
       },
     });
   }

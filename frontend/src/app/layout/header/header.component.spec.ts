@@ -1,3 +1,5 @@
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { SessionStateService } from '../../core/services/session-state.service';
@@ -24,8 +26,8 @@ class FakeCartStorageAdapter implements CartStorageAdapter {
 }
 
 const PRODUCT: CatalogProduct = {
-  id: 'p1',
-  category: 'Llaveros',
+  id: 1,
+  category: 'LLAVERO',
   subcategory: 'Personalizados',
   title: 'Llavero',
   price: 10,
@@ -41,6 +43,8 @@ describe('HeaderComponent', () => {
       imports: [HeaderComponent],
       providers: [
         provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
         { provide: CART_STORAGE_ADAPTER, useValue: new FakeCartStorageAdapter() },
       ],
     }).compileComponents();
@@ -88,6 +92,9 @@ describe('HeaderComponent', () => {
     expect(button).toBeTruthy();
     button!.click();
 
+    // Logout revokes the server session first (POST /api/auth/logout, idempotent 204).
+    TestBed.inject(HttpTestingController).expectOne('/api/auth/logout').flush(null, { status: 204, statusText: 'No Content' });
+
     expect(session.isAuthenticated()).toBeFalse();
     expect(router.navigateByUrl).toHaveBeenCalledWith('/');
   });
@@ -113,7 +120,7 @@ describe('HeaderComponent', () => {
     let badge = fixture.nativeElement.querySelector('.app-header__cart-badge');
     expect(badge.textContent.trim()).toBe('2');
 
-    cart.removeItem('p1');
+    cart.removeItem(1);
     fixture.detectChanges();
 
     badge = fixture.nativeElement.querySelector('.app-header__cart-badge');

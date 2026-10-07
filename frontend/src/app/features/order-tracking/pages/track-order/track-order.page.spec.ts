@@ -1,177 +1,143 @@
-import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
-import { ActivatedRoute, ActivatedRouteSnapshot, ParamMap, convertToParamMap } from '@angular/router';
-import { CustomerOrdersMockService } from '../../../account/services/customer-orders-mock.service';
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import {
+  ActivatedRoute,
+  ActivatedRouteSnapshot,
+  ParamMap,
+  convertToParamMap,
+} from '@angular/router';
 import { TrackOrderPage } from './track-order.page';
 
-/** Narrow `ActivatedRoute` fake — `TrackOrderPage` only ever reads
- * `route.snapshot.queryParamMap` (for the `?mockState=error` preview override), same narrow
- * -mocking convention as `order-detail.page.spec.ts`. */
+/** Narrow `ActivatedRoute` fake — the page only reads `snapshot.queryParamMap` (`?orderId=`). */
 function fakeActivatedRoute(queryParams: Record<string, string> = {}): Partial<ActivatedRoute> {
   const query: ParamMap = convertToParamMap(queryParams);
-  return {
-    snapshot: { queryParamMap: query } as ActivatedRouteSnapshot,
-  };
+  return { snapshot: { queryParamMap: query } as ActivatedRouteSnapshot };
 }
 
-function configure(queryParams: Record<string, string> = {}) {
-  TestBed.configureTestingModule({
-    imports: [TrackOrderPage],
-    providers: [{ provide: ActivatedRoute, useValue: fakeActivatedRoute(queryParams) }],
-  });
-}
+/** Shape copied from backend `OrderResponseDto`. */
+const ORDER = {
+  id: 'PED-20261006-0001',
+  placedAt: '2026-10-06T15:30:00Z',
+  status: 'CONFIRMADO',
+  kind: 'ESTANDAR',
+  summary: '1 unidad: Llavero',
+  totalAmount: 12.5,
+  items: [{ productId: 5, title: 'Llavero', unitPrice: 12.5, quantity: 1, lineTotal: 12.5 }],
+  delivery: { address: 'Av. 1', district: 'Lima', notes: null },
+  statusHistory: [
+    {
+      previousStatus: null,
+      newStatus: 'CONFIRMADO',
+      changedAt: '2026-10-06T15:30:00Z',
+      responsible: 'Sistema',
+      note: null,
+    },
+    {
+      previousStatus: 'CONFIRMADO',
+      newStatus: 'EN_PRODUCCION',
+      changedAt: '2026-10-06T16:00:00Z',
+      responsible: 'asesor@armakers3d.com',
+      note: 'Pago verificado',
+    },
+  ],
+};
 
-describe('TrackOrderPage', () => {
+describe('TrackOrderPage (owner lookup, GET /api/orders/{id})', () => {
   let fixture: ComponentFixture<TrackOrderPage>;
   let component: TrackOrderPage;
+  let http: HttpTestingController;
+
+  function create(queryParams: Record<string, string> = {}) {
+    TestBed.configureTestingModule({
+      imports: [TrackOrderPage],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: ActivatedRoute, useValue: fakeActivatedRoute(queryParams) },
+      ],
+    });
+    http = TestBed.inject(HttpTestingController);
+    fixture = TestBed.createComponent(TrackOrderPage);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+  }
+  afterEach(() => http.verify());
 
   it('renders the idle search form with an accessible, labeled order-id input and no password field', () => {
-    configure();
-    fixture = TestBed.createComponent(TrackOrderPage);
-    fixture.detectChanges();
-
+    create();
     const input: HTMLInputElement = fixture.nativeElement.querySelector('input');
     expect(input.type).toBe('text');
     expect(fixture.nativeElement.querySelector(`label[for="${input.id}"]`)).toBeTruthy();
     expect(fixture.nativeElement.querySelector('button[type="submit"]')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('input[type="password"]')).toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('Vista de demostración');
   });
 
-  it('pre-fills the order-id input from a ?orderId= query param without auto-submitting', () => {
-    configure({ orderId: 'PED-MOCK-1' });
-    const getOrderByIdSpy = spyOn(CustomerOrdersMockService.prototype, 'getOrderById');
-    fixture = TestBed.createComponent(TrackOrderPage);
-    component = fixture.componentInstance;
-    fixture.detectChanges();
-
-    // Pre-filled (this is the confirmation page's "Rastrear mi pedido" hand-off — see
-    // track-order.page.ts's constructor doc comment).
-    expect(component.orderIdControl.value).toBe('PED-MOCK-1');
-    // But never auto-submitted — the visitor still presses the lookup button themselves.
-    expect(getOrderByIdSpy).not.toHaveBeenCalled();
-    expect(fixture.nativeElement.querySelector('input').value).toBe('PED-MOCK-1');
+  it('pre-fills the order id from ?orderId= without auto-submitting', () => {
+    create({ orderId: 'PED-20261006-0001' });
+    expect(component.orderIdControl.value).toBe('PED-20261006-0001');
+    http.expectNone(() => true);
   });
 
-  it('never calls the lookup service and shows an accessible validation error for an empty submit', () => {
-    configure();
-    const getOrderByIdSpy = spyOn(CustomerOrdersMockService.prototype, 'getOrderById');
-    fixture = TestBed.createComponent(TrackOrderPage);
-    component = fixture.componentInstance;
-    fixture.detectChanges();
-
+  it('never calls the API and shows a validation error for an empty submit', () => {
+    create();
     component.submit();
     fixture.detectChanges();
-
-    expect(getOrderByIdSpy).not.toHaveBeenCalled();
+    http.expectNone(() => true);
     expect(component.status()).toBe('idle');
     const input: HTMLInputElement = fixture.nativeElement.querySelector('input');
     expect(input.getAttribute('aria-invalid')).toBe('true');
-    expect(
-      fixture.nativeElement.querySelector(`[id="${input.getAttribute('aria-describedby')}"]`)
-        .textContent,
-    ).toContain('Ingresa el ID');
   });
 
-  it('shows the loading state while the lookup is in flight', fakeAsync(() => {
-    configure();
-    fixture = TestBed.createComponent(TrackOrderPage);
-    component = fixture.componentInstance;
-    fixture.detectChanges();
-
-    component.orderIdControl.setValue('PED-2031');
+  it('looks up the order (owner endpoint), shows status and the server history', () => {
+    create();
+    component.orderIdControl.setValue(' PED-20261006-0001 ');
     component.submit();
     fixture.detectChanges();
-
-    expect(component.status()).toBe('loading');
-    expect(fixture.nativeElement.querySelector('.ui-state--loading')).toBeTruthy();
-
-    tick(400);
+    expect(fixture.nativeElement.querySelector('[role="status"]')).toBeTruthy();
+    http.expectOne('/api/orders/PED-20261006-0001').flush(ORDER);
     fixture.detectChanges();
-  }));
-
-  it('renders identifier, status badge, timeline and full history for a real seeded order id', fakeAsync(() => {
-    configure();
-    fixture = TestBed.createComponent(TrackOrderPage);
-    component = fixture.componentInstance;
-    fixture.detectChanges();
-
-    component.orderIdControl.setValue('PED-2031');
-    component.submit();
-    tick(400);
-    fixture.detectChanges();
-
-    expect(component.status()).toBe('found');
     const text: string = fixture.nativeElement.textContent;
-    expect(text).toContain('PED-2031');
-    expect(text).toContain('Entregado');
-    expect(text).toContain('Pedido estándar');
-    expect(fixture.nativeElement.querySelector('app-order-status-timeline')).toBeTruthy();
-    const entries = fixture.nativeElement.querySelectorAll('.track-order-page__timeline-entry');
-    expect(entries.length).toBe(5);
-  }));
+    expect(text).toContain('PED-20261006-0001');
+    expect(text).toContain('Confirmado');
+    expect(text).toContain('Confirmado → En producción');
+    expect(text).toContain('Pago verificado');
+  });
 
-  it('shows a distinct not-found state for an id absent from the mock data (a real, non-simulated state)', fakeAsync(() => {
-    configure();
-    fixture = TestBed.createComponent(TrackOrderPage);
-    component = fixture.componentInstance;
-    fixture.detectChanges();
-
-    component.orderIdControl.setValue('NO-EXISTE');
+  it('shows not-found on 404 (unknown id or another customer order)', () => {
+    create();
+    component.orderIdControl.setValue('PED-OTRO');
     component.submit();
-    tick(400);
+    http
+      .expectOne('/api/orders/PED-OTRO')
+      .flush({ code: 'NOT_FOUND', message: 'x', timestamp: 't' }, { status: 404, statusText: 'Not Found' });
     fixture.detectChanges();
-
     expect(component.status()).toBe('not-found');
     expect(fixture.nativeElement.textContent).toContain('No encontramos ese pedido');
-    // distinct from the generic error state: no alert role, different copy
-    expect(fixture.nativeElement.querySelector('[role="alert"]')).toBeNull();
-  }));
+  });
 
-  it('shows the generic error state (distinct wording) with a working retry for ?mockState=error', fakeAsync(() => {
-    configure({ mockState: 'error' });
-    fixture = TestBed.createComponent(TrackOrderPage);
-    component = fixture.componentInstance;
-    fixture.detectChanges();
-
-    component.orderIdControl.setValue('PED-2031');
+  it('shows a generic error with retry on a server failure', () => {
+    create();
+    component.orderIdControl.setValue('PED-1');
     component.submit();
-    tick(400);
-    fixture.detectChanges();
-
-    expect(component.status()).toBe('error');
-    expect(fixture.nativeElement.querySelector('[role="alert"]')).toBeTruthy();
-    expect(fixture.nativeElement.textContent).not.toContain('No encontramos ese pedido');
-
-    const retryButton = (
-      Array.from(fixture.nativeElement.querySelectorAll('button')) as HTMLButtonElement[]
-    ).find((b) => b.textContent?.includes('Reintentar'))!;
-    retryButton.click();
-    fixture.detectChanges();
-    expect(component.status()).toBe('loading');
-    tick(400);
+    http
+      .expectOne('/api/orders/PED-1')
+      .flush({ code: 'INTERNAL_ERROR', message: 'x', timestamp: 't' }, { status: 500, statusText: 'x' });
     fixture.detectChanges();
     expect(component.status()).toBe('error');
-  }));
-
-  it('returns to the idle search form via "Buscar otro pedido" without a full page reload', fakeAsync(() => {
-    configure();
-    fixture = TestBed.createComponent(TrackOrderPage);
-    component = fixture.componentInstance;
-    fixture.detectChanges();
-
-    component.orderIdControl.setValue('PED-2031');
-    component.submit();
-    tick(400);
-    fixture.detectChanges();
+    component.retry();
+    http.expectOne('/api/orders/PED-1').flush(ORDER);
     expect(component.status()).toBe('found');
+  });
 
-    const resetButton = (
-      Array.from(fixture.nativeElement.querySelectorAll('button')) as HTMLButtonElement[]
-    ).find((b) => b.textContent?.includes('Buscar otro pedido'))!;
-    resetButton.click();
-    fixture.detectChanges();
-
+  it('"Buscar otro pedido" returns to the idle form', () => {
+    create();
+    component.orderIdControl.setValue('PED-1');
+    component.submit();
+    http.expectOne('/api/orders/PED-1').flush(ORDER);
+    component.reset();
     expect(component.status()).toBe('idle');
     expect(component.order()).toBeNull();
-    expect(fixture.nativeElement.querySelector('input[type="text"]')).toBeTruthy();
-  }));
+  });
 });

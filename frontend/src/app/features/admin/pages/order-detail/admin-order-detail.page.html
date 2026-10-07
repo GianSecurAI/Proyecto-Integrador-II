@@ -39,12 +39,41 @@
             <div class="admin-order-detail-page__meta">
               <app-status-badge [label]="statusLabel(order.status)" [tone]="statusTone(order.status)" />
               <span class="admin-order-detail-page__kind">
-                {{ order.kind === 'personalizado' ? 'Pedido personalizado' : 'Pedido estándar' }}
+                {{ kindLabel(order.kind) }}
               </span>
             </div>
           </div>
 
           <p class="admin-order-detail-page__summary">{{ order.summary }}</p>
+          <p class="admin-order-detail-page__total">
+            Total: <strong>S/ {{ order.totalAmount.toFixed(2) }}</strong>
+            @if (order.agreedAmount !== null) {
+              (monto acordado S/ {{ order.agreedAmount.toFixed(2) }})
+            }
+          </p>
+          @if (order.description) {
+            <p class="admin-order-detail-page__description">{{ order.description }}</p>
+          }
+          @if (order.items.length > 0) {
+            <ul class="admin-order-detail-page__items">
+              @for (item of order.items; track item.productId) {
+                <li>
+                  {{ item.title }} × {{ item.quantity }} — S/ {{ item.lineTotal.toFixed(2) }}
+                </li>
+              }
+            </ul>
+          }
+          @if (order.delivery; as delivery) {
+            <p class="admin-order-detail-page__delivery">
+              Entrega: {{ delivery.address }}, {{ delivery.district }}
+              @if (delivery.notes) {
+                ({{ delivery.notes }})
+              }
+            </p>
+          }
+          @if (order.registeredBy) {
+            <p class="admin-order-detail-page__registered">Registrado por {{ order.registeredBy }}</p>
+          }
 
           <dl class="admin-order-detail-page__customer">
             <div>
@@ -144,8 +173,4 @@
     }
   }
 
-  <p class="admin-order-detail-page__notice">
-    Vista de demostración: este pedido no proviene de un servidor real. Añade
-    <code>?mockState=error</code> a esta URL para previsualizar el estado de error.
-  </p>
 </div>

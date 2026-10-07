@@ -1,10 +1,11 @@
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { Component, DestroyRef, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
+import { apiErrorCode, withRateLimit } from '../../../../core/models/api-error.model';
 import { CardComponent } from '../../../../shared/ui/card/card.component';
 import { AdminProductFormComponent } from '../../components/admin-product-form/admin-product-form.component';
 import { EMPTY_PRODUCT_FORM_VALUE, ProductFormValue } from '../../models/admin-product.model';
-import { AdminProductsMockService } from '../../services/admin-products-mock.service';
+import { AdminProductsService } from '../../services/admin-products.service';
 
 /**
  * Admin "create product" screen (`/admin/products/new`), reached from `AdminProductListPage`'s
@@ -16,7 +17,7 @@ import { AdminProductsMockService } from '../../services/admin-products-mock.ser
  * control in this form (see `AdminProductViewModel.available`'s doc comment); if the operator
  * needs it inactive, they deactivate it from the list right after creating it.
  *
- * On a successful (mock) create, navigates straight to the new product's detail page
+ * On a successful create (`POST /api/admin/products`), navigates straight to the new product's detail page
  * (`/admin/products/:id`) — mirroring how a real create-and-redirect-to-detail flow would behave.
  */
 @Component({
@@ -27,9 +28,11 @@ import { AdminProductsMockService } from '../../services/admin-products-mock.ser
   styleUrl: './admin-product-create.page.scss',
 })
 export class AdminProductCreatePage {
-  private readonly productsService = inject(AdminProductsMockService);
+  private readonly productsService = inject(AdminProductsService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+
+  private readonly form = viewChild(AdminProductFormComponent);
 
   readonly initialValue = EMPTY_PRODUCT_FORM_VALUE;
   readonly submitting = signal(false);
@@ -40,16 +43,27 @@ export class AdminProductCreatePage {
     this.submitting.set(true);
     this.errorMessage.set(null);
     this.productsService
-      .createProduct(value)
+      .create(value)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (created) => {
           this.submitting.set(false);
-          this.router.navigate(['/admin/products', created.id]);
+          void this.router.navigate(['/admin/products', created.id]);
         },
-        error: () => {
+        error: (err: unknown) => {
           this.submitting.set(false);
-          this.errorMessage.set('No pudimos crear el producto. Inténtalo de nuevo más tarde.');
+          if (apiErrorCode(err) === 'VALIDATION_FAILED') {
+            const unmatched = this.form()?.applyServerErrors(err) ?? [];
+            this.errorMessage.set(
+              unmatched.length > 0
+                ? `El servidor rechazó los datos: ${unmatched.join('; ')}`
+                : 'Revisa los campos marcados e inténtalo de nuevo.',
+            );
+          } else {
+            this.errorMessage.set(
+              withRateLimit(err, 'No pudimos crear el producto. Inténtalo de nuevo más tarde.'),
+            );
+          }
         },
       });
   }

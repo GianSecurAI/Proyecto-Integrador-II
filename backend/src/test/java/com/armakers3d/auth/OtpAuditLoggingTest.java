@@ -70,4 +70,21 @@ class OtpAuditLoggingTest extends AbstractOtpIntegrationTest {
         assertThat(messages).anyMatch(m -> m.contains("otp.verify.failed"));
         assertThat(messages).anyMatch(m -> m.contains("otp.verify.lockout"));
     }
+
+    /** Security review (sensitive logging): the full email is personal data and must never reach the logs. */
+    @Test
+    void logsNeverContainTheFullEmailAddressOnlyAMaskedForm() throws Exception {
+        String email = uniqueEmail("mask");
+        requestOtp(email);
+        String issuedCode = emailSender.lastCodeFor(email);
+        verifyOtp(email, "000000".equals(issuedCode) ? "111111" : "000000");
+        verifyOtp(email, issuedCode);
+        verifyOtp(uniqueEmail("never-requested"), "123456");
+
+        List<String> messages = appender.list.stream().map(ILoggingEvent::getFormattedMessage).toList();
+
+        assertThat(messages).isNotEmpty();
+        assertThat(messages).noneMatch(m -> m.contains(email) || m.contains("never-requested"));
+        assertThat(messages).anyMatch(m -> m.contains("m***@example.com"));
+    }
 }

@@ -1,0 +1,38 @@
+:host {
+  display: block;
+}
+
+.proof-image__status {
+  margin: 0;
+  padding: var(--ar-space-4);
+  color: var(--ar-color-muted-on-light);
+}
+
+.proof-image__viewport {
+  max-height: 24rem;
+  overflow: auto;
+  border: 1px solid var(--ar-color-border, #ddd);
+  background: #fafafa;
+  text-align: center;
+}
+
+.proof-image__viewport--zoomed {
+  max-height: 70vh;
+}
+
+.proof-image__img {
+  max-width: 100%;
+  height: auto;
+}
+
+.proof-image__viewport--zoomed .proof-image__img {
+  max-width: none;
+  width: 200%;
+}
+
+.proof-image__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ar-space-2);
+  margin-top: var(--ar-space-2);
+}

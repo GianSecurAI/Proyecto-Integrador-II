@@ -32,7 +32,7 @@ class OtpVerifyControllerTest extends AbstractOtpIntegrationTest {
     void existingEmailSignsIntoSameAccountWithoutDuplication() throws Exception {
         String email = uniqueEmail("existing-account");
         registerAndGetSessionCookie(email);
-        long clienteCountAfterFirstRegistration = clienteRepository.count();
+        long clienteCountAfterFirstRegistration = clienteJpa.count();
 
         requestOtp(email);
         String secondCode = emailSender.lastCodeFor(email);
@@ -41,6 +41,6 @@ class OtpVerifyControllerTest extends AbstractOtpIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accountStatus").value("existing"));
 
-        assertThat(clienteRepository.count()).isEqualTo(clienteCountAfterFirstRegistration);
+        assertThat(clienteJpa.count()).isEqualTo(clienteCountAfterFirstRegistration);
     }
 }

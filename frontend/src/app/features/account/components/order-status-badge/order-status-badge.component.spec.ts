@@ -12,7 +12,7 @@ describe('OrderStatusBadgeComponent', () => {
   });
 
   it('maps "entregado" to its Spanish label and success tone', () => {
-    fixture.componentRef.setInput('status', 'entregado');
+    fixture.componentRef.setInput('status', 'ENTREGADO');
     fixture.detectChanges();
     const badge: HTMLElement = fixture.nativeElement.querySelector('.ui-status-badge');
     expect(badge.textContent?.trim()).toBe('Entregado');
@@ -20,18 +20,18 @@ describe('OrderStatusBadgeComponent', () => {
   });
 
   it('maps "cancelado" to its Spanish label and danger tone', () => {
-    fixture.componentRef.setInput('status', 'cancelado');
+    fixture.componentRef.setInput('status', 'CANCELADO');
     fixture.detectChanges();
     const badge: HTMLElement = fixture.nativeElement.querySelector('.ui-status-badge');
     expect(badge.textContent?.trim()).toBe('Cancelado');
     expect(badge.className).toContain('ui-status-badge--danger');
   });
 
-  it('maps "pendiente" to its Spanish label and neutral tone', () => {
-    fixture.componentRef.setInput('status', 'pendiente');
+  it('maps "confirmado" to its Spanish label and info tone', () => {
+    fixture.componentRef.setInput('status', 'CONFIRMADO');
     fixture.detectChanges();
     const badge: HTMLElement = fixture.nativeElement.querySelector('.ui-status-badge');
-    expect(badge.textContent?.trim()).toBe('Pendiente');
-    expect(badge.className).toContain('ui-status-badge--neutral');
+    expect(badge.textContent?.trim()).toBe('Confirmado');
+    expect(badge.className).toContain('ui-status-badge--info');
   });
 });

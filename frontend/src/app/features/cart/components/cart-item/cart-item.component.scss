@@ -81,3 +81,10 @@
   color: var(--ar-color-danger);
   width: fit-content;
 }
+
+.cart-item__unavailable {
+  margin: var(--ar-space-1) 0 0;
+  font-size: var(--ar-font-size-xs);
+  font-weight: 700;
+  color: var(--ar-color-danger, #ff6b6b);
+}

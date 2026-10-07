@@ -1,6 +1,5 @@
 import { Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { HOME_STATS } from '../../mocks/home-stats.mock';
 
 /**
  * Hero banner (Figma node 1:7). ADAPT per orchestrator instruction: the 5-line literal heading
@@ -22,6 +21,4 @@ import { HOME_STATS } from '../../mocks/home-stats.mock';
   templateUrl: './hero.component.html',
   styleUrl: './hero.component.scss',
 })
-export class HeroComponent {
-  readonly stats = HOME_STATS;
-}
+export class HeroComponent {}

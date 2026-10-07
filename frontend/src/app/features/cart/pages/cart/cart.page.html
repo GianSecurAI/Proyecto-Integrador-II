@@ -27,6 +27,14 @@
             </a>
           </app-empty-state>
         } @else {
+          @if (pricesUpdated()) {
+            <p class="cart-page__notice" role="status">
+              Actualizamos algunos precios según el catálogo actual.
+              <button type="button" class="ui-btn ui-btn--ghost ui-btn--sm" (click)="dismissPriceNotice()">
+                Entendido
+              </button>
+            </p>
+          }
           <div class="cart-page__layout">
             <section class="cart-page__items" aria-label="Productos en el carrito">
               <ul class="cart-page__list">
@@ -34,6 +42,7 @@
                   <li>
                     <app-cart-item
                       [item]="item"
+                      [unavailable]="unavailableIds().has(item.productId)"
                       (quantityChange)="onQuantityChange($event)"
                       (remove)="removeItem($event)"
                     />
@@ -56,19 +65,24 @@
                   <dt>Productos ({{ itemCount() }})</dt>
                   <dd>S/ {{ subtotal().toFixed(2) }}</dd>
                 </div>
-                <div>
-                  <dt>Envío</dt>
-                  <dd>Se calcula en el checkout</dd>
-                </div>
                 <div class="cart-page__summary-total">
-                  <dt>Total</dt>
+                  <dt>Total estimado</dt>
                   <dd>S/ {{ subtotal().toFixed(2) }}</dd>
                 </div>
               </dl>
+              <p class="cart-page__hint">
+                Montos informativos: el total final lo confirma el servidor al registrar el pedido.
+              </p>
 
-              <a routerLink="/checkout" class="ui-btn ui-btn--primary ui-btn--md ui-btn--full">
-                Proceder al checkout
-              </a>
+              @if (hasUnavailable()) {
+                <span class="ui-btn ui-btn--primary ui-btn--md ui-btn--full" aria-disabled="true">
+                  Quita los productos no disponibles
+                </span>
+              } @else {
+                <a routerLink="/checkout" class="ui-btn ui-btn--primary ui-btn--md ui-btn--full">
+                  Proceder al checkout
+                </a>
+              }
               <a routerLink="/catalog" class="ui-btn ui-btn--ghost ui-btn--md ui-btn--full">
                 Seguir comprando
               </a>

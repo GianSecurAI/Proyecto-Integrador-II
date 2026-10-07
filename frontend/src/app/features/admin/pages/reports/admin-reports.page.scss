@@ -68,3 +68,8 @@
   color: var(--ar-color-muted-on-light);
   font-size: var(--ar-font-size-sm);
 }
+
+.admin-reports-page__range-error {
+  margin: 0 0 var(--ar-space-3);
+  color: var(--ar-color-danger, #ff6b6b);
+}

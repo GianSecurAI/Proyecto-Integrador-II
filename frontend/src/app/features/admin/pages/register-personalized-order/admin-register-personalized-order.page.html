@@ -23,7 +23,7 @@
         [required]="true"
         [error]="
           customerEmailControl.invalid && customerEmailControl.touched
-            ? 'Ingresa un correo electrónico válido.'
+            ? serverError(customerEmailControl) ?? 'Ingresa un correo electrónico válido.'
             : null
         "
       >
@@ -40,18 +40,18 @@
 
       <app-form-field
         #descriptionField="appFormField"
-        label="Descripción de la cotización"
+        label="Descripción del pedido acordado"
         [required]="true"
         [error]="
-          quotationDescriptionControl.invalid && quotationDescriptionControl.touched
-            ? 'Ingresa una descripción de lo acordado con el cliente.'
+          descriptionControl.invalid && descriptionControl.touched
+            ? serverError(descriptionControl) ?? 'Ingresa una descripción de lo acordado (máx. 1000 caracteres).'
             : null
         "
       >
         <textarea
           class="ui-input admin-register-personalized-order-page__textarea"
           [id]="descriptionField.inputId()"
-          formControlName="quotationDescription"
+          formControlName="description"
           rows="3"
           placeholder="Ej. Réplica personalizada de trofeo, cotizada por WhatsApp"
           [attr.aria-invalid]="descriptionField.hasError()"
@@ -65,8 +65,8 @@
         hint="Monto manual acordado con el cliente. El sistema no calcula precios de impresión personalizada."
         [required]="true"
         [error]="
-          quotationAmountControl.invalid && quotationAmountControl.touched
-            ? 'Ingresa un monto mayor a S/ 0.00.'
+          agreedAmountControl.invalid && agreedAmountControl.touched
+            ? serverError(agreedAmountControl) ?? 'Ingresa un monto mayor a S/ 0.00.'
             : null
         "
       >
@@ -77,7 +77,7 @@
           min="0.01"
           step="0.01"
           inputmode="decimal"
-          formControlName="quotationAmount"
+          formControlName="agreedAmount"
           [attr.aria-invalid]="amountField.hasError()"
           [attr.aria-describedby]="amountField.describedBy()"
         />

@@ -1,18 +1,19 @@
-﻿import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { take, timer } from 'rxjs';
 import { AppRole, defaultRouteForRole } from '../../../../core/auth/roles';
-import { SessionStateService } from '../../../../core/services/session-state.service';
+import { safeReturnUrl } from '../../../../core/guards/return-url';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { FormFieldComponent } from '../../../../shared/ui/form-field/form-field.component';
-import { AUTH_PREVIEW, AuthPreviewError } from '../../services/auth-preview.service';
+import { AuthService } from '../../services/auth.service';
+import { requestOtpErrorMessage, verifyOtpErrorMessage } from '../../utils/otp-error-messages';
 
-/** Preview-only resend cooldown (UX pacing), unrelated to any real OTP rate limit. */
+/** UX pacing for the resend button only; the real OTP rate limit is enforced by the backend (429). */
 const RESEND_COOLDOWN_SECONDS = 30;
 
-/** FR-003 visual step only: no OTP validity/expiry rules or real session permissions. */
+/** FR-003: code entry screen backed by `POST /api/auth/otp/verify`; validity/expiry are the backend's decisions. */
 @Component({
   selector: 'app-verify-code-page',
   standalone: true,
@@ -21,10 +22,9 @@ const RESEND_COOLDOWN_SECONDS = 30;
   styleUrls: ['../../auth-shared.css'],
 })
 export class VerifyCodePage implements OnInit {
-  private readonly auth = inject(AUTH_PREVIEW);
+  private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
-  private readonly session = inject(SessionStateService);
   private readonly destroyRef = inject(DestroyRef);
   readonly form = new FormGroup({
     code: new FormControl('', {
@@ -71,14 +71,12 @@ export class VerifyCodePage implements OnInit {
     const response = this.auth.verifyOtp(this.codeControl.value);
     this.form.reset();
     response.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: ({ role, email }) => {
+      next: ({ role }) => {
         this.submitting.set(false);
         this.completed.set(true);
-        // Marks the client-side session flag (UX-only — see `SessionStateService`'s doc comment,
-        // the backend remains the real authority) and completes the login by navigating
-        // somewhere real. This used to leave every visitor permanently parked on a static
-        // "welcome" card with no automatic next step; a login must actually finish.
-        this.session.markAuthenticated(role, email);
+        // `AuthService.verifyOtp` already recorded the server-reported identity (role/email/id
+        // from `GET /api/auth/me`) in `SessionStateService`; this only completes the login by
+        // navigating somewhere real.
         this.navigateAfterLogin(role);
       },
       error: (err: unknown) => {
@@ -96,8 +94,8 @@ export class VerifyCodePage implements OnInit {
    * to still independently re-checks access via its own guard.
    */
   private navigateAfterLogin(role: AppRole): void {
-    const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
-    void this.router.navigateByUrl(returnUrl || defaultRouteForRole(role));
+    const returnUrl = safeReturnUrl(this.route.snapshot.queryParamMap.get('returnUrl'));
+    void this.router.navigateByUrl(returnUrl ?? defaultRouteForRole(role));
   }
 
   /**
@@ -116,9 +114,9 @@ export class VerifyCodePage implements OnInit {
           this.resending.set(false);
           this.startResendCooldown();
         },
-        error: () => {
+        error: (err: unknown) => {
           this.resending.set(false);
-          this.errorMessage.set('No pudimos reenviar el código. Inténtalo de nuevo más tarde.');
+          this.errorMessage.set(requestOtpErrorMessage(err));
         },
       });
   }
@@ -131,10 +129,6 @@ export class VerifyCodePage implements OnInit {
   }
 
   private resolveErrorMessage(err: unknown): string {
-    if (err instanceof AuthPreviewError) {
-      if (err.reason === 'expired') return 'Este código expiró. Solicita uno nuevo.';
-      if (err.reason === 'invalid') return 'El código ingresado no es válido.';
-    }
-    return 'No pudimos verificar el código. Inténtalo de nuevo o solicita otro.';
+    return verifyOtpErrorMessage(err);
   }
 }

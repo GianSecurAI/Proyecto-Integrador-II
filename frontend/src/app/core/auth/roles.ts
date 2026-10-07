@@ -1,3 +1,5 @@
+import { Role } from '../../shared/models/wire-enums';
+
 /**
  * Centralized, typed role model for route authorization (`app.routes.ts`) and any other place
  * that needs to reason about "which role(s) may reach this screen". This file is a single
@@ -13,11 +15,10 @@
  * (Principle VII) / `docs/discovery/06-system-definition.md` — Cliente, Asesor, Administrador.
  * "Visitor" (unauthenticated) is represented by the absence of a role, not a fourth literal here.
  */
-export type AppRole = 'CLIENTE' | 'ADMINISTRADOR' | 'ASESOR';
+export type AppRole = Role;
 
-// Declared with literal types (`as const`), not widened to `AppRole`, so consumers like
-// `core/auth/mock-staff-directory.ts` can build a narrower type (e.g. `typeof ADMIN_ROLE |
-// typeof ADVISOR_ROLE`, excluding CUSTOMER_ROLE) directly from these constants.
+// Declared with literal types (`as const`), not widened to `AppRole`, so a narrower type (e.g.
+// `typeof ADMIN_ROLE | typeof ADVISOR_ROLE`, excluding CUSTOMER_ROLE) can be built from them.
 export const CUSTOMER_ROLE = 'CLIENTE' as const;
 export const ADMIN_ROLE = 'ADMINISTRADOR' as const;
 export const ADVISOR_ROLE = 'ASESOR' as const;

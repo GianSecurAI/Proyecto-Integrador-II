@@ -8,9 +8,11 @@ import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-sta
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state.component';
 import { StatusBadgeComponent } from '../../../../shared/ui/status-badge/status-badge.component';
 import { OrderStatusTimelineComponent } from '../../../../shared/ui/order-status-timeline/order-status-timeline.component';
-import { AdminOrderViewModel, getAllowedNextStatuses } from '../../models/admin-order.model';
-import { AdminOrdersMockService, AdminOrdersMockState } from '../../services/admin-orders-mock.service';
-import { OrderStatus, describeOrderStatus } from '../../../account/models/order.model';
+import { apiErrorCode, httpStatus, withRateLimit } from '../../../../core/models/api-error.model';
+import { orderKindLabel } from '../../../../shared/models/wire-enums';
+import { AdminOrderViewModel } from '../../models/admin-order.model';
+import { AdminOrdersService } from '../../services/admin-orders.service';
+import { OrderKind, OrderStatus, describeOrderStatus } from '../../../account/models/order.model';
 
 type LoadStatus = 'loading' | 'loaded' | 'not-found' | 'error';
 
@@ -25,17 +27,14 @@ type LoadStatus = 'loading' | 'loaded' | 'not-found' | 'error';
  * the status -> step mapping. Also mirrors `OrderDetailPage`'s append-only history-list rendering
  * for the full previous -> new / date / responsible / note change log.
  *
- * The status-transition `<select>` is populated ONLY with `getAllowedNextStatuses(order.status)`
- * (`../../models/admin-order.model.ts`) — never a free choice of all six statuses — and an
- * optional note maps directly onto `HistorialEstadoPedido.nota`
- * (`OrderStatusHistoryEntryViewModel.note`). Submitting calls
- * `AdminOrdersMockService.transitionStatus`, which independently re-validates the transition
- * (defense in depth).
+ * The status-transition `<select>` is populated ONLY with the server's `allowedNextStatuses` for
+ * this order (`GET /api/admin/orders/{id}`) — the frontend holds no copy of the lifecycle rules.
+ * Submitting calls `PATCH /api/admin/orders/{id}/status` with an optional note (max 500 chars);
+ * `409 INVALID_STATUS_TRANSITION` (re-sent status, concurrent change) reloads the order so the
+ * offered statuses are current. The server records the acting staff member in the history.
  *
- * `:id` is read reactively from `route.paramMap` (not just once at construction), same
- * "navigating between two detail routes reuses this component instance" reasoning as
- * `OrderDetailPage`/`AdminProductDetailPage`. An unknown id is a REAL not-found state;
- * `?mockState=error` simulates a generic fetch failure instead.
+ * `:id` is read reactively from `route.paramMap` (navigating between two detail routes reuses
+ * this component instance). `404` is the not-found state; other failures show a retry.
  */
 @Component({
   selector: 'app-admin-order-detail-page',
@@ -54,7 +53,7 @@ type LoadStatus = 'loading' | 'loaded' | 'not-found' | 'error';
   styleUrl: './admin-order-detail.page.scss',
 })
 export class AdminOrderDetailPage {
-  private readonly ordersService = inject(AdminOrdersMockService);
+  private readonly ordersService = inject(AdminOrdersService);
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -77,10 +76,9 @@ export class AdminOrderDetailPage {
 
   private currentId = '';
 
-  readonly allowedNextStatuses = computed(() => {
-    const current = this.order();
-    return current ? getAllowedNextStatuses(current.status) : [];
-  });
+  /** Exactly the transitions the SERVER reported as currently allowed (`allowedNextStatuses`);
+   * the frontend never evaluates the lifecycle rules itself. */
+  readonly allowedNextStatuses = computed(() => this.order()?.allowedNextStatuses ?? []);
 
   readonly canTransition = computed(() => this.allowedNextStatuses().length > 0);
 
@@ -96,6 +94,10 @@ export class AdminOrderDetailPage {
 
   formatDate(date: Date): string {
     return this.dateFormatter.format(date);
+  }
+
+  kindLabel(kind: OrderKind): string {
+    return `Pedido ${orderKindLabel(kind).toLowerCase()}`;
   }
 
   statusLabel(status: OrderStatus): string {
@@ -125,7 +127,7 @@ export class AdminOrderDetailPage {
     const note = this.transitionNote().trim() || null;
 
     this.ordersService
-      .transitionStatus(current.id, nextStatus, note)
+      .changeStatus(current.id, nextStatus, note)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (updated) => {
@@ -135,12 +137,38 @@ export class AdminOrderDetailPage {
           this.transitionNote.set('');
           this.transitionSuccess.set('El estado del pedido se actualizó correctamente.');
         },
-        error: () => {
+        error: (err: unknown) => {
           this.transitioning.set(false);
-          this.transitionError.set(
-            'No pudimos actualizar el estado del pedido. Inténtalo de nuevo más tarde.',
-          );
+          if (apiErrorCode(err) === 'INVALID_STATUS_TRANSITION') {
+            // Someone else changed the order first (or the move is not allowed): reload the server
+            // state so the offered next statuses are current again.
+            this.transitionError.set(
+              'Ese cambio de estado ya no es válido (el pedido pudo haber cambiado). Mostramos el estado actual.',
+            );
+            this.reloadQuietly(current.id);
+          } else if (httpStatus(err) === 404) {
+            this.transitionError.set('El pedido ya no existe.');
+          } else if (apiErrorCode(err) === 'VALIDATION_FAILED') {
+            this.transitionError.set('El servidor rechazó el cambio (revisa la nota, máx. 500 caracteres).');
+          } else {
+            this.transitionError.set(
+              withRateLimit(err, 'No pudimos actualizar el estado del pedido. Inténtalo de nuevo más tarde.'),
+            );
+          }
         },
+      });
+  }
+
+  private reloadQuietly(id: string): void {
+    this.ordersService
+      .get(id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (order) => {
+          this.order.set(order);
+          this.selectedNextStatus.set(null);
+        },
+        error: () => undefined,
       });
   }
 
@@ -150,24 +178,22 @@ export class AdminOrderDetailPage {
       this.status.set('not-found');
       return;
     }
-    const mockState: AdminOrdersMockState =
-      this.route.snapshot.queryParamMap.get('mockState') === 'error' ? 'error' : 'populated';
     this.status.set('loading');
     this.selectedNextStatus.set(null);
     this.transitionNote.set('');
     this.transitionError.set(null);
     this.transitionSuccess.set(null);
     this.ordersService
-      .getOrderById(id, mockState)
+      .get(id)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (order) => {
           this.order.set(order);
           this.status.set('loaded');
         },
-        error: () => {
+        error: (err: unknown) => {
           this.order.set(null);
-          this.status.set(mockState === 'error' ? 'error' : 'not-found');
+          this.status.set(httpStatus(err) === 404 ? 'not-found' : 'error');
         },
       });
   }

@@ -1,0 +1,39 @@
+# "nodb" profile: boots the whole API with NO database and NO SMTP server, for CI smoke tests and
+# early frontend work. Persistence autoconfiguration is excluded; the auth domain runs on its
+# in-memory repository adapters (auth.infrastructure.inmemory, active only under this profile)
+# and a no-op email sender that never logs the OTP. State is lost on restart. Never use in
+# production.
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration
+      - org.springframework.boot.autoconfigure.jdbc.JdbcTemplateAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration
+      - org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration
+  flyway:
+    enabled: false
+  # Placeholders so the MAIL_* references in application.yml resolve; nothing connects to this host.
+  mail:
+    host: localhost
+    port: 1025
+    username: ""
+    password: ""
+
+session:
+  cookie-secure: false
+
+security:
+  api-docs-public: true
+
+# Dev-only staff seed, read only under this profile by AuthDevSeed (reserved example.test domain,
+# never real addresses). Staff sign in with the same email OTP as customers; there are no
+# passwords. Blank a value to skip seeding that account.
+auth:
+  dev-seed:
+    advisor-email: advisor@example.test
+    admin-email: admin@example.test
+
+app:
+  frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:4200}

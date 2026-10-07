@@ -96,6 +96,15 @@
         @if (canManage()) {
           <app-card>
             <h2>Cambiar estado</h2>
+            @if (otherStatuses().length === 0) {
+              <p class="admin-incident-detail-page__muted">
+                @if (canResolve()) {
+                  Para resolver esta incidencia usa "Registrar resolución".
+                } @else {
+                  Esta incidencia ya no admite más cambios de estado.
+                }
+              </p>
+            } @else {
             <form class="admin-incident-detail-page__form" (ngSubmit)="submitStatusUpdate()">
               <label class="admin-incident-detail-page__field">
                 <span>Nuevo estado</span>
@@ -125,6 +134,7 @@
                 <p role="status" class="admin-incident-detail-page__success">{{ statusSuccess() }}</p>
               }
             </form>
+            }
           </app-card>
 
           <app-card>
@@ -160,6 +170,7 @@
             </form>
           </app-card>
 
+          @if (canResolve()) {
           <app-card>
             <h2>Registrar resolución</h2>
             <form class="admin-incident-detail-page__form" (ngSubmit)="submitResolution()">
@@ -171,6 +182,7 @@
                   [value]="resolutionText()"
                   (input)="updateResolutionText($any($event.target).value)"
                   [disabled]="registeringResolution()"
+                  maxlength="1000"
                   placeholder="Describe cómo se resolvió la incidencia…"
                 ></textarea>
               </label>
@@ -194,13 +206,10 @@
               }
             </form>
           </app-card>
+          }
         }
       }
     }
   }
 
-  <p class="admin-incident-detail-page__muted">
-    Vista de demostración: esta incidencia no proviene de un servidor real. Añade
-    <code>?mockState=error</code> a esta URL para previsualizar el estado de error.
-  </p>
 </div>

@@ -1,3 +1,5 @@
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { SessionStateService } from '../../../../core/services/session-state.service';
@@ -11,7 +13,7 @@ describe('AdminTopbarComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [AdminTopbarComponent],
-      providers: [provideRouter([])],
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
     }).compileComponents();
     fixture = TestBed.createComponent(AdminTopbarComponent);
     session = TestBed.inject(SessionStateService);
@@ -66,6 +68,9 @@ describe('AdminTopbarComponent', () => {
     const button: HTMLButtonElement = fixture.nativeElement.querySelector('.admin-topbar__logout');
     expect(button).toBeTruthy();
     button.click();
+
+    // Logout revokes the server session first (POST /api/auth/logout, idempotent 204).
+    TestBed.inject(HttpTestingController).expectOne('/api/auth/logout').flush(null, { status: 204, statusText: 'No Content' });
 
     expect(session.isAuthenticated()).toBeFalse();
     expect(router.navigateByUrl).toHaveBeenCalledWith('/');

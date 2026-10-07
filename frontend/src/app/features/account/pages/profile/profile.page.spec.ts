@@ -3,7 +3,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { Subject, of, throwError } from 'rxjs';
 import { CustomerProfileViewModel, EditableCustomerProfileFields } from '../../models/customer-profile.model';
-import { CustomerProfileMockService } from '../../services/customer-profile-mock.service';
+import { CustomerProfileService } from '../../services/customer-profile.service';
 import { ProfilePage } from './profile.page';
 
 const SEED_PROFILE: CustomerProfileViewModel = {
@@ -14,7 +14,7 @@ const SEED_PROFILE: CustomerProfileViewModel = {
   phone: '987 654 321',
 };
 
-type MockedService = Pick<CustomerProfileMockService, 'profile'> & {
+type MockedService = Pick<CustomerProfileService, 'profile'> & {
   load: jasmine.Spy;
   save: jasmine.Spy;
 };
@@ -36,7 +36,7 @@ describe('ProfilePage', () => {
 
     await TestBed.configureTestingModule({
       imports: [ProfilePage],
-      providers: [provideRouter([]), { provide: CustomerProfileMockService, useValue: service }],
+      providers: [provideRouter([]), { provide: CustomerProfileService, useValue: service }],
     }).compileComponents();
 
     fixture = TestBed.createComponent(ProfilePage);
@@ -44,7 +44,7 @@ describe('ProfilePage', () => {
     fixture.detectChanges();
   });
 
-  it('renders the mock profile in view mode, including the read-only email', () => {
+  it('renders the profile in view mode, including the read-only email', () => {
     const text: string = fixture.nativeElement.textContent;
     expect(text).toContain('maria.gomez@example.com');
     expect(text).toContain('María');

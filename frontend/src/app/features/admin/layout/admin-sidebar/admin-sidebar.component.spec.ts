@@ -28,14 +28,15 @@ describe('AdminSidebarComponent', () => {
       fixture.detectChanges();
     });
 
-    it('renders all six approved admin domain links', () => {
+    it('renders all six approved admin links (incl. Pagos por verificar)', () => {
       const links: HTMLAnchorElement[] = Array.from(
         fixture.nativeElement.querySelectorAll('.admin-sidebar__link'),
       );
       expect(links.length).toBe(6);
       expect(fixture.nativeElement.textContent).toContain('Productos');
       expect(fixture.nativeElement.textContent).toContain('Pedidos');
-      expect(fixture.nativeElement.textContent).toContain('Cotizaciones');
+      expect(fixture.nativeElement.textContent).toContain('Pagos por verificar');
+      expect(fixture.nativeElement.textContent).not.toContain('Cotizaciones');
       expect(fixture.nativeElement.textContent).toContain('Incidencias');
       expect(fixture.nativeElement.textContent).toContain('Reportes');
       expect(fixture.nativeElement.textContent).toContain('Usuarios y roles');
@@ -49,7 +50,7 @@ describe('AdminSidebarComponent', () => {
       expect(paths).toEqual([
         '/admin/products',
         '/admin/orders',
-        '/admin/quotations',
+        '/admin/payments',
         '/admin/incidents',
         '/admin/reports',
         '/admin/users',
@@ -84,13 +85,14 @@ describe('AdminSidebarComponent', () => {
       fixture.detectChanges();
     });
 
-    it('shows only the three Administrador/Asesor-shared domains, hiding the Administrador-only ones', () => {
+    it('shows only the two Administrador/Asesor-shared domains, hiding the Administrador-only ones', () => {
       const links: HTMLAnchorElement[] = Array.from(
         fixture.nativeElement.querySelectorAll('.admin-sidebar__link'),
       );
       const paths = links.map((link) => link.pathname);
-      expect(paths).toEqual(['/admin/orders', '/admin/quotations', '/admin/incidents']);
+      expect(paths).toEqual(['/admin/orders', '/admin/incidents']);
       expect(fixture.nativeElement.textContent).not.toContain('Productos');
+      expect(fixture.nativeElement.textContent).not.toContain('Pagos por verificar');
       expect(fixture.nativeElement.textContent).not.toContain('Reportes');
       expect(fixture.nativeElement.textContent).not.toContain('Usuarios y roles');
     });
@@ -102,7 +104,7 @@ describe('AdminSidebarComponent', () => {
       const links: HTMLAnchorElement[] = Array.from(
         fixture.nativeElement.querySelectorAll('.admin-sidebar__link'),
       );
-      expect(links.length).toBe(3);
+      expect(links.length).toBe(2);
     });
   });
 });

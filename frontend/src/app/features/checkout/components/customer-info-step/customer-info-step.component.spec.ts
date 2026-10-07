@@ -28,23 +28,9 @@ describe('CustomerInfoStepComponent', () => {
     expect(checkoutState.customerInfo()).toBeNull();
   });
 
-  it('rejects an invalid email format and never advances', () => {
-    setup();
-    component.fullNameControl.setValue('Ana Torres');
-    component.emailControl.setValue('not-an-email');
-    component.phoneControl.setValue('987654321');
-
-    let nextEmitted = false;
-    component.next.subscribe(() => (nextEmitted = true));
-    component.submit();
-
-    expect(nextEmitted).toBe(false);
-  });
-
   it('rejects an invalid phone format and never advances', () => {
     setup();
     component.fullNameControl.setValue('Ana Torres');
-    component.emailControl.setValue('ana@example.com');
     component.phoneControl.setValue('abc');
 
     let nextEmitted = false;
@@ -57,7 +43,6 @@ describe('CustomerInfoStepComponent', () => {
   it('saves the typed value into CheckoutStateService and emits "next" once valid', () => {
     setup();
     component.fullNameControl.setValue('Ana Torres');
-    component.emailControl.setValue('ana@example.com');
     component.phoneControl.setValue('987654321');
 
     let nextEmitted = false;
@@ -67,24 +52,29 @@ describe('CustomerInfoStepComponent', () => {
     expect(nextEmitted).toBe(true);
     expect(checkoutState.customerInfo()).toEqual({
       fullName: 'Ana Torres',
-      email: 'ana@example.com',
       phone: '987654321',
     });
   });
 
-  it('pre-fills the email from the current session but keeps it editable', () => {
+  it('shows the account email from the session read-only (not an editable field, not sent)', () => {
     TestBed.configureTestingModule({ imports: [CustomerInfoStepComponent] });
     const session = TestBed.inject(SessionStateService);
-    session.markAuthenticated('CLIENTE', 'logged-in@example.com');
+    session.markAuthenticated('CLIENTE', 'logged-in@example.com', 4);
     fixture = TestBed.createComponent(CustomerInfoStepComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
 
-    expect(component.emailControl.value).toBe('logged-in@example.com');
-    expect(component.emailControl.disabled).toBe(false);
+    expect(fixture.nativeElement.textContent).toContain('logged-in@example.com');
+    expect(fixture.nativeElement.querySelector('input[type="email"]')).toBeNull();
+    expect(Object.keys(component.form.controls)).toEqual(['fullName', 'phone']);
+  });
 
-    component.emailControl.setValue('changed@example.com');
-    expect(component.emailControl.value).toBe('changed@example.com');
+  it('mirrors the backend max length for the full name (UX only)', () => {
+    setup();
+    component.fullNameControl.setValue('x'.repeat(161));
+    component.phoneControl.setValue('987654321');
+    component.submit();
+    expect(component.fullNameControl.errors?.['maxlength']).toBeTruthy();
   });
 
   it('restores a previously saved value when re-entering this step (state survives forward/backward navigation)', () => {
@@ -92,7 +82,6 @@ describe('CustomerInfoStepComponent', () => {
     checkoutState = TestBed.inject(CheckoutStateService);
     checkoutState.setCustomerInfo({
       fullName: 'Luis Farfán',
-      email: 'luis@example.com',
       phone: '912345678',
     });
     fixture = TestBed.createComponent(CustomerInfoStepComponent);
@@ -100,7 +89,6 @@ describe('CustomerInfoStepComponent', () => {
     fixture.detectChanges();
 
     expect(component.fullNameControl.value).toBe('Luis Farfán');
-    expect(component.emailControl.value).toBe('luis@example.com');
     expect(component.phoneControl.value).toBe('912345678');
   });
 

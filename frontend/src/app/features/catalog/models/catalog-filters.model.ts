@@ -1,48 +1,41 @@
-/** The four catalog category buckets, shared by the toolbar pill row and the sidebar radio list
- * (Figma nodes 2:7 and 2:27) — a single vocabulary so both controls stay in sync against one
- * piece of state (`CatalogPage`), instead of duplicating the category list in two components. */
-export type CatalogCategory = 'todo' | 'descarga-digital' | 'llavero' | 'pegatinas';
+import { PRODUCT_CATEGORIES, ProductCategory, categoryLabel } from '../../../shared/models/wire-enums';
 
-/** Human-readable label for each category value, used by both the toolbar pills and the
- * sidebar radio list so the copy never drifts between the two. */
+/** Category choice in the UI: every real backend category plus "all" (no `category` param). */
+export type CatalogCategory = 'todo' | ProductCategory;
+
+export const CATALOG_CATEGORIES: CatalogCategory[] = ['todo', ...PRODUCT_CATEGORIES];
+
+/** Human-readable label for each category value, shared by the toolbar pills and the sidebar. */
 export const CATALOG_CATEGORY_LABELS: Record<CatalogCategory, string> = {
   todo: 'Todo',
-  'descarga-digital': 'Descarga digital',
-  llavero: 'Llavero',
-  pegatinas: 'Pegatinas',
+  LLAVERO: categoryLabel('LLAVERO'),
+  PEGATINAS: categoryLabel('PEGATINAS'),
 };
 
-export const CATALOG_CATEGORIES: CatalogCategory[] = [
-  'todo',
-  'descarga-digital',
-  'llavero',
-  'pegatinas',
+/** Sort options accepted by `GET /api/catalog/products?sort=` (price|title|createdAt[,asc|desc]). */
+export type CatalogSort = 'createdAt,desc' | 'price,asc' | 'price,desc' | 'title,asc';
+
+export const CATALOG_SORT_OPTIONS: { value: CatalogSort; label: string }[] = [
+  { value: 'createdAt,desc', label: 'Más recientes' },
+  { value: 'price,asc', label: 'Precio: menor a mayor' },
+  { value: 'price,desc', label: 'Precio: mayor a menor' },
+  { value: 'title,asc', label: 'Nombre (A-Z)' },
 ];
 
 /**
- * All catalog filter/search state, owned by `CatalogPage` and passed down to the toolbar and
- * sidebar filter panel. Filtering is purely local/reactive against the already-loaded mock
- * product list (Figma's filter panel has no "aplicar" button in the real file, so every change
- * re-filters immediately — see catalog.page.ts).
+ * All catalog filter state, owned by `CatalogPage`. Every field maps 1:1 onto a backend query
+ * parameter (`category`, `minPrice`, `maxPrice`, `q`, `sort`); filtering/sorting/paging are done
+ * SERVER-side, never over a locally loaded list.
  */
 export interface CatalogFilters {
   category: CatalogCategory;
-  onSaleOnly: boolean;
-  personalizableOnly: boolean;
   minPrice: number | null;
   maxPrice: number | null;
-  /** Catalog-toolbar text search (Figma's header search box is out of scope here — see
-   * catalog-toolbar.component.ts doc-comment); case-insensitive substring match on title. */
+  /** Free-text search (`q`, max 100 chars server-side). */
   query: string;
+  sort: CatalogSort;
 }
 
 export function defaultCatalogFilters(): CatalogFilters {
-  return {
-    category: 'todo',
-    onSaleOnly: false,
-    personalizableOnly: false,
-    minPrice: null,
-    maxPrice: null,
-    query: '',
-  };
+  return { category: 'todo', minPrice: null, maxPrice: null, query: '', sort: 'createdAt,desc' };
 }

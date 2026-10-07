@@ -36,19 +36,22 @@ export class CartReviewStepComponent {
   readonly isEmpty = this.cart.isEmpty;
   readonly itemCount = this.cart.itemCount;
   readonly subtotal = this.cart.subtotal;
+  readonly unavailableIds = this.cart.unavailableIds;
+  readonly hasUnavailable = this.cart.hasUnavailable;
+  readonly pricesUpdated = this.cart.pricesUpdated;
 
   readonly next = output<void>();
 
-  onQuantityChange(event: { productId: string; quantity: number }): void {
+  onQuantityChange(event: { productId: number; quantity: number }): void {
     this.cart.setQuantity(event.productId, event.quantity);
   }
 
-  removeItem(productId: string): void {
+  removeItem(productId: number): void {
     this.cart.removeItem(productId);
   }
 
   goNext(): void {
-    if (this.isEmpty()) return;
+    if (this.isEmpty() || this.hasUnavailable()) return;
     this.next.emit();
   }
 }

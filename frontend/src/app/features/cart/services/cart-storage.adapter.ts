@@ -1,105 +1,100 @@
 import { Injectable, InjectionToken, inject } from '@angular/core';
-import { CartItem } from '../models/cart-item.model';
+import { CART_QUANTITY_MAX, CART_QUANTITY_MIN, CartItem } from '../models/cart-item.model';
 
 /**
- * Small persistence boundary so `CartStateService` (and every component that uses it) NEVER
- * touches `localStorage` directly — only this adapter does. Swappable by design: the interface
- * is the seam a future real cart/order backend would replace this whole class through, without
- * any consumer of `CartStateService` needing to change.
+ * Small persistence boundary so `CartStateService` NEVER touches `localStorage` directly — only
+ * this adapter does (ADR-cart-state: the DI token stays the single seam in case a backend cart is
+ * ever approved).
  *
- * TEMPORARY / PROVISIONAL — no backend cart persistence exists yet. This MUST be REPLACED (not
- * extended) once a real cart/order endpoint exists, mirroring the "temporary, isolated mock"
- * disclaimer used throughout this codebase (e.g. `customer-orders.mock.ts`,
- * `admin-products-mock.service.ts`).
+ * The cart is NOT a security-sensitive credential (product ids + quantities), unlike a session
+ * flag, so persisting it across reloads is fine; but it is client-editable and therefore treated
+ * as UNTRUSTED on load (`isCartItem` range-checks everything) and never as authoritative pricing.
  *
- * IMPORTANT — this is NOT the same rule as `SessionStateService`'s "no fake session
- * restoration" disclaimer, and a future reader should not conflate the two: that rule exists
- * because caching an auth/session flag in `localStorage` would mean the frontend *trusting* a
- * client-readable value for an AUTHORIZATION decision (Constitution Principle III), which is
- * unsafe regardless of UX convenience. A shopping cart's contents (product ids + quantities) are
- * not a security-sensitive credential — persisting them across a reload is ordinary,
- * non-authoritative UI-preference-shaped state, the same class of thing real browsers routinely
- * persist for a cart. Nothing here is ever treated as authoritative pricing or as proof of
- * anything (see `CartItem`'s doc comment) — it is just "what did the visitor put in their cart",
- * which is safe and expected to survive a reload.
+ * `useScope` keys storage per session context (`guest` or `user-<id>`) so one user's cart never
+ * leaks to the next user of a shared browser (ADR follow-up 1).
  */
 export interface CartStorageAdapter {
   load(): readonly CartItem[];
   save(items: readonly CartItem[]): void;
   clear(): void;
+  /** Optional: switches the storage key to another scope (fakes may omit it). */
+  useScope?(scope: string): void;
 }
 
-/**
- * DI seam for `CartStorageAdapter`. `CartStateService` injects THIS token, never the concrete
- * `LocalStorageCartStorageAdapter` class directly, so specs (and a future real implementation)
- * can override the provider without touching `CartStateService` itself.
- */
 export const CART_STORAGE_ADAPTER = new InjectionToken<CartStorageAdapter>('CART_STORAGE_ADAPTER', {
   providedIn: 'root',
   factory: () => inject(LocalStorageCartStorageAdapter),
 });
 
-const STORAGE_KEY = 'ar-makers-3d.cart.v1';
+/** v2: numeric product ids + per-scope keys. The v1 key (string ids) is discarded on load. */
+const KEY_PREFIX = 'ar-makers-3d.cart.v2.';
+const LEGACY_KEY = 'ar-makers-3d.cart.v1';
+export const GUEST_CART_SCOPE = 'guest';
 
 /**
- * Default `localStorage`-backed implementation. Reading/writing `localStorage` can throw (e.g. a
- * private-browsing context that blocks storage access, or a full/disabled storage quota) — every
- * method here catches that and degrades gracefully (`load()` returns an empty cart,
- * `save()`/`clear()` become silent no-ops) rather than letting a storage failure crash the cart
- * feature. `CartStateService` surfaces the "could not load" case via the shared error-state
- * component instead of silently pretending nothing happened.
+ * Default `localStorage`-backed implementation. Storage access can throw (private browsing,
+ * quota, disabled): `save`/`clear` degrade to silent no-ops, `load` throws a typed
+ * `CartStorageError` so the cart page can show a real "could not load" state.
  */
 @Injectable({ providedIn: 'root' })
 export class LocalStorageCartStorageAdapter implements CartStorageAdapter {
+  private scope = GUEST_CART_SCOPE;
+
+  useScope(scope: string): void {
+    this.scope = scope;
+  }
+
+  private get key(): string {
+    return KEY_PREFIX + this.scope;
+  }
+
   load(): readonly CartItem[] {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      localStorage.removeItem(LEGACY_KEY); // v1 content (string ids) is obsolete — discard.
+      const raw = localStorage.getItem(this.key);
       if (!raw) return [];
       const parsed: unknown = JSON.parse(raw);
       if (!Array.isArray(parsed)) return [];
       return parsed.filter(isCartItem);
     } catch {
-      // Storage inaccessible (private browsing, quota, corrupted JSON) or malformed contents —
-      // surfaced by the caller as a real "cart could not be loaded" state, never logged (cart
-      // contents are not logged anywhere in this codebase, same discipline as every other
-      // feature here).
       throw new CartStorageError('Cart storage is inaccessible or contains invalid data');
     }
   }
 
   save(items: readonly CartItem[]): void {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+      localStorage.setItem(this.key, JSON.stringify(items));
     } catch {
-      // Best-effort persistence only — a save failure must never break the in-memory cart the
-      // customer is actively using.
+      // Best-effort persistence only.
     }
   }
 
   clear(): void {
     try {
-      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(this.key);
     } catch {
-      // Same best-effort reasoning as save() above.
+      // Best-effort.
     }
   }
 }
 
-/** Thrown by `LocalStorageCartStorageAdapter.load()` so `CartStateService` can distinguish a
- * real storage failure from "cart is legitimately empty" — mirrors `AdminProductsMockError`/
- * `OrdersMockError`'s dedicated-error-type convention elsewhere in this codebase. */
 export class CartStorageError extends Error {}
 
+/** Stored contents are untrusted: integer ids, integer quantity within 1..99, finite price. */
 function isCartItem(value: unknown): value is CartItem {
   if (typeof value !== 'object' || value === null) return false;
-  const candidate = value as Record<string, unknown>;
+  const c = value as Record<string, unknown>;
   return (
-    typeof candidate['productId'] === 'string' &&
-    typeof candidate['title'] === 'string' &&
-    typeof candidate['category'] === 'string' &&
-    typeof candidate['subcategory'] === 'string' &&
-    typeof candidate['unitPrice'] === 'number' &&
-    typeof candidate['quantity'] === 'number' &&
-    candidate['quantity'] >= 1
+    Number.isInteger(c['productId']) &&
+    (c['productId'] as number) > 0 &&
+    typeof c['title'] === 'string' &&
+    (c['category'] === 'LLAVERO' || c['category'] === 'PEGATINAS') &&
+    typeof c['subcategory'] === 'string' &&
+    typeof c['unitPrice'] === 'number' &&
+    Number.isFinite(c['unitPrice']) &&
+    (c['unitPrice'] as number) >= 0 &&
+    Number.isInteger(c['quantity']) &&
+    (c['quantity'] as number) >= CART_QUANTITY_MIN &&
+    (c['quantity'] as number) <= CART_QUANTITY_MAX
   );
 }

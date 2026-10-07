@@ -1,29 +1,28 @@
+import { ProductCategory } from '../../../shared/models/wire-enums';
+
+/** Backend limits for one order line quantity (`OrderRules.QUANTITY_MIN/MAX`). UX mirror only —
+ * the server re-validates. */
+export const CART_QUANTITY_MIN = 1;
+export const CART_QUANTITY_MAX = 99;
+
 /**
  * A single line in the client-side shopping cart (standard catalog self-service checkout only,
  * per CLAUDE.md's "Business clarification: purchasing flows" — the advisor-mediated WhatsApp
- * custom-order flow never touches this cart).
+ * custom-order flow never touches this cart). See `docs/decisions/ADR-cart-state.md`.
  *
- * Deliberately a PRESENTATION SNAPSHOT captured at add-time, not a live reference back to
- * `CatalogProduct`: `unitPrice`/`title`/`category`/`subcategory` are copied from the product at
- * the moment it was added, so a later catalog price change does not silently rewrite what a
- * customer already sees in their cart. This mirrors real e-commerce behavior and is honest about
- * what the frontend actually knows.
- *
- * PRICING AUTHORITY (Constitution Principle III — frontend is never authoritative): `unitPrice`
- * here is copied from the same already-approved mock `CatalogProduct.price` used throughout the
- * app (`shared/models/catalog-product.model.ts`) — it is never user-editable, never derived from
- * a URL param, and never otherwise browser-controlled input. Even so, this value and every total
- * computed from it (`CartStateService.subtotal`/`itemCount`) are PRESENTATION values only. A real
- * checkout, when built, MUST re-request authoritative pricing from the backend at order-creation
- * time rather than trusting anything read from this cart.
+ * A PRESENTATION SNAPSHOT captured at add-time (and refreshed by `CartStateService.revalidate`
+ * against `GET /api/catalog/products?ids=`): `unitPrice` and everything derived from it are for
+ * display only. The order request is built from `{ productId, quantity }` ONLY
+ * (`features/checkout/services/standard-orders.service.ts`), so a price can never reach the
+ * backend, and the server prices the order itself (Principle III).
  */
 export interface CartItem {
-  readonly productId: string;
+  /** Backend numeric product id. */
+  readonly productId: number;
   readonly title: string;
-  readonly category: string;
+  readonly category: ProductCategory;
   readonly subcategory: string;
-  /** Price-at-add-time snapshot, in soles. See class doc comment — never trust this as a final
-   * order total; it is a UX convenience value only. */
+  /** Price-at-add-time snapshot, in soles. Informational only — never an order total. */
   readonly unitPrice: number;
   readonly quantity: number;
 }

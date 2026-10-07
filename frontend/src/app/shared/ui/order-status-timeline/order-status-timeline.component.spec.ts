@@ -17,14 +17,13 @@ describe('OrderStatusTimelineComponent', () => {
     }).compileComponents();
   });
 
-  it('renders all five happy-path steps with their Spanish labels', () => {
-    create('pendiente');
+  it('renders all four happy-path steps with their Spanish labels', () => {
+    create('CONFIRMADO');
     const steps: HTMLElement[] = Array.from(
       fixture.nativeElement.querySelectorAll('.ui-order-timeline__step'),
     );
-    expect(steps.length).toBe(5);
+    expect(steps.length).toBe(4);
     const text = fixture.nativeElement.textContent as string;
-    expect(text).toContain('Pendiente');
     expect(text).toContain('Confirmado');
     expect(text).toContain('En producción');
     expect(text).toContain('Enviado');
@@ -32,18 +31,17 @@ describe('OrderStatusTimelineComponent', () => {
   });
 
   it('marks earlier steps as done and the matching current step as current (aria-current)', () => {
-    create('en_produccion');
+    create('EN_PRODUCCION');
     const steps: HTMLElement[] = Array.from(
       fixture.nativeElement.querySelectorAll('.ui-order-timeline__step'),
     );
-    // pendiente, confirmado -> done; en_produccion -> current; enviado, entregado -> upcoming
+    // confirmado -> done; en_produccion -> current; enviado, entregado -> upcoming
     expect(steps[0].classList).toContain('ui-order-timeline__step--done');
-    expect(steps[1].classList).toContain('ui-order-timeline__step--done');
-    expect(steps[2].classList).toContain('ui-order-timeline__step--current');
-    expect(steps[2].getAttribute('aria-current')).toBe('step');
+    expect(steps[1].classList).toContain('ui-order-timeline__step--current');
+    expect(steps[1].getAttribute('aria-current')).toBe('step');
+    expect(steps[2].classList).not.toContain('ui-order-timeline__step--done');
+    expect(steps[2].classList).not.toContain('ui-order-timeline__step--current');
     expect(steps[3].classList).not.toContain('ui-order-timeline__step--done');
-    expect(steps[3].classList).not.toContain('ui-order-timeline__step--current');
-    expect(steps[4].classList).not.toContain('ui-order-timeline__step--done');
 
     // only one step should ever be marked current
     const currentSteps = steps.filter((s) => s.getAttribute('aria-current') === 'step');
@@ -51,7 +49,7 @@ describe('OrderStatusTimelineComponent', () => {
   });
 
   it('gives a cancelled order a distinct visual treatment instead of a step position', () => {
-    create('cancelado');
+    create('CANCELADO');
     const host: HTMLElement = fixture.nativeElement.querySelector('.ui-order-timeline');
     expect(host.classList).toContain('ui-order-timeline--cancelled');
     expect(fixture.nativeElement.textContent).toContain('cancelado');

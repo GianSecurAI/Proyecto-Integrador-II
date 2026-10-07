@@ -1,7 +1,8 @@
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { apiErrorCode, httpStatus, rateLimitMessage } from '../../../../core/models/api-error.model';
+import { applyFieldErrors } from '../../../../core/errors/form-errors';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { CardComponent } from '../../../../shared/ui/card/card.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
@@ -10,17 +11,23 @@ import { FormFieldComponent } from '../../../../shared/ui/form-field/form-field.
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state.component';
 import { StatusBadgeComponent } from '../../../../shared/ui/status-badge/status-badge.component';
 import { AccountNavComponent } from '../../components/account-nav/account-nav.component';
-import { IncidentStatus, IncidentViewModel, NewIncidentFormValue, describeIncidentStatus } from '../../models/incident.model';
+import {
+  INCIDENT_DESCRIPTION_MAX,
+  INCIDENT_DESCRIPTION_MIN,
+  IncidentStatus,
+  IncidentViewModel,
+  NewIncidentFormValue,
+  describeIncidentStatus,
+} from '../../models/incident.model';
 import { OrderSummaryViewModel } from '../../models/order.model';
-import { CustomerIncidentsMockService, IncidentsMockState } from '../../services/customer-incidents-mock.service';
-import { CustomerOrdersMockService } from '../../services/customer-orders-mock.service';
+import { CustomerIncidentsService } from '../../services/customer-incidents.service';
+import { CustomerOrdersService } from '../../services/customer-orders.service';
 
 type LoadStatus = 'loading' | 'loaded' | 'error';
 
 /** Minimum description length — UX-only convenience so an empty/near-empty report can't be
  * submitted from this screen; the real constraint (if any) belongs to a future backend DTO
  * (Constitution Prohibited Practice #6 — this is never advertised as validated on its own). */
-const MIN_DESCRIPTION_LENGTH = 20;
 
 /**
  * RF-15 ("Registro de incidencias", actor Cliente, docs/discovery/06-system-definition.md lines
@@ -35,17 +42,12 @@ const MIN_DESCRIPTION_LENGTH = 20;
  * to display inline on the relevant list item (unlike `OrderDetailPage`'s append-only status
  * *history*, which genuinely needs its own screen).
  *
- * Deliberately excludes any priority/type/status *input* — see `../../models/incident.model.ts`'s
- * doc comment: RF-17 (priority classification) and RF-16 (status management) are staff-only
- * (actor Administrador/Asesor), never Cliente, and no incident-type concept is defined anywhere in
- * the discovery docs. The order-select control reuses `CustomerOrdersMockService.getOrders()`
- * directly — this feature never re-mocks a second, parallel order list.
- *
- * `?mockState=empty` / `?mockState=error` query params let a reviewer deterministically preview
- * the incident *list*'s async states from the browser URL bar alone (see the on-screen notice in
- * incidents.page.html), mirroring `OrderHistoryPage`. The order-select fetch and the incident
- * submission each have their own independent loading/error handling, since either can fail on its
- * own regardless of the list's state.
+ * Deliberately excludes any priority/type/status *input*: the server sets status `ABIERTA` and the
+ * reporter; priority and status management are staff-only (`/admin/incidents`). The order-select
+ * control lists the customer's own orders from `GET /api/orders`. Registration is
+ * `POST /api/incidents` and the history is `GET /api/incidents` (own incidents only). The order
+ * fetch, the incident list and the submission each have their own loading/error handling, since
+ * any of them can fail independently.
  */
 @Component({
   selector: 'app-incidents-page',
@@ -65,9 +67,8 @@ const MIN_DESCRIPTION_LENGTH = 20;
   styleUrl: './incidents.page.scss',
 })
 export class IncidentsPage {
-  private readonly ordersService = inject(CustomerOrdersMockService);
-  private readonly incidentsService = inject(CustomerIncidentsMockService);
-  private readonly route = inject(ActivatedRoute);
+  private readonly ordersService = inject(CustomerOrdersService);
+  private readonly incidentsService = inject(CustomerIncidentsService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly ordersStatus = signal<LoadStatus>('loading');
@@ -80,8 +81,6 @@ export class IncidentsPage {
   readonly submitError = signal<string | null>(null);
   readonly submitSuccess = signal<string | null>(null);
 
-  private currentMockState: IncidentsMockState = 'populated';
-
   private readonly dateFormatter = new Intl.DateTimeFormat('es-PE', {
     year: 'numeric',
     month: 'short',
@@ -92,7 +91,11 @@ export class IncidentsPage {
     orderId: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     description: new FormControl('', {
       nonNullable: true,
-      validators: [Validators.required, Validators.minLength(MIN_DESCRIPTION_LENGTH)],
+      validators: [
+        Validators.required,
+        Validators.minLength(INCIDENT_DESCRIPTION_MIN),
+        Validators.maxLength(INCIDENT_DESCRIPTION_MAX),
+      ],
     }),
   });
 
@@ -105,11 +108,7 @@ export class IncidentsPage {
 
   constructor() {
     this.loadOrders();
-    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
-      const value = params.get('mockState');
-      this.currentMockState = value === 'empty' || value === 'error' ? value : 'populated';
-      this.loadIncidents(this.currentMockState);
-    });
+    this.loadIncidents();
   }
 
   retryOrders(): void {
@@ -117,7 +116,7 @@ export class IncidentsPage {
   }
 
   retryIncidents(): void {
-    this.loadIncidents(this.currentMockState);
+    this.loadIncidents();
   }
 
   formatDate(date: Date): string {
@@ -140,7 +139,7 @@ export class IncidentsPage {
     this.submitSuccess.set(null);
     const value: NewIncidentFormValue = this.form.getRawValue();
     this.incidentsService
-      .submitIncident(value)
+      .register(value)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (created) => {
@@ -149,37 +148,52 @@ export class IncidentsPage {
           this.submitSuccess.set(`Incidencia ${created.id} registrada correctamente.`);
           this.incidents.update((current) => [created, ...current]);
         },
-        error: () => {
+        error: (err: unknown) => {
           this.submitting.set(false);
-          this.submitError.set(
-            'No pudimos registrar tu incidencia. Inténtalo de nuevo más tarde.',
-          );
+          this.submitError.set(this.submitErrorMessage(err));
         },
       });
+  }
+
+  /** Maps backend outcomes of `POST /api/incidents` to user-facing copy. */
+  private submitErrorMessage(err: unknown): string {
+    const status = httpStatus(err);
+    if (status === 404) return 'No encontramos ese pedido en tu cuenta.';
+    if (status === 409 || apiErrorCode(err) === 'CONFLICT') {
+      return 'Ya existe una incidencia abierta igual para este pedido, o el pedido alcanzó el máximo de incidencias abiertas.';
+    }
+    if (apiErrorCode(err) === 'VALIDATION_FAILED') {
+      const unmatched = applyFieldErrors(this.form, err);
+      return unmatched.length > 0 || this.form.invalid
+        ? 'Revisa los datos ingresados e inténtalo de nuevo.'
+        : 'No pudimos registrar tu incidencia.';
+    }
+    if (status === 429) return rateLimitMessage(err);
+    return 'No pudimos registrar tu incidencia. Inténtalo de nuevo más tarde.';
   }
 
   private loadOrders(): void {
     this.ordersStatus.set('loading');
     this.ordersService
-      .getOrders()
+      .list({ size: 100 })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (orders) => {
-          this.orders.set(orders);
+        next: (page) => {
+          this.orders.set(page.content);
           this.ordersStatus.set('loaded');
         },
         error: () => this.ordersStatus.set('error'),
       });
   }
 
-  private loadIncidents(mockState: IncidentsMockState): void {
+  private loadIncidents(): void {
     this.incidentsStatus.set('loading');
     this.incidentsService
-      .getIncidents(mockState)
+      .list({ size: 100 })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (incidents) => {
-          this.incidents.set(incidents);
+        next: (page) => {
+          this.incidents.set(page.content);
           this.incidentsStatus.set('loaded');
         },
         error: () => this.incidentsStatus.set('error'),

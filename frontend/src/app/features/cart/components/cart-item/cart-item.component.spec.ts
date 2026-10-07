@@ -3,9 +3,9 @@ import { CartItem } from '../../models/cart-item.model';
 import { CartItemComponent } from './cart-item.component';
 
 const ITEM: CartItem = {
-  productId: 'p-a',
+  productId: 1,
   title: 'Llavero A',
-  category: 'Llaveros',
+  category: 'LLAVERO',
   subcategory: 'Personalizados',
   unitPrice: 19.9,
   quantity: 2,
@@ -28,7 +28,7 @@ describe('CartItemComponent', () => {
   it('renders title, category/subcategory and unit price', () => {
     const text: string = fixture.nativeElement.textContent;
     expect(text).toContain('Llavero A');
-    expect(text).toContain('Llaveros / Personalizados');
+    expect(text).toContain('Llavero / Personalizados');
     expect(text).toContain('S/ 19.90');
   });
 
@@ -52,7 +52,7 @@ describe('CartItemComponent', () => {
   });
 
   it('emits quantityChange with quantity + 1 on increment', () => {
-    const emitted: { productId: string; quantity: number }[] = [];
+    const emitted: { productId: number; quantity: number }[] = [];
     fixture.componentInstance.quantityChange.subscribe((value) => emitted.push(value));
 
     const incrementButton: HTMLButtonElement = fixture.nativeElement.querySelector(
@@ -60,11 +60,11 @@ describe('CartItemComponent', () => {
     );
     incrementButton.click();
 
-    expect(emitted).toEqual([{ productId: 'p-a', quantity: 3 }]);
+    expect(emitted).toEqual([{ productId: 1, quantity: 3 }]);
   });
 
   it('emits quantityChange with quantity - 1 on decrement when above 1', () => {
-    const emitted: { productId: string; quantity: number }[] = [];
+    const emitted: { productId: number; quantity: number }[] = [];
     fixture.componentInstance.quantityChange.subscribe((value) => emitted.push(value));
 
     const decrementButton: HTMLButtonElement = fixture.nativeElement.querySelector(
@@ -72,7 +72,7 @@ describe('CartItemComponent', () => {
     );
     decrementButton.click();
 
-    expect(emitted).toEqual([{ productId: 'p-a', quantity: 1 }]);
+    expect(emitted).toEqual([{ productId: 1, quantity: 1 }]);
   });
 
   it('does not emit quantityChange when decrementing at quantity 1', () => {
@@ -89,7 +89,7 @@ describe('CartItemComponent', () => {
   });
 
   it('emits remove with the product id', () => {
-    const emitted: string[] = [];
+    const emitted: number[] = [];
     fixture.componentInstance.remove.subscribe((id) => emitted.push(id));
 
     const removeButton: HTMLButtonElement = fixture.nativeElement.querySelector(
@@ -97,6 +97,6 @@ describe('CartItemComponent', () => {
     );
     removeButton.click();
 
-    expect(emitted).toEqual(['p-a']);
+    expect(emitted).toEqual([1]);
   });
 });

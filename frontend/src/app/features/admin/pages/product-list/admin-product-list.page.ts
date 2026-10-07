@@ -1,50 +1,35 @@
-import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
+import { Subscription } from 'rxjs';
+import { withRateLimit } from '../../../../core/models/api-error.model';
+import {
+  PRODUCT_CATEGORIES,
+  ProductCategory,
+  categoryLabel,
+} from '../../../../shared/models/wire-enums';
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { EmptyStateComponent } from '../../../../shared/ui/empty-state/empty-state.component';
 import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-state.component';
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state.component';
 import { StatusBadgeComponent } from '../../../../shared/ui/status-badge/status-badge.component';
-import {
-  CATALOG_CATEGORIES,
-  CATALOG_CATEGORY_LABELS,
-  CatalogCategory,
-} from '../../../catalog/models/catalog-filters.model';
 import { AdminConfirmDialogComponent } from '../../components/admin-confirm-dialog/admin-confirm-dialog.component';
 import { AdminDataTableComponent } from '../../components/admin-data-table/admin-data-table.component';
 import { AdminPageHeaderComponent } from '../../components/admin-page-header/admin-page-header.component';
 import { AdminProductViewModel } from '../../models/admin-product.model';
-import { AdminProductsMockService, AdminProductsMockState } from '../../services/admin-products-mock.service';
+import { AdminProductsService } from '../../services/admin-products.service';
 
 type LoadStatus = 'loading' | 'loaded' | 'error';
+type CategoryFilter = ProductCategory | 'todo';
+type AvailabilityFilter = 'todos' | 'disponibles' | 'no-disponibles';
+
+/** Delay before a typed search is sent to the server. */
+export const PRODUCT_SEARCH_DEBOUNCE_MS = 300;
 
 /**
- * The real RF-07 ("Catálogo de productos" / HU06 "Gestionar catálogo de productos", Confirmado —
- * see `docs/discovery/01-requirements-analysis.md` line 218,
- * `docs/discovery/06-system-definition.md` lines 197-201) admin product list, replacing the
- * TEMPORARY `admin-products-placeholder.page.ts` this task retires.
- *
- * Figma has ZERO admin frames of any kind — confirmed directly via the Figma MCP (grepped the
- * full metadata dump for "admin"/"dashboard"/"sidebar"/"panel" and separately for
- * "gestionar"/"crear producto"/"editar producto"/"nuevo producto", zero matches both times);
- * `docs/discovery/05-figma-analysis.md` and `06-system-definition.md` (lines 260-264)
- * independently confirm this absence. This screen therefore reuses the existing admin design
- * system (`AdminDataTableComponent`, `AdminPageHeaderComponent`, `_tokens.scss`) per Constitution
- * Principle XV, exactly like every other admin screen already does.
- *
- * No REST contract exists for admin product management yet — `AdminProductsMockService` is an
- * isolated, frontend-only preview. `?mockState=empty`/`?mockState=error` query params let a
- * reviewer deterministically preview those states from the browser URL bar, same convention as
- * `OrderHistoryPage`. Search (by title, case-insensitive substring) and category filtering are
- * pure local narrowing of the already-fetched list — the same "local filter against loaded mock
- * data" approach as `CatalogPage`/`filterCatalogProducts` (`features/catalog/utils/`), just
- * inlined here since this list only has two, much simpler filter dimensions.
- *
- * The availability toggle is the confirm dialog's one grounded trigger: deactivating a product
- * (`available: true -> false`) is a customer-visible change worth confirming; reactivating
- * (`false -> true`) is non-destructive and applies immediately, no dialog. See
- * `AdminConfirmDialogComponent`'s doc comment.
+ * RF-07 admin product list (ADMINISTRADOR only), backed by `GET /api/admin/products`: unlike the
+ * public catalog it includes unavailable products. Search (`q`), category and availability filters
+ * and paging are SERVER-side. Deactivating/activating goes through
+ * `PATCH /api/admin/products/{id}/availability` (the public catalog then hides/shows the product).
  */
 @Component({
   selector: 'app-admin-product-list-page',
@@ -64,73 +49,75 @@ type LoadStatus = 'loading' | 'loaded' | 'error';
   styleUrl: './admin-product-list.page.scss',
 })
 export class AdminProductListPage {
-  private readonly productsService = inject(AdminProductsMockService);
-  private readonly route = inject(ActivatedRoute);
-  private readonly destroyRef = inject(DestroyRef);
+  private readonly productsService = inject(AdminProductsService);
 
   readonly status = signal<LoadStatus>('loading');
   readonly products = signal<AdminProductViewModel[]>([]);
+  readonly page = signal(0);
+  readonly totalPages = signal(0);
 
   readonly search = signal('');
-  readonly categoryFilter = signal<CatalogCategory>('todo');
+  readonly categoryFilter = signal<CategoryFilter>('todo');
+  readonly availabilityFilter = signal<AvailabilityFilter>('todos');
 
-  readonly categories = CATALOG_CATEGORIES;
-  readonly categoryLabels = CATALOG_CATEGORY_LABELS;
+  readonly categories: readonly ProductCategory[] = PRODUCT_CATEGORIES;
+  readonly categoryLabel = categoryLabel;
 
-  /** The product currently awaiting deactivation confirmation, or `null` when the dialog is
-   * closed — set by `requestDeactivate()`, cleared by `confirmDeactivate()`/`cancelDeactivate()`. */
   readonly pendingDeactivation = signal<AdminProductViewModel | null>(null);
   readonly availabilityError = signal<string | null>(null);
 
-  private currentMockState: AdminProductsMockState = 'populated';
-
-  readonly filteredProducts = computed(() => {
-    const query = this.search().trim().toLowerCase();
-    const category = this.categoryFilter();
-    return this.products().filter((product) => {
-      if (category !== 'todo' && product.category !== category) {
-        return false;
-      }
-      if (query && !product.title.toLowerCase().includes(query)) {
-        return false;
-      }
-      return true;
-    });
-  });
+  private request: Subscription | null = null;
+  private timer: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
-    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
-      const value = params.get('mockState');
-      this.currentMockState = value === 'empty' || value === 'error' ? value : 'populated';
-      this.load(this.currentMockState);
+    this.load();
+    inject(DestroyRef).onDestroy(() => {
+      this.request?.unsubscribe();
+      if (this.timer) clearTimeout(this.timer);
     });
   }
 
   retry(): void {
-    this.load(this.currentMockState);
+    this.load();
   }
 
   updateSearch(value: string): void {
     this.search.set(value);
+    this.page.set(0);
+    if (this.timer) clearTimeout(this.timer);
+    this.timer = setTimeout(() => this.load(), PRODUCT_SEARCH_DEBOUNCE_MS);
   }
 
   updateCategoryFilter(value: string): void {
-    this.categoryFilter.set(value as CatalogCategory);
+    this.categoryFilter.set(value as CategoryFilter);
+    this.page.set(0);
+    this.load();
   }
 
-  /** `AdminProductViewModel.category` is typed as the base `CatalogProduct.category: string` (see
-   * that model's doc comment) even though every seeded/created value is actually a real
-   * `CatalogCategory` — this narrows for the label lookup without an unchecked template cast. */
-  categoryLabel(category: string): string {
-    return this.categoryLabels[category as CatalogCategory] ?? category;
+  updateAvailabilityFilter(value: string): void {
+    this.availabilityFilter.set(value as AvailabilityFilter);
+    this.page.set(0);
+    this.load();
   }
 
-  /** Reactivation (`false -> true`) is non-destructive — applied immediately, no confirmation. */
+  goToPage(page: number): void {
+    if (page < 0 || page >= this.totalPages()) return;
+    this.page.set(page);
+    this.load();
+  }
+
+  hasActiveFilters(): boolean {
+    return (
+      this.search().trim() !== '' ||
+      this.categoryFilter() !== 'todo' ||
+      this.availabilityFilter() !== 'todos'
+    );
+  }
+
   activate(product: AdminProductViewModel): void {
     this.applyAvailability(product.id, true);
   }
 
-  /** Deactivation (`true -> false`) is customer-visible — gated behind the confirm dialog. */
   requestDeactivate(product: AdminProductViewModel): void {
     this.availabilityError.set(null);
     this.pendingDeactivation.set(product);
@@ -147,33 +134,45 @@ export class AdminProductListPage {
     this.applyAvailability(product.id, false);
   }
 
-  private applyAvailability(id: string, available: boolean): void {
+  private applyAvailability(id: number, available: boolean): void {
     this.availabilityError.set(null);
-    this.productsService
-      .setAvailability(id, available)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (updated) => {
-          this.products.update((current) =>
-            current.map((product) => (product.id === updated.id ? updated : product)),
-          );
-        },
-        error: () => {
-          this.availabilityError.set(
+    this.productsService.setAvailability(id, available).subscribe({
+      next: (updated) => {
+        this.products.update((current) =>
+          current.map((product) => (product.id === updated.id ? updated : product)),
+        );
+      },
+      error: (err: unknown) => {
+        this.availabilityError.set(
+          withRateLimit(
+            err,
             'No pudimos actualizar la disponibilidad del producto. Inténtalo de nuevo más tarde.',
-          );
-        },
-      });
+          ),
+        );
+      },
+    });
   }
 
-  private load(mockState: AdminProductsMockState): void {
+  private load(): void {
+    if (this.timer) {
+      clearTimeout(this.timer);
+      this.timer = null;
+    }
+    this.request?.unsubscribe();
     this.status.set('loading');
-    this.productsService
-      .getProducts(mockState)
-      .pipe(takeUntilDestroyed(this.destroyRef))
+    const category = this.categoryFilter();
+    const availability = this.availabilityFilter();
+    this.request = this.productsService
+      .list({
+        q: this.search(),
+        category: category === 'todo' ? null : category,
+        available: availability === 'todos' ? null : availability === 'disponibles',
+        page: this.page(),
+      })
       .subscribe({
-        next: (products) => {
-          this.products.set(products);
+        next: (result) => {
+          this.products.set(result.content);
+          this.totalPages.set(result.totalPages);
           this.status.set('loaded');
         },
         error: () => this.status.set('error'),

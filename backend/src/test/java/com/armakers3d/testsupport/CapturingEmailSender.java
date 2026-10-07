@@ -24,9 +24,13 @@ public class CapturingEmailSender implements EmailSender {
     public record SentEmail(String to, String subject, String body) {}
 
     private final List<SentEmail> sent = new ArrayList<>();
+    private volatile boolean failing;
 
     @Override
     public void send(String toEmail, String subject, String body) {
+        if (failing) {
+            throw new com.armakers3d.shared.notification.EmailDeliveryException(new RuntimeException("simulated outage"));
+        }
         sent.add(new SentEmail(toEmail, subject, body));
     }
 
@@ -53,7 +57,13 @@ public class CapturingEmailSender implements EmailSender {
         return matcher.group(1);
     }
 
+    /** Makes every send throw {@code EmailDeliveryException} until switched off (simulated SMTP outage). */
+    public void setFailing(boolean failing) {
+        this.failing = failing;
+    }
+
     public void clear() {
+        failing = false;
         sent.clear();
     }
 }

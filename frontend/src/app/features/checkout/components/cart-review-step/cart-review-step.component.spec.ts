@@ -10,8 +10,8 @@ import { CartStateService } from '../../../cart/services/cart-state.service';
 import { CartReviewStepComponent } from './cart-review-step.component';
 
 const PRODUCT: CatalogProduct = {
-  id: 'p-a',
-  category: 'Llaveros',
+  id: 1,
+  category: 'LLAVERO',
   subcategory: 'Personalizados',
   title: 'Llavero A',
   price: 19.9,
@@ -78,7 +78,7 @@ describe('CartReviewStepComponent', () => {
   it('falls back to the empty-cart state if every item is removed while this step is showing', () => {
     cart.addItem(PRODUCT, 1);
     fixture.detectChanges();
-    cart.removeItem('p-a');
+    cart.removeItem(1);
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('Tu carrito está vacío');

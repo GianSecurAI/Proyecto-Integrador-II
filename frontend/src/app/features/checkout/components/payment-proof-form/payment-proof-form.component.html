@@ -1,0 +1,143 @@
+<section class="proof-form" aria-labelledby="proof-form-title" [attr.aria-busy]="uploading()">
+  <h2 id="proof-form-title">Paga con Yape o Plin</h2>
+
+  <ol class="proof-form__steps">
+    <li>
+      Elige Yape o Plin, abre la app y <strong>escanea el código QR</strong>.
+    </li>
+    <li>
+      Paga exactamente <strong>S/ {{ checkout().paymentInstructions.amount.toFixed(2) }}</strong>.
+    </li>
+    <li>
+      En el mensaje o nota del pago escribe la referencia
+      <strong class="proof-form__reference">{{ checkout().paymentInstructions.reference }}</strong>.
+    </li>
+    <li>Toma una captura de pantalla del pago realizado y súbela aquí.</li>
+  </ol>
+
+  <div role="tablist" aria-label="Método de pago" class="proof-form__tabs">
+    @for (method of methods(); track method) {
+      <button
+        type="button"
+        role="tab"
+        class="proof-form__tab"
+        [class.proof-form__tab--active]="selectedMethod() === method"
+        [id]="'proof-tab-' + method"
+        [attr.aria-selected]="selectedMethod() === method"
+        [attr.aria-controls]="'proof-panel-' + method"
+        [attr.tabindex]="selectedMethod() === method ? 0 : -1"
+        [disabled]="uploading()"
+        (click)="selectMethod(method)"
+      >
+        {{ methodLabel(method) }}
+      </button>
+    }
+  </div>
+
+  @for (method of methods(); track method) {
+    @if (selectedMethod() === method) {
+      <div
+        role="tabpanel"
+        class="proof-form__panel"
+        [id]="'proof-panel-' + method"
+        [attr.aria-labelledby]="'proof-tab-' + method"
+      >
+        <img
+          class="proof-form__qr"
+          [src]="qrImages[method]"
+          [alt]="'Código QR para pagar con ' + methodLabel(method)"
+          width="240"
+          height="240"
+        />
+        @if (account(method); as acc) {
+          @if (acc.holderName || acc.phoneNumber) {
+            <dl class="proof-form__account">
+              @if (acc.holderName) {
+                <div><dt>Titular</dt><dd>{{ acc.holderName }}</dd></div>
+              }
+              @if (acc.phoneNumber) {
+                <div><dt>Número</dt><dd>{{ acc.phoneNumber }}</dd></div>
+              }
+            </dl>
+          }
+        }
+        @if (showPlaceholderWarning) {
+          <p class="proof-form__dev-warning" data-testid="qr-placeholder-warning">
+            Desarrollo: el QR y los datos del titular son marcadores de posición (OPS-02). El
+            negocio debe reemplazarlos antes de publicar.
+          </p>
+        }
+      </div>
+    }
+  }
+
+  <form class="proof-form__form" (submit)="$event.preventDefault(); submit()" novalidate>
+    <div class="proof-form__field">
+      <label for="proof-file">Captura del pago (JPG, PNG o WebP, máx. 5 MB)</label>
+      <input
+        #fileInput
+        id="proof-file"
+        type="file"
+        [accept]="accept"
+        [disabled]="uploading()"
+        [attr.aria-invalid]="fileError() ? 'true' : null"
+        [attr.aria-describedby]="fileError() ? 'proof-file-error' : null"
+        (change)="onFileSelected($event)"
+      />
+      @if (fileError(); as problem) {
+        <p id="proof-file-error" class="proof-form__error" role="alert">{{ problem }}</p>
+      }
+    </div>
+
+    @if (previewUrl(); as preview) {
+      <figure class="proof-form__preview">
+        <img [src]="preview" alt="Vista previa de la captura seleccionada" />
+        <figcaption>
+          {{ file()?.name }}
+          <button
+            type="button"
+            class="ui-btn ui-btn--ghost ui-btn--sm"
+            [disabled]="uploading()"
+            (click)="clearFile(fileInput)"
+          >
+            Quitar
+          </button>
+        </figcaption>
+      </figure>
+    }
+
+    <div class="proof-form__field">
+      <label for="proof-operation-code">Código de operación (opcional)</label>
+      <input
+        id="proof-operation-code"
+        class="ui-input"
+        type="text"
+        maxlength="20"
+        autocomplete="off"
+        [value]="operationCode()"
+        [disabled]="uploading()"
+        [attr.aria-invalid]="operationCodeError() ? 'true' : null"
+        [attr.aria-describedby]="operationCodeError() ? 'proof-code-error' : 'proof-code-hint'"
+        (input)="onCodeInput($any($event.target).value)"
+      />
+      <p id="proof-code-hint" class="proof-form__hint">
+        6 a 20 letras o números, tal como aparece en tu constancia.
+      </p>
+      @if (operationCodeError(); as problem) {
+        <p id="proof-code-error" class="proof-form__error" role="alert">{{ problem }}</p>
+      }
+    </div>
+
+    @if (errorMessage(); as message) {
+      <p class="proof-form__error" role="alert">{{ message }}</p>
+    }
+
+    <app-button type="submit" [loading]="uploading()" [disabled]="!canSubmit()">
+      {{ uploading() ? 'Subiendo…' : 'Enviar comprobante' }}
+    </app-button>
+    <p class="proof-form__hint">
+      Un administrador revisará tu comprobante. Tu pedido se creará recién cuando el pago sea
+      aprobado.
+    </p>
+  </form>
+</section>

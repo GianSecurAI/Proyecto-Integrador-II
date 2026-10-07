@@ -7,7 +7,9 @@ import { FormFieldComponent } from '../../../../shared/ui/form-field/form-field.
 import { AccountNavComponent } from '../../components/account-nav/account-nav.component';
 import { ProfileFieldRowComponent } from '../../components/profile-field-row/profile-field-row.component';
 import { EditableCustomerProfileFields } from '../../models/customer-profile.model';
-import { CustomerProfileMockService } from '../../services/customer-profile-mock.service';
+import { CustomerProfileService } from '../../services/customer-profile.service';
+import { applyFieldErrors } from '../../../../core/errors/form-errors';
+import { withRateLimit } from '../../../../core/models/api-error.model';
 
 /**
  * Local, page-only form model — the editable subset of `CustomerProfileViewModel`
@@ -17,22 +19,11 @@ import { CustomerProfileMockService } from '../../services/customer-profile-mock
 type ProfileFormValue = EditableCustomerProfileFields;
 
 /**
- * RF-04 ("Gestión de perfil de cliente", docs/discovery/06-system-definition.md line 53).
- * `docs/discovery/01-requirements-analysis.md` line 308 confirms RF-04's need is approved but its
- * Gherkin/editable-fields are undefined by that spec, and no `spec.md` exists for it yet — the
- * field set implemented here (email read-only, member-since read-only, firstName/lastName/phone
- * editable) is grounded instead in the two sources documented in `../../mocks/customer-profile.mock.ts`
- * (the real `Cliente` backend entity, and the Product Owner amendment in
- * `specs/001-customer-otp-auth/spec.md`). No Figma frame exists for this screen — confirmed absent
- * from the project Figma file and documented as a `DESIGN_ONLY` gap in
- * `docs/discovery/05-figma-analysis.md` — so this screen instead reuses the existing light-theme
- * design system (`app-card`, `app-form-field`, `app-button`, `_tokens.scss`) per Constitution
- * Principle XV, following the same visual conventions as `product-detail.page.ts`/`home.page.ts`
- * rather than the dark auth-terminal system (`features/auth/auth-shared.css`).
- *
- * This is a frontend-only preview: `CustomerProfileMockService` is an isolated in-memory mock, no
- * REST contract for reading/updating a profile is defined, and no password field exists here or
- * anywhere in this feature (Constitution Principle VI, NON-NEGOTIABLE).
+ * RF-04 ("Gestión de perfil de cliente"): the signed-in customer's profile, backed by
+ * `GET`/`PUT /api/customers/me`. Email and member-since are read-only (the email is the login
+ * identity); first name, last name and phone are editable. Client validation (phone shape) mirrors
+ * the backend DTO for UX only; a `400 VALIDATION_FAILED` from the server is shown on the matching
+ * field. No password field exists anywhere (Principle VI).
  */
 @Component({
   selector: 'app-profile-page',
@@ -49,11 +40,12 @@ type ProfileFormValue = EditableCustomerProfileFields;
   styleUrl: './profile.page.scss',
 })
 export class ProfilePage {
-  private readonly profileService = inject(CustomerProfileMockService);
+  private readonly profileService = inject(CustomerProfileService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly profile = this.profileService.profile;
   readonly loading = signal(true);
+  readonly loadFailed = signal(false);
   readonly editing = signal(false);
   readonly submitting = signal(false);
   readonly errorMessage = signal<string | null>(null);
@@ -66,8 +58,8 @@ export class ProfilePage {
   );
 
   readonly form = new FormGroup<{ [K in keyof ProfileFormValue]: FormControl<string> }>({
-    firstName: new FormControl('', { nonNullable: true }),
-    lastName: new FormControl('', { nonNullable: true }),
+    firstName: new FormControl('', { nonNullable: true, validators: [Validators.maxLength(80)] }),
+    lastName: new FormControl('', { nonNullable: true, validators: [Validators.maxLength(80)] }),
     // UX format check only — production validation belongs to a future real integration, same
     // loose shape already used by register.page.ts's optional phone field.
     phone: new FormControl('', {
@@ -90,7 +82,13 @@ export class ProfilePage {
     this.profileService
       .load()
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => this.loading.set(false));
+      .subscribe({
+        next: () => this.loading.set(false),
+        error: () => {
+          this.loading.set(false);
+          this.loadFailed.set(true);
+        },
+      });
   }
 
   startEditing(): void {
@@ -131,9 +129,16 @@ export class ProfilePage {
           this.form.reset();
           this.successMessage.set('Tus datos se actualizaron correctamente.');
         },
-        error: () => {
+        error: (err: unknown) => {
           this.submitting.set(false);
-          this.errorMessage.set('No pudimos guardar los cambios. Inténtalo de nuevo más tarde.');
+          // A 400 VALIDATION_FAILED is attached to the matching control (backend field names are
+          // the form control names); anything else is a generic message.
+          const unmatched = applyFieldErrors(this.form, err);
+          this.errorMessage.set(
+            unmatched.length > 0 || this.form.invalid
+              ? 'Revisa los datos ingresados e inténtalo de nuevo.'
+              : withRateLimit(err, 'No pudimos guardar los cambios. Inténtalo de nuevo más tarde.'),
+          );
         },
       });
   }

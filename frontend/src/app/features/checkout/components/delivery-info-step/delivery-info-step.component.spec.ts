@@ -62,9 +62,20 @@ describe('DeliveryInfoStepComponent', () => {
     expect(component.notesControl.value).toBe('Casa azul');
   });
 
-  it('documents the deterministic failure-preview trigger on screen', () => {
+  it('has no demo failure-preview trigger any more', () => {
     setup();
-    expect(fixture.nativeElement.textContent).toContain('__mock_fail__');
+    expect(fixture.nativeElement.textContent).not.toContain('__mock_fail__');
+  });
+
+  it('mirrors the backend max lengths (address 200, district 80, notes 300) as UX validation', () => {
+    setup();
+    component.addressControl.setValue('a'.repeat(201));
+    component.districtControl.setValue('d'.repeat(81));
+    component.notesControl.setValue('n'.repeat(301));
+    component.submit();
+    expect(component.addressControl.errors?.['maxlength']).toBeTruthy();
+    expect(component.districtControl.errors?.['maxlength']).toBeTruthy();
+    expect(component.notesControl.errors?.['maxlength']).toBeTruthy();
   });
 
   it('saves the current (possibly partial) value before emitting "back"', () => {

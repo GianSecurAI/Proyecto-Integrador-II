@@ -1,4 +1,6 @@
-import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import {
   ActivatedRoute,
   ActivatedRouteSnapshot,
@@ -8,194 +10,224 @@ import {
 } from '@angular/router';
 import { of } from 'rxjs';
 import { AdminOrderDetailPage } from './admin-order-detail.page';
-import { AdminOrdersMockService } from '../../services/admin-orders-mock.service';
 
-/** Lightweight `ActivatedRoute` fake — mirrors `order-detail.page.spec.ts`'s (account feature)
- * narrow-mocking convention. */
-function fakeActivatedRoute(
-  id: string,
-  queryParams: Record<string, string> = {},
-): Partial<ActivatedRoute> {
+/** Lightweight `ActivatedRoute` fake exposing only `paramMap` for `:id`. */
+function fakeActivatedRoute(id: string): Partial<ActivatedRoute> {
   const params: ParamMap = convertToParamMap({ id });
-  const query: ParamMap = convertToParamMap(queryParams);
+  return { paramMap: of(params), snapshot: { paramMap: params } as ActivatedRouteSnapshot };
+}
+
+/** Shape copied from backend `AdminOrderDetailDto` (AdminOrderController GET /{orderId}). */
+function detail(overrides: Record<string, unknown> = {}) {
   return {
-    paramMap: of(params),
-    queryParamMap: of(query),
-    snapshot: { paramMap: params, queryParamMap: query } as ActivatedRouteSnapshot,
+    id: 'PED-9001',
+    placedAt: '2026-06-01T10:00:00Z',
+    status: 'CONFIRMADO',
+    kind: 'ESTANDAR',
+    summary: '2 unidades: Llavero',
+    totalAmount: 25,
+    agreedAmount: null,
+    description: null,
+    items: [{ productId: 5, title: 'Llavero', unitPrice: 12.5, quantity: 2, lineTotal: 25 }],
+    delivery: { address: 'Av. 1', district: 'Lima', notes: null },
+    customerEmail: 'ana@example.com',
+    customerName: 'Ana',
+    customerPhone: '987654321',
+    registeredBy: null,
+    statusHistory: [
+      {
+        previousStatus: null,
+        newStatus: 'CONFIRMADO',
+        changedAt: '2026-06-01T10:00:00Z',
+        responsible: 'Sistema',
+        note: null,
+      },
+    ],
+    allowedNextStatuses: ['EN_PRODUCCION', 'CANCELADO'],
+    ...overrides,
   };
 }
 
-function configure(id: string, queryParams: Record<string, string> = {}) {
-  TestBed.configureTestingModule({
-    imports: [AdminOrderDetailPage],
-    providers: [
-      provideRouter([]),
-      { provide: ActivatedRoute, useValue: fakeActivatedRoute(id, queryParams) },
-    ],
-  });
-}
-
-describe('AdminOrderDetailPage', () => {
+describe('AdminOrderDetailPage (GET /api/admin/orders/{id}, PATCH .../status)', () => {
   let fixture: ComponentFixture<AdminOrderDetailPage>;
+  let component: AdminOrderDetailPage;
+  let http: HttpTestingController;
+  const url = '/api/admin/orders/PED-9001';
 
-  it('renders order id, status, timeline and customer info (name + phone present)', fakeAsync(() => {
-    configure('PED-3001');
-    fixture = TestBed.createComponent(AdminOrderDetailPage);
-    fixture.detectChanges();
-    tick(400);
-    fixture.detectChanges();
-
-    const text: string = fixture.nativeElement.textContent;
-    expect(text).toContain('PED-3001');
-    expect(text).toContain('Entregado');
-    expect(text).toContain('ana.rojas@example.com');
-    expect(text).toContain('Ana Rojas');
-    expect(text).toContain('+51 987 654 321');
-    expect(fixture.nativeElement.querySelector('app-order-status-timeline')).toBeTruthy();
-  }));
-
-  it('renders gracefully when the customer name/phone are absent — only the email shows', fakeAsync(() => {
-    configure('PED-3005');
-    fixture = TestBed.createComponent(AdminOrderDetailPage);
-    fixture.detectChanges();
-    tick(400);
-    fixture.detectChanges();
-
-    const text: string = fixture.nativeElement.textContent;
-    expect(text).toContain('diego.torres@example.com');
-    expect(fixture.nativeElement.querySelector('dt')).toBeTruthy();
-    // Only one customer <dt>/<dd> pair (the email) should exist for this order.
-    const terms: HTMLElement[] = Array.from(
-      fixture.nativeElement.querySelectorAll('.admin-order-detail-page__customer dt'),
-    );
-    expect(terms.length).toBe(1);
-  }));
-
-  it('renders the append-only status-history list', fakeAsync(() => {
-    configure('PED-3001');
-    fixture = TestBed.createComponent(AdminOrderDetailPage);
-    fixture.detectChanges();
-    tick(400);
-    fixture.detectChanges();
-
-    const entries = fixture.nativeElement.querySelectorAll(
-      '.admin-order-detail-page__timeline-entry',
-    );
-    expect(entries.length).toBe(5);
-  }));
-
-  it('offers only the allowed next statuses for an order starting at "pendiente"', fakeAsync(() => {
-    configure('PED-3003'); // seeded at 'pendiente'
-    fixture = TestBed.createComponent(AdminOrderDetailPage);
-    fixture.detectChanges();
-    tick(400);
-    fixture.detectChanges();
-
-    const options: HTMLOptionElement[] = Array.from(
-      fixture.nativeElement.querySelectorAll('select option'),
-    );
-    const values = options.map((o) => o.value).filter((v) => v !== '');
-    expect(values.sort()).toEqual(['cancelado', 'confirmado']);
-  }));
-
-  it('offers only the allowed next statuses for an order starting at "confirmado"', fakeAsync(() => {
-    configure('PED-3005'); // seeded at 'confirmado'
-    fixture = TestBed.createComponent(AdminOrderDetailPage);
-    fixture.detectChanges();
-    tick(400);
-    fixture.detectChanges();
-
-    const options: HTMLOptionElement[] = Array.from(
-      fixture.nativeElement.querySelectorAll('select option'),
-    );
-    const values = options.map((o) => o.value).filter((v) => v !== '');
-    expect(values.sort()).toEqual(['cancelado', 'en_produccion']);
-  }));
-
-  it('shows a terminal-state notice instead of a transition control for a terminal order', fakeAsync(() => {
-    configure('PED-3001'); // seeded at 'entregado' — terminal
-    fixture = TestBed.createComponent(AdminOrderDetailPage);
-    fixture.detectChanges();
-    tick(400);
-    fixture.detectChanges();
-
-    expect(fixture.nativeElement.querySelector('select')).toBeNull();
-    expect(fixture.nativeElement.textContent).toContain('estado final');
-  }));
-
-  it('calls transitionStatus with the chosen next status and an optional note (test double service)', () => {
-    const service: Partial<AdminOrdersMockService> & { transitionStatus: jasmine.Spy } = {
-      getOrderById: () =>
-        of({
-          id: 'PED-X',
-          placedAt: new Date('2026-01-01T00:00:00Z'),
-          status: 'pendiente',
-          kind: 'estandar',
-          summary: 'Pedido de prueba',
-          customerEmail: 'test@example.com',
-          statusHistory: [
-            {
-              previousStatus: null,
-              newStatus: 'pendiente',
-              changedAt: new Date('2026-01-01T00:00:00Z'),
-              responsible: 'Sistema',
-              note: null,
-            },
-          ],
-        }) as never,
-      transitionStatus: jasmine.createSpy('transitionStatus').and.returnValue(of({} as never)),
-    };
-
+  function create(id = 'PED-9001') {
     TestBed.configureTestingModule({
       imports: [AdminOrderDetailPage],
       providers: [
         provideRouter([]),
-        { provide: ActivatedRoute, useValue: fakeActivatedRoute('PED-X') },
-        { provide: AdminOrdersMockService, useValue: service },
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: ActivatedRoute, useValue: fakeActivatedRoute(id) },
       ],
     });
+    http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(AdminOrderDetailPage);
+    component = fixture.componentInstance;
     fixture.detectChanges();
+  }
+  afterEach(() => http.verify());
 
-    const component = fixture.componentInstance;
-    component.updateSelectedNextStatus('confirmado');
-    component.updateTransitionNote('Pago verificado manualmente');
+  function load(body: object = detail()) {
+    http.expectOne(url).flush(body);
     fixture.detectChanges();
-    component.submitTransition();
+  }
 
-    expect(service.transitionStatus).toHaveBeenCalledOnceWith(
-      'PED-X',
-      'confirmado',
-      'Pago verificado manualmente',
-    );
+  it('renders id, status, customer info, items, total and delivery from the server', () => {
+    create();
+    expect(fixture.nativeElement.querySelector('[role="status"]')).toBeTruthy();
+    load();
+    const text: string = fixture.nativeElement.textContent;
+    expect(text).toContain('PED-9001');
+    expect(text).toContain('Confirmado');
+    expect(text).toContain('ana@example.com');
+    expect(text).toContain('987654321');
+    expect(text).toContain('Llavero × 2');
+    expect(text).toContain('S/ 25.00');
+    expect(text).toContain('Av. 1, Lima');
+    expect(text).not.toContain('Vista de demostración');
   });
 
-  it('shows a not-found state for an unknown order id (real state, not simulated)', fakeAsync(() => {
-    configure('no-existe');
-    fixture = TestBed.createComponent(AdminOrderDetailPage);
-    fixture.detectChanges();
-    tick(400);
-    fixture.detectChanges();
+  it('renders gracefully when customer name/phone are null — only the email shows', () => {
+    create();
+    load(detail({ customerName: null, customerPhone: null }));
+    const text: string = fixture.nativeElement.textContent;
+    expect(text).toContain('ana@example.com');
+    expect(text).not.toContain('Nombre');
+  });
 
+  it('shows agreed amount, description and registrar for a personalized order', () => {
+    create();
+    load(
+      detail({
+        kind: 'PERSONALIZADO',
+        status: 'CONFIRMADO',
+        agreedAmount: 180,
+        totalAmount: 180,
+        description: 'Trofeo a medida',
+        items: [],
+        delivery: null,
+        registeredBy: 'asesor@armakers3d.com',
+        allowedNextStatuses: ['EN_PRODUCCION', 'CANCELADO'],
+      }),
+    );
+    const text: string = fixture.nativeElement.textContent;
+    expect(text).toContain('Pedido personalizado');
+    expect(text).toContain('monto acordado S/ 180.00');
+    expect(text).toContain('Trofeo a medida');
+    expect(text).toContain('Registrado por asesor@armakers3d.com');
+  });
+
+  it('offers EXACTLY the allowedNextStatuses sent by the server (no client-side lifecycle)', () => {
+    create();
+    load(detail({ status: 'ENVIADO', allowedNextStatuses: ['ENTREGADO'] }));
+    const options = Array.from(fixture.nativeElement.querySelectorAll('select option')) as HTMLOptionElement[];
+    const labels = options.filter((o) => o.value).map((o) => o.textContent?.trim());
+    expect(labels).toEqual(['Entregado']);
+  });
+
+  it('shows a terminal-state notice instead of a transition control when none is allowed', () => {
+    create();
+    load(detail({ status: 'ENTREGADO', allowedNextStatuses: [] }));
+    expect(fixture.nativeElement.querySelector('select')).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('estado final');
+  });
+
+  it('PATCHes the chosen status with the optional note and renders the returned order', () => {
+    create();
+    load();
+    component.updateSelectedNextStatus('EN_PRODUCCION');
+    component.updateTransitionNote(' Pago verificado ');
+    component.submitTransition();
+    const req = http.expectOne(`${url}/status`);
+    expect(req.request.method).toBe('PATCH');
+    expect(req.request.body).toEqual({ status: 'EN_PRODUCCION', note: 'Pago verificado' });
+    req.flush(
+      detail({
+        status: 'EN_PRODUCCION',
+        allowedNextStatuses: ['ENVIADO', 'CANCELADO'],
+        statusHistory: [
+          { previousStatus: null, newStatus: 'CONFIRMADO', changedAt: '2026-06-01T10:00:00Z', responsible: 'Sistema', note: null },
+          {
+            previousStatus: 'CONFIRMADO',
+            newStatus: 'EN_PRODUCCION',
+            changedAt: '2026-06-01T11:00:00Z',
+            responsible: 'asesor@armakers3d.com',
+            note: 'Pago verificado',
+          },
+        ],
+      }),
+    );
+    fixture.detectChanges();
+    expect(component.order()?.status).toBe('EN_PRODUCCION');
+    expect(component.transitionSuccess()).toContain('actualizó');
+    expect(fixture.nativeElement.textContent).toContain('Pago verificado');
+    expect(component.allowedNextStatuses()).toEqual(['ENVIADO', 'CANCELADO']);
+  });
+
+  it('omits the note when blank', () => {
+    create();
+    load();
+    component.updateSelectedNextStatus('CANCELADO');
+    component.submitTransition();
+    const req = http.expectOne(`${url}/status`);
+    expect(req.request.body).toEqual({ status: 'CANCELADO' });
+    req.flush(detail({ status: 'CANCELADO', allowedNextStatuses: [] }));
+  });
+
+  it('on 409 INVALID_STATUS_TRANSITION shows a message and reloads the current server state', () => {
+    create();
+    load();
+    component.updateSelectedNextStatus('EN_PRODUCCION');
+    component.submitTransition();
+    http
+      .expectOne(`${url}/status`)
+      .flush(
+        { code: 'INVALID_STATUS_TRANSITION', message: 'x', timestamp: 't' },
+        { status: 409, statusText: 'Conflict' },
+      );
+    expect(component.transitionError()).toContain('ya no es válido');
+    // The page re-fetches the order so the offered next statuses are current again.
+    http.expectOne(url).flush(detail({ status: 'CONFIRMADO', allowedNextStatuses: ['EN_PRODUCCION', 'CANCELADO'] }));
+    expect(component.allowedNextStatuses()).toEqual(['EN_PRODUCCION', 'CANCELADO']);
+  });
+
+  it('shows a generic error on a server failure and does not change the order', () => {
+    create();
+    load();
+    component.updateSelectedNextStatus('EN_PRODUCCION');
+    component.submitTransition();
+    http
+      .expectOne(`${url}/status`)
+      .flush({ code: 'INTERNAL_ERROR', message: 'x', timestamp: 't' }, { status: 500, statusText: 'x' });
+    expect(component.transitionError()).toContain('No pudimos actualizar');
+    expect(component.order()?.status).toBe('CONFIRMADO');
+  });
+
+  it('shows not-found on 404', () => {
+    create();
+    http
+      .expectOne(url)
+      .flush({ code: 'NOT_FOUND', message: 'x', timestamp: 't' }, { status: 404, statusText: 'Not Found' });
+    fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Pedido no encontrado');
-  }));
+  });
 
-  it('shows the error state with a working retry for ?mockState=error', fakeAsync(() => {
-    configure('PED-3001', { mockState: 'error' });
-    fixture = TestBed.createComponent(AdminOrderDetailPage);
+  it('shows an error state with a working retry on a server failure', () => {
+    create();
+    http
+      .expectOne(url)
+      .flush({ code: 'INTERNAL_ERROR', message: 'x', timestamp: 't' }, { status: 500, statusText: 'x' });
     fixture.detectChanges();
-    tick(400);
-    fixture.detectChanges();
-
     expect(fixture.nativeElement.querySelector('[role="alert"]')).toBeTruthy();
-
-    const retryButton = (
-      Array.from(fixture.nativeElement.querySelectorAll('button')) as HTMLButtonElement[]
-    ).find((b) => b.textContent?.includes('Reintentar'))!;
-    retryButton.click();
-    tick(400);
-    fixture.detectChanges();
-
-    expect(fixture.nativeElement.querySelector('[role="alert"]')).toBeTruthy();
-  }));
+    const retry = (Array.from(fixture.nativeElement.querySelectorAll('button')) as HTMLButtonElement[]).find(
+      (b) => b.textContent?.includes('Reintentar'),
+    )!;
+    retry.click();
+    load();
+    expect(fixture.nativeElement.textContent).toContain('PED-9001');
+  });
 });

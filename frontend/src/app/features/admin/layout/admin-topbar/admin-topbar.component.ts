@@ -1,3 +1,4 @@
+import { AuthService } from '../../../auth/services/auth.service';
 import { Component, computed, inject, input, output } from '@angular/core';
 import { Router } from '@angular/router';
 import { SessionStateService } from '../../../../core/services/session-state.service';
@@ -13,13 +14,10 @@ import { SessionStateService } from '../../../../core/services/session-state.ser
  * to identifying the admin *section* as a whole (distinguishing it from the public storefront
  * chrome it replaces), which is the "at minimum" bar this component needs to clear.
  *
- * User-menu/logout (staff-auth widening task): the `/admin` shell is now genuinely reachable via
- * the same OTP flow customers use (`features/auth/pages/verify-code/verify-code.page.ts` resolves
- * an ADMINISTRADOR/ASESOR role for known staff emails), so a static "Administrador" label would
- * misrepresent whoever is actually signed in — this now reads `SessionStateService.currentRole`/
- * `currentEmail` instead. `logout()` only clears the local, non-authoritative session flag
- * (Constitution Principle III — the frontend is never the source of truth); there is no real
- * backend session/logout endpoint yet, consistent with the rest of this preview build.
+ * The `/admin` shell is reached through the same email-OTP flow customers use; the server
+ * reports the role, and this topbar shows `SessionStateService.currentRole`/`currentEmail`.
+ * `logout()` calls `POST /api/auth/logout` (idempotent) and clears the local session mirror either
+ * way (Constitution Principle III — the frontend is never the source of truth).
  */
 @Component({
   selector: 'app-admin-topbar',
@@ -30,6 +28,7 @@ import { SessionStateService } from '../../../../core/services/session-state.ser
 export class AdminTopbarComponent {
   private readonly session = inject(SessionStateService);
   private readonly router = inject(Router);
+  private readonly auth = inject(AuthService);
 
   readonly sidebarOpen = input(false);
   readonly toggleSidebar = output<void>();
@@ -46,7 +45,7 @@ export class AdminTopbarComponent {
   });
 
   logout(): void {
-    this.session.clear();
-    void this.router.navigateByUrl('/');
+    // Revokes the server-side session (POST /api/auth/logout) and clears local state either way.
+    this.auth.logout().subscribe(() => void this.router.navigateByUrl('/'));
   }
 }
