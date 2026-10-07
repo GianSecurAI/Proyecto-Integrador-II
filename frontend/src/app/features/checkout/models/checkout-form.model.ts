@@ -1,10 +1,10 @@
 /**
  * Local, checkout-only FORM models — deliberately NOT wire/ViewModel types. The wire request is
- * built from them (plus the cart) by `buildPlaceOrderRequest`
- * (`../services/standard-orders.service.ts`); the backend re-validates every field
- * (`PlaceOrderRequestDto`), so these checks are UX only.
+ * built from them (plus the cart) by `buildCheckoutRequest`
+ * (`../services/checkout.service.ts`); the backend re-validates every field
+ * (the checkout request DTO), so these checks are UX only.
  *
- * No card data of any kind is ever collected (there is no payment step, PD-ORD-01).
+ * No card or wallet data of any kind is ever collected (payment is a Yape/Plin screenshot, ADR-005).
  */
 
 /** Contact for delivery questions (`contact.fullName`, `contact.phone`). The customer's EMAIL is

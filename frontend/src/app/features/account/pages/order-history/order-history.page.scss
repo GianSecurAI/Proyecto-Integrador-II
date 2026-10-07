@@ -102,3 +102,10 @@ h1 {
   margin: 0;
   font-weight: 700;
 }
+
+.order-history-page__pending {
+  margin: 0 0 var(--ar-space-4);
+  padding: var(--ar-space-3);
+  border: 1px solid #1d4ed8;
+  background: #eff6ff;
+}

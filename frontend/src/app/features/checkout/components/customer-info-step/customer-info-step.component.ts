@@ -8,7 +8,7 @@ import { CheckoutStateService } from '../../state/checkout-state.service';
 
 /**
  * Checkout step 2 of 4 — contact information (`contact.fullName`, `contact.phone` of the order
- * request). Validation is UX-only and mirrors `PlaceOrderRequestDto` (the backend re-validates).
+ * request). Validation is UX-only and mirrors `the checkout request DTO` (the backend re-validates).
  *
  * The checkout now requires a signed-in CLIENTE (`/checkout` is behind `authGuard`; the backend
  * rejects anonymous order creation), so the customer's EMAIL is the account email reported by the

@@ -1,0 +1,37 @@
+<section class="checkout-summary" aria-labelledby="checkout-summary-title">
+  <h2 id="checkout-summary-title" class="visually-hidden">Resumen del pago</h2>
+  <dl class="checkout-summary__facts">
+    <div>
+      <dt>Referencia</dt>
+      <dd><strong class="checkout-summary__reference">{{ checkout().paymentInstructions.reference }}</strong></dd>
+    </div>
+    <div>
+      <dt>Monto a pagar</dt>
+      <dd><strong>S/ {{ checkout().totalAmount.toFixed(2) }}</strong></dd>
+    </div>
+    <div>
+      <dt>Estado</dt>
+      <dd><app-status-badge [label]="badge().label" [tone]="badge().tone" /></dd>
+    </div>
+  </dl>
+
+  <table class="checkout-summary__items">
+    <caption class="visually-hidden">Productos del pago</caption>
+    <thead>
+      <tr>
+        <th scope="col">Producto</th>
+        <th scope="col">Cant.</th>
+        <th scope="col">Subtotal</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (item of checkout().items; track item.productId) {
+        <tr>
+          <td>{{ item.title }}</td>
+          <td>{{ item.quantity }}</td>
+          <td>S/ {{ item.lineTotal.toFixed(2) }}</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</section>

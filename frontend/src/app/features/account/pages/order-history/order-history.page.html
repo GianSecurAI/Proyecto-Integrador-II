@@ -3,6 +3,13 @@
     <h1>Tus pedidos</h1>
     <app-account-nav />
 
+    @if (pendingCheckoutId(); as checkoutId) {
+      <p class="order-history-page__pending" role="status" data-testid="pending-payment-banner">
+        Tienes un pago pendiente de completar o verificar.
+        <a routerLink="/checkout/confirmacion" [queryParams]="{ checkoutId }">Ver estado del pago</a>
+      </p>
+    }
+
     @switch (status()) {
       @case ('loading') {
         <app-loading-state message="Cargando tus pedidos…" />

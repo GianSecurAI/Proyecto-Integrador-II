@@ -2,7 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { Observable, Subject, of, throwError } from 'rxjs';
-import { OrderDetailViewModel } from '../../../account/models/order.model';
+import { CheckoutDto, CreateCheckoutRequest } from '../../models/checkout.model';
 import { CartItem } from '../../../cart/models/cart-item.model';
 import { CartStateService } from '../../../cart/services/cart-state.service';
 import {
@@ -11,7 +11,7 @@ import {
 } from '../../../cart/services/cart-storage.adapter';
 import { CatalogProduct } from '../../../../shared/models/catalog-product.model';
 import { SessionStateService } from '../../../../core/services/session-state.service';
-import { PlaceOrderRequest, StandardOrdersService } from '../../services/standard-orders.service';
+import { CheckoutService } from '../../services/checkout.service';
 import { CheckoutStateService } from '../../state/checkout-state.service';
 import { OrderReviewStepComponent } from './order-review-step.component';
 
@@ -39,16 +39,20 @@ class FakeCartStorageAdapter implements CartStorageAdapter {
   }
 }
 
-const CREATED_ORDER: OrderDetailViewModel = {
-  id: 'PED-20261006-0001',
-  placedAt: new Date('2026-09-07T00:00:00Z'),
-  status: 'CONFIRMADO',
-  kind: 'ESTANDAR',
-  summary: '1 unidad: Llavero A',
+const CREATED: CheckoutDto = {
+  checkoutId: '3f2b8c1e-0000-4000-8000-000000000001',
+  status: 'AWAITING_PAYMENT_PROOF',
+  orderId: null,
   totalAmount: 19.9,
+  currency: 'PEN',
+  createdAt: '2026-10-07T17:00:00Z',
+  expiresAt: '2026-10-08T17:00:00Z',
   items: [{ productId: 1, title: 'Llavero A', unitPrice: 19.9, quantity: 1, lineTotal: 19.9 }],
-  delivery: { address: 'Av. Los Álamos 123', district: 'Miraflores', notes: null },
-  statusHistory: [],
+  paymentInstructions: { methods: ['YAPE', 'PLIN'], amount: 19.9, currency: 'PEN', reference: 'AM3D-3F2B8C1E' },
+  proofStatus: 'NONE',
+  rejectionReason: null,
+  attemptsRemaining: 5,
+  attempts: [],
 };
 
 function apiError(status: number, code: string, fieldErrors?: { field: string; message: string }[]) {
@@ -58,20 +62,20 @@ function apiError(status: number, code: string, fieldErrors?: { field: string; m
   });
 }
 
-describe('OrderReviewStepComponent (POST /api/orders)', () => {
+describe('OrderReviewStepComponent (POST /api/checkout)', () => {
   let fixture: ComponentFixture<OrderReviewStepComponent>;
   let component: OrderReviewStepComponent;
   let cart: CartStateService;
   let checkoutState: CheckoutStateService;
   let router: Router;
 
-  function setup(place: (request: PlaceOrderRequest, key: string) => Observable<OrderDetailViewModel>) {
+  function setup(create: (request: CreateCheckoutRequest, key: string) => Observable<CheckoutDto>) {
     TestBed.configureTestingModule({
       imports: [OrderReviewStepComponent],
       providers: [
         provideRouter([]),
         { provide: CART_STORAGE_ADAPTER, useValue: new FakeCartStorageAdapter() },
-        { provide: StandardOrdersService, useValue: { place } },
+        { provide: CheckoutService, useValue: { create } },
       ],
     });
     TestBed.inject(SessionStateService).markAuthenticated('CLIENTE', 'ana@example.com', 3);
@@ -86,8 +90,8 @@ describe('OrderReviewStepComponent (POST /api/orders)', () => {
     fixture.detectChanges();
   }
 
-  it('reflects cart contents, the account email and the typed info, with no payment claim', () => {
-    setup(() => of(CREATED_ORDER));
+  it('reflects cart contents, the account email and the typed info, with no payment-done claim', () => {
+    setup(() => of(CREATED));
     const text: string = fixture.nativeElement.textContent;
     expect(text).toContain('Llavero A');
     expect(text).toContain('Ana Torres');
@@ -97,16 +101,16 @@ describe('OrderReviewStepComponent (POST /api/orders)', () => {
     expect(text).toContain('Total estimado');
   });
 
-  it('sends only productId/quantity + delivery + contact with an Idempotency-Key, then clears the cart and navigates', fakeAsync(() => {
-    const spy = jasmine.createSpy('place').and.returnValue(of(CREATED_ORDER));
+  it('sends only productId/quantity + delivery + contact with an Idempotency-Key, KEEPS the cart and goes to the payment page', fakeAsync(() => {
+    const spy = jasmine.createSpy('create').and.returnValue(of(CREATED));
     setup(spy);
-    const navigateSpy = spyOn(router, 'navigateByUrl');
+    const navigateSpy = spyOn(router, 'navigate');
 
     component.submit();
     tick();
 
     expect(spy).toHaveBeenCalledTimes(1);
-    const [request, key] = spy.calls.mostRecent().args as [PlaceOrderRequest, string];
+    const [request, key] = spy.calls.mostRecent().args as [CreateCheckoutRequest, string];
     expect(request).toEqual({
       items: [{ productId: 1, quantity: 1 }],
       delivery: { address: 'Av. Los Álamos 123', district: 'Miraflores' },
@@ -114,20 +118,23 @@ describe('OrderReviewStepComponent (POST /api/orders)', () => {
     });
     expect(JSON.stringify(request)).not.toContain('19.9');
     expect(key).toMatch(/^[0-9a-f-]{36}$/);
-    expect(cart.isEmpty()).toBe(true);
-    expect(checkoutState.placedOrder()).toBe(CREATED_ORDER);
+    // The cart is cleared only when the checkout is PAID (status page), never at creation.
+    expect(cart.isEmpty()).toBe(false);
+    expect(checkoutState.pendingCheckoutId()).toBe(CREATED.checkoutId);
     expect(checkoutState.customerInfo()).toBeNull();
-    expect(navigateSpy).toHaveBeenCalledWith('/checkout/confirmacion');
+    expect(navigateSpy).toHaveBeenCalledWith(['/checkout/confirmacion'], {
+      queryParams: { checkoutId: CREATED.checkoutId },
+    });
   }));
 
   it('keeps the cart until the backend confirms: nothing is cleared while the request is in flight', () => {
-    const pending = new Subject<OrderDetailViewModel>();
+    const pending = new Subject<CheckoutDto>();
     setup(() => pending);
-    spyOn(router, 'navigateByUrl');
+    spyOn(router, 'navigate');
     component.submit();
     expect(component.submitting()).toBeTrue();
     expect(cart.isEmpty()).toBe(false);
-    expect(checkoutState.placedOrder()).toBeNull();
+    expect(checkoutState.pendingCheckoutId()).toBeNull();
   });
 
   it('on a generic failure shows an error, keeps the cart and reuses the SAME key on retry', fakeAsync(() => {
@@ -136,9 +143,9 @@ describe('OrderReviewStepComponent (POST /api/orders)', () => {
     setup((_request, key) => {
       keys.push(key);
       call++;
-      return call === 1 ? throwError(() => apiError(500, 'INTERNAL_ERROR')) : of(CREATED_ORDER);
+      return call === 1 ? throwError(() => apiError(500, 'INTERNAL_ERROR')) : of(CREATED);
     });
-    spyOn(router, 'navigateByUrl');
+    spyOn(router, 'navigate');
 
     component.submit();
     tick();
@@ -188,14 +195,22 @@ describe('OrderReviewStepComponent (POST /api/orders)', () => {
     setup((_request, key) => {
       keys.push(key);
       call++;
-      return call === 1 ? throwError(() => apiError(409, 'IDEMPOTENCY_KEY_REUSED')) : of(CREATED_ORDER);
+      return call === 1 ? throwError(() => apiError(409, 'IDEMPOTENCY_KEY_REUSED')) : of(CREATED);
     });
-    spyOn(router, 'navigateByUrl');
+    spyOn(router, 'navigate');
     component.submit();
     tick();
     component.submit();
     tick();
     expect(keys[1]).not.toBe(keys[0]);
+  }));
+
+  it('409 CONFLICT (too many open checkouts) tells the customer to finish or cancel one', fakeAsync(() => {
+    setup(() => throwError(() => apiError(409, 'CONFLICT')));
+    component.submit();
+    tick();
+    expect(component.errorMessage()).toContain('pagos pendientes');
+    expect(cart.isEmpty()).toBe(false);
   }));
 
   it('429 asks the customer to wait', fakeAsync(() => {
@@ -206,9 +221,9 @@ describe('OrderReviewStepComponent (POST /api/orders)', () => {
   }));
 
   it('double-clicking submit results in only one call while a request is in flight', fakeAsync(() => {
-    const spy = jasmine.createSpy('place').and.returnValue(of(CREATED_ORDER));
+    const spy = jasmine.createSpy('create').and.returnValue(of(CREATED));
     setup(spy);
-    spyOn(router, 'navigateByUrl');
+    spyOn(router, 'navigate');
     component.submit();
     component.submit();
     tick();
@@ -216,7 +231,7 @@ describe('OrderReviewStepComponent (POST /api/orders)', () => {
   }));
 
   it('does not submit while the cart has lines the server no longer lists', () => {
-    const spy = jasmine.createSpy('place').and.returnValue(of(CREATED_ORDER));
+    const spy = jasmine.createSpy('create').and.returnValue(of(CREATED));
     setup(spy);
     cart['unavailableState'].set(new Set([1])); // as flagged by a previous revalidate()
     component.submit();

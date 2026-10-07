@@ -1,0 +1,34 @@
+:host {
+  display: block;
+}
+
+.checkout-attempts {
+  text-align: left;
+}
+
+.checkout-attempts__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--ar-space-3);
+}
+
+.checkout-attempts__item {
+  display: grid;
+  gap: var(--ar-space-2);
+  padding: var(--ar-space-3);
+  border: 1px solid var(--ar-color-border, #ddd);
+}
+
+.checkout-attempts__row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--ar-space-2);
+}
+
+.checkout-attempts__reason {
+  margin: 0;
+  color: #b91c1c;
+}

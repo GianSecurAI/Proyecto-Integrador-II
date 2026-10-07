@@ -98,3 +98,49 @@ const INCIDENT_PRIORITY_META: Record<IncidentPriority, Described> = {
 export function describeIncidentPriority(priority: IncidentPriority): Described {
   return INCIDENT_PRIORITY_META[priority] ?? { label: priority, tone: 'neutral' };
 }
+
+// ---- Checkout / manual payment (backend `CheckoutStatus`, `PaymentMethod`, proof decision; ADR-005) ----
+export type CheckoutStatus =
+  | 'AWAITING_PAYMENT_PROOF'
+  | 'PROOF_SUBMITTED'
+  | 'PAID'
+  | 'PROOF_REJECTED'
+  | 'EXPIRED'
+  | 'CANCELLED';
+export const CHECKOUT_STATUSES: readonly CheckoutStatus[] = [
+  'AWAITING_PAYMENT_PROOF',
+  'PROOF_SUBMITTED',
+  'PAID',
+  'PROOF_REJECTED',
+  'EXPIRED',
+  'CANCELLED',
+];
+const CHECKOUT_STATUS_META: Record<CheckoutStatus, Described> = {
+  AWAITING_PAYMENT_PROOF: { label: 'Esperando comprobante', tone: 'neutral' },
+  PROOF_SUBMITTED: { label: 'En verificación', tone: 'info' },
+  PAID: { label: 'Pagado', tone: 'success' },
+  PROOF_REJECTED: { label: 'Comprobante rechazado', tone: 'danger' },
+  EXPIRED: { label: 'Expirado', tone: 'neutral' },
+  CANCELLED: { label: 'Cancelado', tone: 'danger' },
+};
+export function describeCheckoutStatus(status: CheckoutStatus): Described {
+  return CHECKOUT_STATUS_META[status] ?? { label: status, tone: 'neutral' };
+}
+
+export type PaymentMethod = 'YAPE' | 'PLIN';
+export const PAYMENT_METHODS: readonly PaymentMethod[] = ['YAPE', 'PLIN'];
+const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = { YAPE: 'Yape', PLIN: 'Plin' };
+export function paymentMethodLabel(method: PaymentMethod): string {
+  return PAYMENT_METHOD_LABELS[method] ?? method;
+}
+
+/** Decision on one proof attempt (customer `status` / admin `decision`). */
+export type ProofDecision = 'PENDING' | 'APPROVED' | 'REJECTED';
+const PROOF_DECISION_META: Record<ProofDecision, Described> = {
+  PENDING: { label: 'Pendiente', tone: 'info' },
+  APPROVED: { label: 'Aprobado', tone: 'success' },
+  REJECTED: { label: 'Rechazado', tone: 'danger' },
+};
+export function describeProofDecision(decision: ProofDecision): Described {
+  return PROOF_DECISION_META[decision] ?? { label: decision, tone: 'neutral' };
+}

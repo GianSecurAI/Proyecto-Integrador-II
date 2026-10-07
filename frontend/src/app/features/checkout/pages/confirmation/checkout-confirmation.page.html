@@ -1,65 +1,164 @@
 <main class="checkout-confirmation-page">
   <div class="checkout-confirmation-page__container">
-    @if (placedOrder(); as order) {
-      <app-card role="status">
-        <h1>¡Pedido registrado!</h1>
-        <p class="checkout-confirmation-page__id">Número de pedido: <strong>{{ order.id }}</strong></p>
-        <p class="checkout-confirmation-page__date">Realizado el {{ formatDate(order.placedAt) }}</p>
-
-        @if (badge(); as badge) {
-          <app-status-badge [label]="badge.label" [tone]="badge.tone" />
-        }
-
-        <p class="checkout-confirmation-page__message">
-          Tu pedido fue registrado correctamente y quedó con estado
-          <strong>{{ badge()?.label }}</strong>. Aún no se ha procesado ningún pago — nuestro equipo
-          revisará y confirmará tu pedido, y te avisaremos por correo cuando cambie de estado.
-        </p>
-
-        <p class="checkout-confirmation-page__summary">{{ order.summary }}</p>
-
-        <table class="checkout-confirmation-page__items">
-          <caption class="visually-hidden">Productos de tu pedido</caption>
-          <thead>
-            <tr>
-              <th scope="col">Producto</th>
-              <th scope="col">Cant.</th>
-              <th scope="col">Subtotal</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (item of order.items; track item.productId) {
-              <tr>
-                <td>{{ item.title }}</td>
-                <td>{{ item.quantity }}</td>
-                <td>S/ {{ item.lineTotal.toFixed(2) }}</td>
-              </tr>
+    @switch (loadState()) {
+      @case ('loading') {
+        <app-loading-state message="Cargando tu pago…" />
+      }
+      @case ('missing') {
+        <app-card>
+          <h1>Falta el pago a consultar</h1>
+          <p>No indicaste qué pago quieres ver. Revisa tus pedidos o vuelve al catálogo.</p>
+          <div class="checkout-confirmation-page__actions">
+            <a class="ui-btn ui-btn--primary ui-btn--md" routerLink="/account/orders">Mis pedidos</a>
+            <a class="ui-btn ui-btn--ghost ui-btn--md" routerLink="/catalog">Ir al catálogo</a>
+          </div>
+        </app-card>
+      }
+      @case ('not-found') {
+        <app-card>
+          <h1>No encontramos este pago</h1>
+          <p>El enlace no corresponde a un pago de tu cuenta.</p>
+          <div class="checkout-confirmation-page__actions">
+            <a class="ui-btn ui-btn--primary ui-btn--md" routerLink="/account/orders">Mis pedidos</a>
+            <a class="ui-btn ui-btn--ghost ui-btn--md" routerLink="/catalog">Ir al catálogo</a>
+          </div>
+        </app-card>
+      }
+      @case ('error') {
+        <app-error-state
+          title="No se pudo cargar tu pago"
+          description="Ocurrió un problema al conectar con el servidor. Inténtalo de nuevo."
+        >
+          <app-button errorStateAction variant="secondary" (clicked)="retry()">Reintentar</app-button>
+        </app-error-state>
+      }
+      @default {
+        @if (checkout(); as c) {
+          <app-card>
+            @switch (c.status) {
+              @case ('AWAITING_PAYMENT_PROOF') {
+                <h1>Realiza tu pago</h1>
+                <p>
+                  Tu compra aún no está confirmada: paga con Yape o Plin y sube la captura.
+                  @if (c.expiresAt) {
+                    Tienes hasta el <strong>{{ formatDate(c.expiresAt) }}</strong> para enviar tu
+                    comprobante.
+                  }
+                </p>
+              }
+              @case ('PROOF_SUBMITTED') {
+                <h1>Comprobante en verificación</h1>
+                <p role="status">
+                  Recibimos tu comprobante. Un administrador lo está verificando; te avisaremos por
+                  correo y esta página se actualiza sola cada 30 segundos.
+                </p>
+              }
+              @case ('PROOF_REJECTED') {
+                <h1>Comprobante rechazado</h1>
+                <div class="checkout-confirmation-page__alert" role="alert">
+                  <p>
+                    Motivo: <strong>{{ c.rejectionReason }}</strong>
+                  </p>
+                  <p>
+                    @if (c.attemptsRemaining > 0) {
+                      Puedes enviar otro comprobante. Intentos restantes:
+                      <strong>{{ c.attemptsRemaining }}</strong>.
+                    } @else {
+                      Ya usaste todos tus intentos. Cancela este pago e inicia una compra nueva.
+                    }
+                  </p>
+                </div>
+              }
+              @case ('PAID') {
+                <h1>¡Pago confirmado!</h1>
+                <p role="status">
+                  Verificamos tu pago y tu pedido quedó registrado.
+                  @if (c.orderId) {
+                    Número de pedido: <strong>{{ c.orderId }}</strong>.
+                  }
+                </p>
+              }
+              @case ('EXPIRED') {
+                <h1>El pago expiró</h1>
+                <p role="status">
+                  No recibimos un comprobante dentro del plazo, así que este pago se cerró. No se
+                  creó ningún pedido ni se te cobró por este intento.
+                </p>
+              }
+              @case ('CANCELLED') {
+                <h1>Pago cancelado</h1>
+                <p role="status">Cancelaste este pago. No se creó ningún pedido.</p>
+              }
             }
-          </tbody>
-        </table>
-        <p class="checkout-confirmation-page__total">
-          Total: <strong>S/ {{ order.totalAmount.toFixed(2) }}</strong>
-        </p>
-        @if (order.delivery; as delivery) {
-          <p class="checkout-confirmation-page__delivery">
-            Entrega en {{ delivery.address }}, {{ delivery.district }}
-          </p>
-        }
 
-        <div class="checkout-confirmation-page__actions">
-          <a
-            class="ui-btn ui-btn--primary ui-btn--md"
-            [routerLink]="['/track-order']"
-            [queryParams]="{ orderId: order.id }"
-          >
-            Rastrear mi pedido
-          </a>
-          <a class="ui-btn ui-btn--secondary ui-btn--md" [routerLink]="['/account/orders', order.id]">
-            Ver mi pedido
-          </a>
-          <a class="ui-btn ui-btn--ghost ui-btn--md" routerLink="/catalog">Seguir comprando</a>
-        </div>
-      </app-card>
+            <app-checkout-summary [checkout]="c" />
+
+            @if (actionError(); as message) {
+              <p class="checkout-confirmation-page__error" role="alert">{{ message }}</p>
+            }
+
+            @if (c.status === 'PROOF_SUBMITTED') {
+              <div class="checkout-confirmation-page__actions">
+                <app-button variant="secondary" [loading]="refreshing()" (clicked)="refresh()">
+                  Actualizar estado
+                </app-button>
+              </div>
+            }
+
+            @if (c.status === 'PAID' && c.orderId) {
+              <div class="checkout-confirmation-page__actions">
+                <a
+                  class="ui-btn ui-btn--primary ui-btn--md"
+                  routerLink="/track-order"
+                  [queryParams]="{ orderId: c.orderId }"
+                >
+                  Rastrear mi pedido
+                </a>
+                <a class="ui-btn ui-btn--secondary ui-btn--md" [routerLink]="['/account/orders', c.orderId]">
+                  Ver mi pedido
+                </a>
+                <a class="ui-btn ui-btn--ghost ui-btn--md" routerLink="/catalog">Seguir comprando</a>
+              </div>
+            }
+
+            @if (c.status === 'EXPIRED' || c.status === 'CANCELLED') {
+              <div class="checkout-confirmation-page__actions">
+                <a class="ui-btn ui-btn--primary ui-btn--md" routerLink="/cart">Iniciar una compra nueva</a>
+                <a class="ui-btn ui-btn--ghost ui-btn--md" routerLink="/catalog">Ir al catálogo</a>
+              </div>
+            }
+          </app-card>
+
+          @if (canUpload()) {
+            <app-card>
+              <app-payment-proof-form [checkout]="c" (uploaded)="onUploaded($event)" (stale)="onStale()" />
+            </app-card>
+          }
+
+          <app-checkout-attempts [checkoutId]="c.checkoutId" [attempts]="c.attempts" />
+
+          @if (canCancel()) {
+            <section class="checkout-confirmation-page__cancel" aria-label="Cancelar el pago">
+              @if (confirmingCancel()) {
+                <p role="alert">
+                  ¿Seguro que quieres cancelar este pago? Si ya pagaste, no canceles: espera la
+                  verificación.
+                </p>
+                <div class="checkout-confirmation-page__actions">
+                  <app-button variant="danger" [loading]="cancelling()" (clicked)="confirmCancel()">
+                    Sí, cancelar el pago
+                  </app-button>
+                  <app-button variant="ghost" [disabled]="cancelling()" (clicked)="keepCheckout()">
+                    No, mantenerlo
+                  </app-button>
+                </div>
+              } @else {
+                <app-button variant="ghost" (clicked)="askCancel()">Cancelar este pago</app-button>
+              }
+            </section>
+          }
+        }
+      }
     }
   </div>
 </main>

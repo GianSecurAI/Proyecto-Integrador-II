@@ -1,0 +1,45 @@
+:host {
+  display: block;
+}
+
+.checkout-summary {
+  display: grid;
+  gap: var(--ar-space-4);
+  text-align: left;
+}
+
+.checkout-summary__facts {
+  margin: 0;
+  display: grid;
+  gap: var(--ar-space-2);
+
+  div {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--ar-space-3);
+  }
+
+  dt {
+    color: var(--ar-color-muted-on-light);
+  }
+
+  dd {
+    margin: 0;
+  }
+}
+
+.checkout-summary__reference {
+  font-family: monospace;
+}
+
+.checkout-summary__items {
+  width: 100%;
+  border-collapse: collapse;
+
+  th,
+  td {
+    padding: var(--ar-space-2);
+    text-align: left;
+    border-bottom: 1px solid var(--ar-color-border, #ddd);
+  }
+}

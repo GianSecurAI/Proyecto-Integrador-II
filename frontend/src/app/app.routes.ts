@@ -2,7 +2,6 @@ import { Routes } from '@angular/router';
 import { ADMIN_ONLY_ROLES, CUSTOMER_ROLES, STAFF_ROLES } from './core/auth/roles';
 import { authGuard } from './core/guards/auth.guard';
 import { checkoutCartNotEmptyGuard } from './features/checkout/guards/checkout-cart-not-empty.guard';
-import { checkoutConfirmationGuard } from './features/checkout/guards/checkout-confirmation.guard';
 
 export const routes: Routes = [
   {
@@ -36,11 +35,12 @@ export const routes: Routes = [
   },
   {
     // Standard-catalog self-service checkout (CLAUDE.md's "Business clarification: purchasing
-    // flows", steps 3-5 — the payment-gateway step is not implemented, PD-ORD-01). Requires a
+    // flows", steps 3-5; payment is a manual Yape/Plin proof verified by an administrator,
+    // ADR-005). Requires a
     // signed-in CLIENTE (see below) and a non-empty cart (`checkoutCartNotEmptyGuard`, redirects
     // to `/cart`).
     path: 'checkout',
-    // The backend only accepts `POST /api/orders` from a signed-in CLIENTE, so the route requires
+    // The backend only accepts `POST /api/checkout` from a signed-in CLIENTE, so the route requires
     // that session (a guest is sent to the OTP login and returned here, cart intact). UX guard
     // only — the API re-authorizes the request.
     canActivate: [authGuard, checkoutCartNotEmptyGuard],
@@ -50,16 +50,18 @@ export const routes: Routes = [
     title: 'Checkout — Ar Makers 3D',
   },
   {
-    // Reachable only right after the backend confirmed an order
-    // (`checkoutConfirmationGuard`, redirects to `/cart` otherwise) — see
-    // `features/checkout/pages/confirmation/checkout-confirmation.page.ts`'s doc comment.
+    // Payment + status page of one checkout (ADR-005, FE-04): QR, proof upload, "en
+    // verificación", PAID with the order link. Needs the signed-in CLIENTE (UX only — the API
+    // answers 404 for a checkout that is not the caller's); `?checkoutId=` is also the link in
+    // the proof-rejected email, and `authGuard` keeps it as `returnUrl` through the OTP login.
     path: 'checkout/confirmacion',
-    canActivate: [checkoutConfirmationGuard],
+    canActivate: [authGuard],
+    data: { role: CUSTOMER_ROLES },
     loadComponent: () =>
       import('./features/checkout/pages/confirmation/checkout-confirmation.page').then(
         (m) => m.CheckoutConfirmationPage,
       ),
-    title: 'Pedido registrado — Ar Makers 3D',
+    title: 'Pago de tu pedido — Ar Makers 3D',
   },
   {
     path: 'auth',
@@ -273,6 +275,28 @@ export const routes: Routes = [
             (m) => m.AdminUserListPage,
           ),
         title: 'Usuarios — Administración — Ar Makers 3D',
+      },
+      {
+        // FE-11 (ADR-005): manual Yape/Plin payment verification queue — Administrador-ONLY
+        // (ASESOR gets 403 from the API and no menu entry). UX guard only.
+        path: 'payments',
+        canActivate: [authGuard],
+        data: { role: ADMIN_ONLY_ROLES },
+        loadComponent: () =>
+          import('./features/admin/pages/payment-list/admin-payment-list.page').then(
+            (m) => m.AdminPaymentListPage,
+          ),
+        title: 'Pagos por verificar — Administración — Ar Makers 3D',
+      },
+      {
+        path: 'payments/:id',
+        canActivate: [authGuard],
+        data: { role: ADMIN_ONLY_ROLES },
+        loadComponent: () =>
+          import('./features/admin/pages/payment-detail/admin-payment-detail.page').then(
+            (m) => m.AdminPaymentDetailPage,
+          ),
+        title: 'Verificar pago — Administración — Ar Makers 3D',
       },
       {
         // Administrador-ONLY, same as 'users' above.

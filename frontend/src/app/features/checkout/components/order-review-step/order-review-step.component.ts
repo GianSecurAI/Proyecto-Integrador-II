@@ -6,10 +6,7 @@ import { apiErrorCode, httpStatus, toApiError, rateLimitMessage } from '../../..
 import { ButtonComponent } from '../../../../shared/ui/button/button.component';
 import { CartStateService } from '../../../cart/services/cart-state.service';
 import { CheckoutStateService } from '../../state/checkout-state.service';
-import {
-  StandardOrdersService,
-  buildPlaceOrderRequest,
-} from '../../services/standard-orders.service';
+import { CheckoutService, buildCheckoutRequest } from '../../services/checkout.service';
 
 /** Spanish labels for the backend field paths that can appear in `fieldErrors`. */
 const FIELD_LABELS: Record<string, string> = {
@@ -29,21 +26,21 @@ function labelFor(field: string): string {
 }
 
 /**
- * Checkout step 4 of 4 — final review and submission through `POST /api/orders` (RF-09/RF-10 flow
- * of CLAUDE.md's standard purchasing path).
+ * Checkout step 4 of 4 — final review and creation of the checkout through `POST /api/checkout`
+ * (ADR-005, FE-04). On success the customer continues to the payment page
+ * (`/checkout/confirmacion?checkoutId=`) where they pay by Yape/Plin and upload the proof; the
+ * ORDER only exists after an administrator approves it.
  *
  * - The request is built ONLY from `{ productId, quantity }` + delivery + contact
- *   (`buildPlaceOrderRequest`); prices/totals/status are never sent. The amounts shown here are
- *   informational estimates; the confirmation page shows the server-computed total.
- * - NO PAYMENT STEP exists in the backend yet (PD-ORD-01): the order is created `CONFIRMADO` and
- *   the copy never claims a payment was processed.
+ *   (`buildCheckoutRequest`); prices/totals/status are never sent. The amounts shown here are
+ *   informational estimates; the payment page shows the server-computed total.
  * - An `Idempotency-Key` UUID is generated per attempt (`CheckoutStateService.idempotencyKeyFor`):
- *   a retry of the SAME request replays the original order instead of duplicating it.
- * - The cart is cleared ONLY after the backend confirmed the order (a failed attempt keeps it).
+ *   a retry of the SAME request replays the original checkout instead of duplicating it.
+ * - The cart is NOT cleared here: it is cleared only when the checkout is PAID (status page).
  * - Backend errors are mapped: 400 VALIDATION_FAILED -> field messages, 409 PRODUCT_UNAVAILABLE ->
  *   the cart is revalidated and the unavailable lines flagged, 409 IDEMPOTENCY_KEY_REUSED -> new
- *   key + retry hint, 429 -> wait message, anything else generic. 401/403 are handled globally by
- *   the error interceptor (login / forbidden).
+ *   key + retry hint, 409 CONFLICT -> too many unpaid checkouts, 429 -> wait message, anything
+ *   else generic. 401/403 are handled globally by the error interceptor.
  */
 @Component({
   selector: 'app-checkout-review-step',
@@ -55,7 +52,7 @@ function labelFor(field: string): string {
 export class OrderReviewStepComponent {
   private readonly cart = inject(CartStateService);
   private readonly checkoutState = inject(CheckoutStateService);
-  private readonly ordersService = inject(StandardOrdersService);
+  private readonly checkoutService = inject(CheckoutService);
   private readonly session = inject(SessionStateService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
@@ -81,23 +78,24 @@ export class OrderReviewStepComponent {
     const deliveryInfo = this.deliveryInfo();
     if (!customerInfo || !deliveryInfo || this.cart.isEmpty() || this.cart.hasUnavailable()) return;
 
-    const request = buildPlaceOrderRequest(this.items(), customerInfo, deliveryInfo);
+    const request = buildCheckoutRequest(this.items(), customerInfo, deliveryInfo);
     const key = this.checkoutState.idempotencyKeyFor(request);
 
     this.submitting.set(true);
     this.errorMessage.set(null);
     this.fieldMessages.set([]);
-    this.ordersService
-      .place(request, key)
+    this.checkoutService
+      .create(request, key)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (order) => {
+        next: (checkout) => {
           this.submitting.set(false);
-          this.checkoutState.setPlacedOrder(order);
-          // Cleared ONLY now that the backend confirmed the order.
-          this.cart.clearCart();
-          this.checkoutState.resetForm();
-          void this.router.navigateByUrl('/checkout/confirmacion');
+          // The cart is kept until the payment is confirmed (status page clears it on PAID).
+          this.checkoutState.setPendingCheckoutId(checkout.checkoutId);
+          this.checkoutState.clearFormData();
+          void this.router.navigate(['/checkout/confirmacion'], {
+            queryParams: { checkoutId: checkout.checkoutId },
+          });
         },
         error: (err: unknown) => {
           this.submitting.set(false);
@@ -126,13 +124,17 @@ export class OrderReviewStepComponent {
     } else if (code === 'IDEMPOTENCY_KEY_REUSED') {
       this.checkoutState.resetAttempt();
       this.errorMessage.set('No pudimos completar el envío. Inténtalo de nuevo.');
+    } else if (code === 'CONFLICT') {
+      this.errorMessage.set(
+        'Tienes varios pagos pendientes. Completa o cancela alguno antes de iniciar uno nuevo.',
+      );
     } else if (status === 429) {
       this.errorMessage.set(rateLimitMessage(err));
     } else if (status === 401 || status === 403) {
       // Redirect handled by the global error interceptor.
-      this.errorMessage.set('Tu sesión no permite registrar este pedido.');
+      this.errorMessage.set('Tu sesión no permite realizar esta compra.');
     } else {
-      this.errorMessage.set('No pudimos registrar tu pedido. Inténtalo de nuevo más tarde.');
+      this.errorMessage.set('No pudimos iniciar tu pago. Inténtalo de nuevo más tarde.');
     }
   }
 }

@@ -1,0 +1,38 @@
+@if (attempts().length > 0) {
+  <section class="checkout-attempts" aria-labelledby="checkout-attempts-title">
+    <h2 id="checkout-attempts-title">Tus comprobantes</h2>
+    <ul class="checkout-attempts__list">
+      @for (attempt of attempts(); track attempt.attemptId) {
+        <li class="checkout-attempts__item">
+          <div class="checkout-attempts__row">
+            <span>
+              Intento {{ attempt.number }} · {{ method(attempt.method) }} ·
+              {{ formatDate(attempt.submittedAt) }}
+              @if (attempt.operationCode) {
+                · Operación {{ attempt.operationCode }}
+              }
+            </span>
+            <app-status-badge [label]="badge(attempt.status).label" [tone]="badge(attempt.status).tone" />
+          </div>
+          @if (attempt.rejectionReason) {
+            <p class="checkout-attempts__reason">Motivo: {{ attempt.rejectionReason }}</p>
+          }
+          <button
+            type="button"
+            class="ui-btn ui-btn--ghost ui-btn--sm"
+            [attr.aria-expanded]="openAttemptId() === attempt.attemptId"
+            (click)="toggle(attempt.attemptId)"
+          >
+            {{ openAttemptId() === attempt.attemptId ? 'Ocultar comprobante' : 'Ver comprobante' }}
+          </button>
+          @if (openAttemptId() === attempt.attemptId) {
+            <app-proof-image
+              [loader]="loader()"
+              [alt]="'Comprobante del intento ' + attempt.number"
+            />
+          }
+        </li>
+      }
+    </ul>
+  </section>
+}

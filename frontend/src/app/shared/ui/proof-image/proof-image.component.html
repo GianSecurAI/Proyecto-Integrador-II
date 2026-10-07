@@ -1,0 +1,35 @@
+<div class="proof-image" [attr.aria-busy]="state() === 'loading'">
+  @switch (state()) {
+    @case ('loading') {
+      <p class="proof-image__status" role="status">Cargando comprobante…</p>
+    }
+    @case ('error') {
+      <div class="proof-image__status" role="alert">
+        <p>No se pudo cargar el comprobante.</p>
+        <button type="button" class="ui-btn ui-btn--secondary ui-btn--sm" (click)="retry()">
+          Reintentar
+        </button>
+      </div>
+    }
+    @default {
+      @if (objectUrl(); as url) {
+        <div class="proof-image__viewport" [class.proof-image__viewport--zoomed]="zoomed()">
+          <img [src]="url" [alt]="alt()" class="proof-image__img" />
+        </div>
+        <div class="proof-image__actions">
+          <button
+            type="button"
+            class="ui-btn ui-btn--ghost ui-btn--sm"
+            [attr.aria-pressed]="zoomed()"
+            (click)="toggleZoom()"
+          >
+            {{ zoomed() ? 'Reducir' : 'Ampliar' }}
+          </button>
+          <a class="ui-btn ui-btn--ghost ui-btn--sm" [href]="url" target="_blank" rel="noopener noreferrer">
+            Abrir en tamaño completo
+          </a>
+        </div>
+      }
+    }
+  }
+</div>

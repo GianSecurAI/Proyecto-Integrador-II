@@ -8,6 +8,7 @@ import { ErrorStateComponent } from '../../../../shared/ui/error-state/error-sta
 import { LoadingStateComponent } from '../../../../shared/ui/loading-state/loading-state.component';
 import { orderKindLabel } from '../../../../shared/models/wire-enums';
 import { AccountNavComponent } from '../../components/account-nav/account-nav.component';
+import { CheckoutStateService } from '../../../checkout/state/checkout-state.service';
 import { OrderStatusBadgeComponent } from '../../components/order-status-badge/order-status-badge.component';
 import { OrderKind, OrderSummaryViewModel } from '../../models/order.model';
 import { CustomerOrdersService } from '../../services/customer-orders.service';
@@ -37,6 +38,8 @@ type LoadStatus = 'loading' | 'loaded' | 'error';
 })
 export class OrderHistoryPage {
   private readonly ordersService = inject(CustomerOrdersService);
+  /** Checkout started in this session and not yet finished (shows the "pago pendiente" banner). */
+  readonly pendingCheckoutId = inject(CheckoutStateService).pendingCheckoutId;
 
   readonly status = signal<LoadStatus>('loading');
   readonly orders = signal<OrderSummaryViewModel[]>([]);

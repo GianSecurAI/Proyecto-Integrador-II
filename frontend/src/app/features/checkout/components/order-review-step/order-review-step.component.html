@@ -17,7 +17,7 @@
       Total estimado ({{ itemCount() }} productos): <strong>S/ {{ subtotal().toFixed(2) }}</strong>
     </p>
     <p class="checkout-review-hint">
-      Monto informativo: el total final lo calcula el servidor al registrar tu pedido.
+      Monto informativo: el total final lo calcula el servidor al iniciar el pago.
     </p>
   </section>
 
@@ -48,8 +48,8 @@
   }
 
   <p class="checkout-review-payment-note">
-    Este pedido no incluye el pago — el pedido quedará registrado con estado "Confirmado" y te
-    avisaremos de cada cambio de estado.
+    Al continuar verás cómo pagar con Yape o Plin (código QR) y podrás subir la captura de tu
+    pago. Tu pedido se registrará cuando un administrador verifique el pago.
   </p>
 
   @if (errorMessage()) {
@@ -70,7 +70,7 @@
       Atrás
     </app-button>
     <app-button type="button" [loading]="submitting()" [disabled]="!canSubmit()" (clicked)="submit()">
-      {{ submitting() ? 'Enviando…' : 'Confirmar y enviar pedido' }}
+      {{ submitting() ? 'Enviando…' : 'Continuar al pago' }}
     </app-button>
   </div>
 </section>

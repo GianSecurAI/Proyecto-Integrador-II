@@ -18,10 +18,9 @@ const STEP_LABELS: Record<CheckoutStep, string> = {
 
 /**
  * `/checkout` — the standard-catalog self-service checkout entry point (CLAUDE.md's "Business
- * clarification: purchasing flows" §"Standard catalog products", steps 3-5, EXCLUDING step 4
- * (payment gateway) — see `../../components/order-review-step/order-review-step.component.ts`'s
- * doc comment for why). Requires a signed-in CLIENTE
- * (`authGuard`, UX only — the backend authorizes `POST /api/orders`) and, via
+ * clarification: purchasing flows" §"Standard catalog products"; payment is a manual Yape/Plin
+ * proof verified by an administrator, ADR-005). Requires a signed-in CLIENTE
+ * (`authGuard`, UX only — the backend authorizes `POST /api/checkout`) and, via
  * `../../guards/checkout-cart-not-empty.guard.ts`, a non-empty cart.
  *
  * A single page walking through four steps (cart review -> customer info -> delivery info ->
@@ -30,9 +29,9 @@ const STEP_LABELS: Record<CheckoutStep, string> = {
  * (`../../state/checkout-state.service.ts`) and none of the individual steps are meaningful
  * standalone destinations a visitor would bookmark or share; a single page keeps that data flow
  * obvious without extra route plumbing. The FINAL destination after a successful submission is
- * its own distinct, separately-guarded route (`/checkout/confirmacion`,
+ * its own distinct route (`/checkout/confirmacion?checkoutId=`,
  * `../confirmation/checkout-confirmation.page.ts`) precisely because that one IS a meaningful
- * standalone destination (its own guard, its own "not reachable without a real order" rule).
+ * standalone destination (bookmarkable, linked from the rejection email).
  *
  * No Figma frame exists for a checkout flow — see `docs/reviews/checkout-frontend.md` for the
  * full documented absence. This page therefore does not copy the visual language of the (existing

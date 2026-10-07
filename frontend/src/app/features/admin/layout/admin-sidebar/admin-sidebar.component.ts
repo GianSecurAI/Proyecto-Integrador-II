@@ -15,7 +15,7 @@ interface AdminNavItem {
 }
 
 /**
- * The five approved admin domains, each tracing to a "Confirmado" requirement in
+ * The approved admin domains (plus 'Pagos por verificar', FE-11), each tracing to a "Confirmado" requirement in
  * `docs/discovery/06-system-definition.md`:
  * - Productos     -> RF-07 (lines 197-201: alta/edición/activación de productos) — Administrador-only.
  * - Pedidos       -> RF-13 (gestión de estados del pedido) — Administrador/Asesor.
@@ -35,6 +35,8 @@ interface AdminNavItem {
 const ADMIN_NAV_ITEMS: readonly AdminNavItem[] = [
   { label: 'Productos', path: '/admin/products', roles: ADMIN_ONLY_ROLES },
   { label: 'Pedidos', path: '/admin/orders' },
+  // FE-11 (ADR-005): manual Yape/Plin payment verification — Administrador-only.
+  { label: 'Pagos por verificar', path: '/admin/payments', roles: ADMIN_ONLY_ROLES },
   { label: 'Incidencias', path: '/admin/incidents' },
   { label: 'Reportes', path: '/admin/reports', roles: ADMIN_ONLY_ROLES },
   { label: 'Usuarios y roles', path: '/admin/users', roles: ADMIN_ONLY_ROLES },

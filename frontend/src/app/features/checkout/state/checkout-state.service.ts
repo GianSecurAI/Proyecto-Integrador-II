@@ -1,28 +1,27 @@
 import { Injectable, signal } from '@angular/core';
 import { IdempotencyAttempt } from '../../../core/http/idempotency-attempt';
-import { OrderDetailViewModel } from '../../account/models/order.model';
 import { CustomerInfoFormValue, DeliveryInfoFormValue } from '../models/checkout-form.model';
 
 /**
  * Single source of truth for the IN-PROGRESS checkout form data (customer info, delivery info)
- * across the multi-step `/checkout` flow, plus the confirmed order and the per-attempt
- * `Idempotency-Key`. Plain signals, `providedIn: 'root'`; purely in-memory (never storage, never
+ * across the multi-step `/checkout` flow, the id of the checkout awaiting payment (for the
+ * "pago pendiente" banner) and the per-attempt `Idempotency-Key`. Plain signals, `providedIn: 'root'`; purely in-memory (never storage, never
  * logged — this data is customer-identifying).
  */
 @Injectable({ providedIn: 'root' })
 export class CheckoutStateService {
   private readonly customerInfoState = signal<CustomerInfoFormValue | null>(null);
   private readonly deliveryInfoState = signal<DeliveryInfoFormValue | null>(null);
-  private readonly placedOrderState = signal<OrderDetailViewModel | null>(null);
+  private readonly pendingCheckoutIdState = signal<string | null>(null);
 
   private readonly attempt = new IdempotencyAttempt();
 
   readonly customerInfo = this.customerInfoState.asReadonly();
   readonly deliveryInfo = this.deliveryInfoState.asReadonly();
-  /** The order exactly as the backend returned it after a confirmed creation (201/200). Set only
-   * then; `checkoutConfirmationGuard` uses it to decide whether `/checkout/confirmacion` is
-   * reachable. */
-  readonly placedOrder = this.placedOrderState.asReadonly();
+  /** Id of the checkout the backend created and that is not known to be finished yet. In-memory
+   * only (lost on reload; there is no "list my checkouts" endpoint). Drives a banner that links
+   * to the payment status page. */
+  readonly pendingCheckoutId = this.pendingCheckoutIdState.asReadonly();
 
   setCustomerInfo(value: CustomerInfoFormValue): void {
     this.customerInfoState.set(value);
@@ -32,8 +31,8 @@ export class CheckoutStateService {
     this.deliveryInfoState.set(value);
   }
 
-  setPlacedOrder(order: OrderDetailViewModel): void {
-    this.placedOrderState.set(order);
+  setPendingCheckoutId(checkoutId: string | null): void {
+    this.pendingCheckoutIdState.set(checkoutId);
   }
 
   /**
@@ -51,8 +50,17 @@ export class CheckoutStateService {
     this.attempt.reset();
   }
 
-  /** Forgets the in-progress form data and attempt (after a confirmed order or a session end). */
+  /** Forgets the typed customer/delivery data but KEEPS the attempt key: re-submitting the same
+   * cart and data right after a successful creation replays the same checkout instead of opening
+   * a second one. */
+  clearFormData(): void {
+    this.customerInfoState.set(null);
+    this.deliveryInfoState.set(null);
+  }
+
+  /** Forgets the in-progress form data and attempt (when the checkout finished or the session ended). */
   resetForm(): void {
+    this.pendingCheckoutIdState.set(null);
     this.customerInfoState.set(null);
     this.deliveryInfoState.set(null);
     this.attempt.reset();

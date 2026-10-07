@@ -16,4 +16,12 @@ export const environment = {
   // (project requirements: custom orders/inquiries are redirected to WhatsApp, never an in-app checkout).
   // Must be replaced before this is used against real customers.
   whatsappNumber: '51900000000',
+  // PAYMENT ACCOUNTS shown next to the Yape/Plin QR (ADR-005, OPS-02). TODO(OPS-02): the Product
+  // Owner must fill the real account holder name and phone number of each wallet; they are NOT
+  // invented here. Empty values are simply not displayed. The QR images are static assets in
+  // public/assets/payments/ (placeholders until replaced, see docs/architecture/payments-qr-assets.md).
+  paymentAccounts: {
+    yape: { holderName: '', phoneNumber: '' },
+    plin: { holderName: '', phoneNumber: '' },
+  },
 };

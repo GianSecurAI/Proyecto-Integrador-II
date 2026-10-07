@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320" viewBox="0 0 320 320" role="img" aria-label="Marcador de posición del QR de Yape">
+  <!-- PLACEHOLDER: replace this file with the REAL Yape QR of the business (docs/architecture/payments-qr-assets.md, OPS-02). -->
+  <rect width="320" height="320" fill="#f3e8ff" stroke="#6b21a8" stroke-width="6" stroke-dasharray="14 8"/>
+  <text x="160" y="130" text-anchor="middle" font-family="Arial, sans-serif" font-size="34" font-weight="700" fill="#6b21a8">YAPE</text>
+  <text x="160" y="175" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" fill="#1f1f1f">Reemplazar con</text>
+  <text x="160" y="203" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" fill="#1f1f1f">el QR real</text>
+  <text x="160" y="270" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#6b21a8">PLACEHOLDER - no escanear</text>
+</svg>

@@ -27,7 +27,7 @@ export class DeliveryInfoStepComponent {
   readonly next = output<void>();
 
   readonly form = new FormGroup({
-    // Limits mirror `PlaceOrderRequestDto.Delivery` (UX only — the backend re-validates).
+    // Limits mirror `the checkout request DTO.Delivery` (UX only — the backend re-validates).
     address: new FormControl('', {
       nonNullable: true,
       validators: [Validators.required, Validators.maxLength(CHECKOUT_LIMITS.address)],

@@ -1,18 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { OrderDetailViewModel } from '../../account/models/order.model';
 import { CheckoutStateService } from './checkout-state.service';
-
-const ORDER: OrderDetailViewModel = {
-  id: 'PED-1',
-  placedAt: new Date('2026-09-07T00:00:00Z'),
-  status: 'CONFIRMADO',
-  kind: 'ESTANDAR',
-  summary: '1 unidad: Llavero A',
-  totalAmount: 10,
-  items: [],
-  delivery: null,
-  statusHistory: [],
-};
 
 describe('CheckoutStateService', () => {
   let service: CheckoutStateService;
@@ -22,10 +9,10 @@ describe('CheckoutStateService', () => {
     service = TestBed.inject(CheckoutStateService);
   });
 
-  it('starts with no customer info, delivery info, or placed order', () => {
+  it('starts with no customer info, delivery info, or pending checkout', () => {
     expect(service.customerInfo()).toBeNull();
     expect(service.deliveryInfo()).toBeNull();
-    expect(service.placedOrder()).toBeNull();
+    expect(service.pendingCheckoutId()).toBeNull();
   });
 
   it('retains the last set customer and delivery info', () => {
@@ -35,9 +22,21 @@ describe('CheckoutStateService', () => {
     expect(service.deliveryInfo()?.district).toBe('San Isidro');
   });
 
-  it('retains the confirmed order exactly as the backend returned it', () => {
-    service.setPlacedOrder(ORDER);
-    expect(service.placedOrder()).toBe(ORDER);
+  it('remembers the checkout awaiting payment until it is cleared', () => {
+    service.setPendingCheckoutId('c-1');
+    expect(service.pendingCheckoutId()).toBe('c-1');
+    service.setPendingCheckoutId(null);
+    expect(service.pendingCheckoutId()).toBeNull();
+  });
+
+  it('clearFormData forgets the typed data but KEEPS the attempt key (same cart re-submits the same checkout)', () => {
+    service.setCustomerInfo({ fullName: 'Ana', phone: '999999999' });
+    service.setDeliveryInfo({ address: 'Calle 1', district: 'San Isidro', notes: '' });
+    const first = service.idempotencyKeyFor({ a: 1 });
+    service.clearFormData();
+    expect(service.customerInfo()).toBeNull();
+    expect(service.deliveryInfo()).toBeNull();
+    expect(service.idempotencyKeyFor({ a: 1 })).toBe(first);
   });
 
   describe('Idempotency-Key per checkout attempt', () => {
@@ -64,8 +63,10 @@ describe('CheckoutStateService', () => {
     it('resetForm forgets the form data and the attempt', () => {
       service.setCustomerInfo({ fullName: 'Ana', phone: '999999999' });
       const first = service.idempotencyKeyFor({ a: 1 });
+      service.setPendingCheckoutId('c-1');
       service.resetForm();
       expect(service.customerInfo()).toBeNull();
+      expect(service.pendingCheckoutId()).toBeNull();
       expect(service.idempotencyKeyFor({ a: 1 })).not.toBe(first);
     });
   });

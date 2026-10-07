@@ -1,0 +1,107 @@
+<div class="admin-payment-list-page">
+  <app-admin-page-header
+    title="Pagos por verificar"
+    description="Revisa las capturas de pago de Yape/Plin y aprueba o rechaza cada una. El pedido se crea al aprobar."
+  />
+
+  <div class="admin-payment-list-page__filters">
+    <label class="admin-payment-list-page__filter">
+      <span>Estado del pago</span>
+      <select
+        class="ui-select"
+        [value]="statusFilter()"
+        (change)="updateStatusFilter($any($event.target).value)"
+      >
+        @for (opt of statusOptions; track opt) {
+          <option [value]="opt" [selected]="opt === statusFilter()">{{ statusLabel(opt) }}</option>
+        }
+      </select>
+    </label>
+  </div>
+
+  @switch (status()) {
+    @case ('loading') {
+      <app-loading-state message="Cargando pagos…" />
+    }
+    @case ('error') {
+      <app-error-state
+        title="No se pudieron cargar los pagos"
+        [description]="errorMessage() ?? 'Ocurrió un problema al conectar con el servidor. Inténtalo de nuevo.'"
+      >
+        <app-button errorStateAction variant="secondary" (clicked)="retry()">Reintentar</app-button>
+      </app-error-state>
+    }
+    @default {
+      @if (items().length === 0) {
+        <app-empty-state
+          [title]="statusFilter() === 'PROOF_SUBMITTED' ? 'No hay pagos por verificar' : 'No hay pagos en este estado'"
+          description="Cuando un cliente suba un comprobante, aparecerá aquí."
+        />
+      } @else {
+        <app-admin-data-table>
+          <thead>
+            <tr>
+              <th scope="col">Referencia</th>
+              <th scope="col">Cliente</th>
+              <th scope="col">Monto</th>
+              <th scope="col">Método</th>
+              <th scope="col">Enviado</th>
+              <th scope="col">Intentos</th>
+              <th scope="col">Estado</th>
+              <th scope="col">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of items(); track item.checkoutId) {
+              <tr>
+                <td>
+                  <a [routerLink]="['/admin/payments', item.checkoutId]">{{ item.reference }}</a>
+                  @if (item.duplicateProofWarning) {
+                    <app-status-badge label="Captura repetida" tone="danger" />
+                  }
+                </td>
+                <td>{{ item.customerName }}</td>
+                <td>S/ {{ item.totalAmount.toFixed(2) }}</td>
+                <td>{{ methodLabel(item.method) }}</td>
+                <td>{{ formatDate(item.submittedAt) }}</td>
+                <td>{{ item.attemptCount }}</td>
+                <td>
+                  <app-status-badge [label]="statusLabel(item.status)" [tone]="statusTone(item.status)" />
+                </td>
+                <td>
+                  <a
+                    [routerLink]="['/admin/payments', item.checkoutId]"
+                    class="ui-btn ui-btn--ghost ui-btn--sm"
+                  >
+                    Revisar
+                  </a>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </app-admin-data-table>
+        @if (totalPages() > 1) {
+          <nav class="admin-payment-list-page__pagination" aria-label="Paginación de pagos">
+            <button
+              type="button"
+              class="ui-btn ui-btn--secondary ui-btn--sm"
+              [disabled]="page() === 0"
+              (click)="goToPage(page() - 1)"
+            >
+              Anterior
+            </button>
+            <span aria-live="polite">Página {{ page() + 1 }} de {{ totalPages() }}</span>
+            <button
+              type="button"
+              class="ui-btn ui-btn--secondary ui-btn--sm"
+              [disabled]="page() + 1 >= totalPages()"
+              (click)="goToPage(page() + 1)"
+            >
+              Siguiente
+            </button>
+          </nav>
+        }
+      }
+    }
+  }
+</div>

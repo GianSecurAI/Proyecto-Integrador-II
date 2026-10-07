@@ -200,7 +200,18 @@ describe('app.routes — /admin', () => {
     expect((loaded as { name: string }).name).toMatch(/^AdminUserDetailPage/);
   });
 
-  for (const path of ['reports', 'users', 'users/:id']) {
+  it('loads the payment verification pages (FE-11) re-restricted to ADMINISTRADOR (no ASESOR)', async () => {
+    const list = adminRoute()?.children?.find((c) => c.path === 'payments');
+    const detail = adminRoute()?.children?.find((c) => c.path === 'payments/:id');
+    expect(list?.data?.['role']).toEqual(['ADMINISTRADOR']);
+    expect(detail?.data?.['role']).toEqual(['ADMINISTRADOR']);
+    expect(list?.canActivate).toBeTruthy();
+    expect(detail?.canActivate).toBeTruthy();
+    expect(((await list!.loadComponent!()) as { name: string }).name).toMatch(/^AdminPaymentListPage/);
+    expect(((await detail!.loadComponent!()) as { name: string }).name).toMatch(/^AdminPaymentDetailPage/);
+  });
+
+  for (const path of ['reports', 'users', 'users/:id', 'payments', 'payments/:id']) {
     it(`re-restricts /admin/${path} to ADMINISTRADOR alone`, () => {
       const child = adminRoute()?.children?.find((c) => c.path === path);
       expect(child?.canActivate).toBeTruthy();
@@ -248,6 +259,40 @@ describe('app.routes — /admin default redirect (staff auth integration)', () =
 
     await router.navigateByUrl('/admin');
 
+    expect(router.url).toBe('/forbidden');
+  });
+});
+
+describe('app.routes — checkout payment page (ADR-005)', () => {
+  let router: Router;
+  let session: SessionStateService;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({ providers: [provideRouter(routes)] });
+    router = TestBed.inject(Router);
+    session = TestBed.inject(SessionStateService);
+  });
+
+  it('/checkout/confirmacion is guarded for CLIENTE and keeps ?checkoutId= as returnUrl through the login', async () => {
+    const route = routes.find((r) => r.path === 'checkout/confirmacion');
+    expect(route?.canActivate).toBeTruthy();
+    expect(route?.data?.['role']).toEqual(['CLIENTE']);
+
+    session.clear();
+    await router.navigateByUrl('/checkout/confirmacion?checkoutId=abc');
+    expect(router.url).toContain('/auth/request-code');
+    expect(decodeURIComponent(router.url)).toContain('returnUrl=/checkout/confirmacion?checkoutId=abc');
+  });
+
+  it('a staff session is sent to /forbidden', async () => {
+    session.markAuthenticated('ASESOR');
+    await router.navigateByUrl('/checkout/confirmacion?checkoutId=abc');
+    expect(router.url).toBe('/forbidden');
+  });
+
+  it('an ASESOR cannot reach /admin/payments', async () => {
+    session.markAuthenticated('ASESOR');
+    await router.navigateByUrl('/admin/payments');
     expect(router.url).toBe('/forbidden');
   });
 });

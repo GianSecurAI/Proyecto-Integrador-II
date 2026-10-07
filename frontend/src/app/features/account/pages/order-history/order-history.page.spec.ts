@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { CheckoutStateService } from '../../../checkout/state/checkout-state.service';
 import { OrderHistoryPage } from './order-history.page';
 
 /** Shapes copied from backend `Page<OrderSummaryDto>` (OrderController list). */
@@ -90,5 +91,17 @@ describe('OrderHistoryPage (GET /api/orders)', () => {
     const second = ordersReq();
     expect(second.request.params.get('page')).toBe('1');
     second.flush(page([SUMMARY_CUSTOM], 2));
+  });
+
+  it('shows a "pago pendiente" banner linking to the payment page only while a checkout is pending', () => {
+    ordersReq().flush(page([SUMMARY_STANDARD]));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="pending-payment-banner"]')).toBeNull();
+
+    TestBed.inject(CheckoutStateService).setPendingCheckoutId('c-123');
+    fixture.detectChanges();
+    const banner: HTMLElement = fixture.nativeElement.querySelector('[data-testid="pending-payment-banner"]');
+    expect(banner.textContent).toContain('pago pendiente');
+    expect(banner.querySelector('a')!.getAttribute('href')).toBe('/checkout/confirmacion?checkoutId=c-123');
   });
 });
