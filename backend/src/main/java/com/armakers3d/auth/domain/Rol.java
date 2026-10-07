@@ -1,11 +1,14 @@
 package com.armakers3d.auth.domain;
 
 /**
- * Minimal RBAC role model (Constitution Principle VII). Per spec.md Assumptions, "Asesor" is not
- * a confirmed distinct role yet (open question #2 in 06-system-definition.md); until resolved,
- * ADMINISTRADOR also stands in for advisor-only capabilities.
+ * RBAC role model (Constitution Principle VII). Names stay in the Spanish vocabulary already
+ * used by the approved contract and the SPA ({@code roles.ts}): {@code CLIENTE},
+ * {@code ASESOR}, {@code ADMINISTRADOR}. All roles authenticate through the same email-OTP
+ * mechanism (no staff passwords). Only {@link #CLIENTE} can be created by self-registration;
+ * {@link #ASESOR} and {@link #ADMINISTRADOR} accounts are provisioned.
  */
 public enum Rol {
     CLIENTE,
+    ASESOR,
     ADMINISTRADOR
 }

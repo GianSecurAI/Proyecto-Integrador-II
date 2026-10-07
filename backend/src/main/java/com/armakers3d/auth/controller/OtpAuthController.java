@@ -30,7 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/auth/otp")
-@Tag(name = "Customer OTP Authentication", description = "Email one-time-code registration and login for the Cliente role (FR-001-FR-017).")
+@Tag(name = "Email OTP Authentication", description = "Email one-time-code registration (customers only) and login (all roles), FR-001-FR-017.")
 public class OtpAuthController {
 
     private final OtpService otpService;
@@ -94,6 +94,6 @@ public class OtpAuthController {
         sessionService.attachCookie(response, session);
 
         String accountStatus = result.accountJustCreated() ? OtpVerifyResponseDto.CREATED : OtpVerifyResponseDto.EXISTING;
-        return ResponseEntity.ok(new OtpVerifyResponseDto(accountStatus));
+        return ResponseEntity.ok(new OtpVerifyResponseDto(accountStatus, result.cliente().getRol()));
     }
 }

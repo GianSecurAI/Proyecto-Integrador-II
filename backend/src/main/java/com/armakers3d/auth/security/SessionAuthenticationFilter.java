@@ -1,65 +1,46 @@
 package com.armakers3d.auth.security;
 
-import com.armakers3d.auth.config.SessionProperties;
-import com.armakers3d.auth.domain.AuthenticatedSession;
 import com.armakers3d.auth.service.SessionService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.Optional;
-import org.springframework.stereotype.Component;
+import java.util.List;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
- * Resolves the session cookie on every request into request attributes ({@link #ATTR_CLIENTE_ID},
- * {@link #ATTR_ROL}) that downstream authorization logic (RoleAuthorizationInterceptor,
- * controllers doing object-level checks) reads. Deliberately does not reject unauthenticated
- * requests itself — a request to a public endpoint (e.g. the OTP endpoints themselves) must not
- * be blocked here; only {@link RequireRole}-annotated endpoints enforce authentication/role,
- * via the interceptor, per Constitution Principle VII.
+ * Authenticates the opaque session cookie into the Spring Security context. Deliberately does not
+ * reject anything: requests without a valid session simply stay anonymous and the central
+ * {@code authorizeHttpRequests} rules decide (public endpoints pass, protected ones get 401 from
+ * the entry point). The account is re-loaded and must be active on every request, and the role
+ * comes from that live record (see {@link SessionService#authenticate}).
+ *
+ * <p>Not a Spring bean on purpose: a {@code Filter} bean would also be auto-registered in the
+ * servlet container, running it twice. {@code SecurityConfig} instantiates it inside the chain.
  */
-@Component
 public class SessionAuthenticationFilter extends OncePerRequestFilter {
 
-    public static final String ATTR_CLIENTE_ID = "auth.clienteId";
-    public static final String ATTR_ROL = "auth.rol";
-
     private final SessionService sessionService;
-    private final SessionProperties sessionProperties;
 
-    public SessionAuthenticationFilter(SessionService sessionService, SessionProperties sessionProperties) {
+    public SessionAuthenticationFilter(SessionService sessionService) {
         this.sessionService = sessionService;
-        this.sessionProperties = sessionProperties;
     }
 
     @Override
     protected void doFilterInternal(
             HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-        extractCookie(request, sessionProperties.getCookieName())
-                .flatMap(sessionService::resolve)
-                .ifPresent(session -> applyAuthenticatedAttributes(request, session));
+        sessionService
+                .extractToken(request)
+                .flatMap(sessionService::authenticate)
+                .map(AuthenticatedUser::from)
+                .ifPresent(user -> SecurityContextHolder.getContext()
+                        .setAuthentication(UsernamePasswordAuthenticationToken.authenticated(
+                                user, null, List.of(new SimpleGrantedAuthority(user.authority())))));
         filterChain.doFilter(request, response);
-    }
-
-    private void applyAuthenticatedAttributes(HttpServletRequest request, AuthenticatedSession session) {
-        request.setAttribute(ATTR_CLIENTE_ID, session.getClienteId());
-        request.setAttribute(ATTR_ROL, session.getRol());
-    }
-
-    private Optional<String> extractCookie(HttpServletRequest request, String name) {
-        Cookie[] cookies = request.getCookies();
-        if (cookies == null) {
-            return Optional.empty();
-        }
-        for (Cookie cookie : cookies) {
-            if (name.equals(cookie.getName())) {
-                return Optional.ofNullable(cookie.getValue());
-            }
-        }
-        return Optional.empty();
     }
 }

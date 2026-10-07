@@ -27,9 +27,9 @@ class AuthorizationNoSessionTest extends AbstractOtpIntegrationTest {
         String email = uniqueEmail("revoked-session");
         Cookie sessionCookie = registerAndGetSessionCookie(email);
 
-        var session = sessionRepository.findById(sessionCookie.getValue()).orElseThrow();
+        var session = sessionRepository.findById(com.armakers3d.auth.service.SessionService.storageKey(sessionCookie.getValue())).orElseThrow();
         session.revoke(clock.instant());
-        sessionRepository.saveAndFlush(session);
+        sessionRepository.save(session);
 
         getWithCookie("/api/customers/me", sessionCookie).andExpect(status().isUnauthorized());
     }

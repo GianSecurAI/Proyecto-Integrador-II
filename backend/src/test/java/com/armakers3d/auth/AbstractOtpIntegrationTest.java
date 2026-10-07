@@ -3,10 +3,12 @@ package com.armakers3d.auth;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
+import com.armakers3d.auth.infrastructure.jpa.AuthenticatedSessionJpaRepository;
+import com.armakers3d.auth.infrastructure.jpa.ClienteJpaRepository;
+import com.armakers3d.auth.infrastructure.jpa.CodigoOtpJpaRepository;
 import com.armakers3d.auth.repository.AuthenticatedSessionRepository;
 import com.armakers3d.auth.repository.ClienteRepository;
 import com.armakers3d.auth.repository.CodigoOtpRepository;
-import com.armakers3d.auth.security.SessionAuthenticationFilter;
 import com.armakers3d.testsupport.CapturingEmailSender;
 import com.armakers3d.testsupport.MutableClock;
 import com.armakers3d.testsupport.TestClockConfig;
@@ -15,7 +17,9 @@ import jakarta.servlet.http.Cookie;
 import java.time.Clock;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
+import jakarta.servlet.Filter;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
@@ -43,18 +47,22 @@ public abstract class AbstractOtpIntegrationTest {
     @Autowired protected ClienteRepository clienteRepository;
     @Autowired protected CodigoOtpRepository codigoOtpRepository;
     @Autowired protected AuthenticatedSessionRepository sessionRepository;
-    @Autowired protected SessionAuthenticationFilter sessionAuthenticationFilter;
+    // Spring Data repositories are used only for cleanup/counting; assertions go through the ports.
+    @Autowired protected ClienteJpaRepository clienteJpa;
+    @Autowired protected CodigoOtpJpaRepository codigoOtpJpa;
+    @Autowired protected AuthenticatedSessionJpaRepository sessionJpa;
+    @Autowired @Qualifier("springSecurityFilterChain") protected Filter springSecurityFilterChain;
 
     protected MockMvc mockMvc;
 
     @BeforeEach
     void baseSetUp() {
         mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext)
-            .addFilters(sessionAuthenticationFilter)
+            .addFilters(springSecurityFilterChain)
             .build();
-        sessionRepository.deleteAll();
-        codigoOtpRepository.deleteAll();
-        clienteRepository.deleteAll();
+        sessionJpa.deleteAll();
+        codigoOtpJpa.deleteAll();
+        clienteJpa.deleteAll();
         emailSender.clear();
         mutableClock().reset();
     }

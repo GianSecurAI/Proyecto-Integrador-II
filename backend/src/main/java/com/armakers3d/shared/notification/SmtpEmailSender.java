@@ -1,7 +1,5 @@
 package com.armakers3d.shared.notification;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.mail.SimpleMailMessage;
@@ -17,10 +15,8 @@ import org.springframework.stereotype.Component;
  * call; {@code CapturingEmailSender} (test-only) takes its place there.
  */
 @Component
-@Profile("!test")
+@Profile("!test & !nodb")
 public class SmtpEmailSender implements EmailSender {
-
-    private static final Logger log = LoggerFactory.getLogger(SmtpEmailSender.class);
 
     private final JavaMailSender mailSender;
     private final String fromAddress;
@@ -32,6 +28,10 @@ public class SmtpEmailSender implements EmailSender {
 
     @Override
     public void send(String toEmail, String subject, String body) {
+        // Header injection guard: recipient and subject are header values and must be a single line.
+        if (containsLineBreak(toEmail) || containsLineBreak(subject)) {
+            throw new IllegalArgumentException("Header values must not contain line breaks");
+        }
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(fromAddress);
         message.setTo(toEmail);
@@ -40,11 +40,13 @@ public class SmtpEmailSender implements EmailSender {
         try {
             mailSender.send(message);
         } catch (RuntimeException ex) {
-            // Delivery failure must never surface to the caller in a way that reveals delivery
-            // diagnostics (spec.md Edge Cases: "the failure response must not reveal delivery
-            // diagnostics that could confirm or deny account existence"). The request endpoint
-            // always returns its generic acknowledgment regardless of this outcome.
-            log.warn("OTP email dispatch failed for a request; caller response remains generic.", ex);
+            // Provider messages may echo the recipient or the body (which can carry a one-time code), so
+            // only the cause travels (as the wrapped cause, never logged with its message by callers).
+            throw new EmailDeliveryException(ex);
         }
+    }
+
+    private static boolean containsLineBreak(String value) {
+        return value == null || value.indexOf('\r') >= 0 || value.indexOf('\n') >= 0;
     }
 }

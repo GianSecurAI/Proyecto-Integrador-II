@@ -1,61 +1,47 @@
 package com.armakers3d.auth.domain;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 import java.time.Instant;
 
 /**
- * One issued one-time code (data-model.md: Entity CodigoOTP). Keyed by email, not by Cliente id,
- * because a code must exist and be verifiable before any Cliente row exists (FR-005). Stores
- * only {@code codeHash}, a salted one-way hash — never the plaintext code (FR-002, FR-014).
+ * One issued one-time code (data-model.md: Entity CodigoOTP), a plain domain object. Keyed by
+ * email, not by Cliente id, because a code must exist and be verifiable before any account
+ * exists (FR-005). Stores only {@code codeHash}, a salted one-way hash, never the plaintext code
+ * (FR-002, FR-014). A null {@code id} means "not persisted yet". Instances handed out by a
+ * repository are snapshots: mutating one has no effect until it is saved.
  */
-@Entity
-@Table(name = "codigo_otp")
 public class CodigoOtp {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @Column(name = "email", nullable = false)
-    private String email;
-
-    @Column(name = "code_hash", nullable = false)
-    private String codeHash;
-
-    @Column(name = "issued_at", nullable = false)
-    private Instant issuedAt;
-
-    @Column(name = "expires_at", nullable = false)
-    private Instant expiresAt;
-
-    @Column(name = "used_at")
-    private Instant usedAt;
-
-    @Column(name = "attempt_count", nullable = false)
-    private int attemptCount = 0;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 20)
-    private CodigoOtpStatus status = CodigoOtpStatus.PENDING;
-
-    protected CodigoOtp() {
-        // JPA
-    }
+    private final Long id;
+    private final String email;
+    private final String codeHash;
+    private final Instant issuedAt;
+    private final Instant expiresAt;
+    private final Instant usedAt;
+    private final int attemptCount;
+    private CodigoOtpStatus status;
 
     public CodigoOtp(String email, String codeHash, Instant issuedAt, Instant expiresAt) {
+        this(null, email, codeHash, issuedAt, expiresAt, null, 0, CodigoOtpStatus.PENDING);
+    }
+
+    /** Restores a persisted code. */
+    public CodigoOtp(
+            Long id,
+            String email,
+            String codeHash,
+            Instant issuedAt,
+            Instant expiresAt,
+            Instant usedAt,
+            int attemptCount,
+            CodigoOtpStatus status) {
+        this.id = id;
         this.email = email;
         this.codeHash = codeHash;
         this.issuedAt = issuedAt;
         this.expiresAt = expiresAt;
-        this.attemptCount = 0;
-        this.status = CodigoOtpStatus.PENDING;
+        this.usedAt = usedAt;
+        this.attemptCount = attemptCount;
+        this.status = status;
     }
 
     public Long getId() {
@@ -96,15 +82,6 @@ public class CodigoOtp {
 
     public void markExpired() {
         this.status = CodigoOtpStatus.EXPIRED;
-    }
-
-    public void markVerified(Instant now) {
-        this.status = CodigoOtpStatus.VERIFIED;
-        this.usedAt = now;
-    }
-
-    public void incrementAttemptCount() {
-        this.attemptCount++;
     }
 
     public boolean isExpiredAt(Instant now) {

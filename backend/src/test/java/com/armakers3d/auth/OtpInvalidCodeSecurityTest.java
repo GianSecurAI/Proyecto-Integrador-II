@@ -21,7 +21,7 @@ class OtpInvalidCodeSecurityTest extends AbstractOtpIntegrationTest {
         var result = verifyOtp(email, wrongCode).andExpect(status().isUnauthorized()).andReturn();
 
         assertThat(result.getResponse().getCookie("ARM3D_SESSION")).isNull();
-        assertThat(sessionRepository.count()).isZero();
+        assertThat(sessionJpa.count()).isZero();
         assertThat(clienteRepository.findByEmail(email)).isEmpty();
     }
 }
