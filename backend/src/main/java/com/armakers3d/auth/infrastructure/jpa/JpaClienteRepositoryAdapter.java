@@ -13,9 +13,11 @@ import org.springframework.stereotype.Repository;
 public class JpaClienteRepositoryAdapter implements ClienteRepository {
 
     private final ClienteJpaRepository jpa;
+    private final RolJpaRepository roles;
 
-    public JpaClienteRepositoryAdapter(ClienteJpaRepository jpa) {
+    public JpaClienteRepositoryAdapter(ClienteJpaRepository jpa, RolJpaRepository roles) {
         this.jpa = jpa;
+        this.roles = roles;
     }
 
     @Override
@@ -24,7 +26,8 @@ public class JpaClienteRepositoryAdapter implements ClienteRepository {
                 jpa.save(new ClienteEntity(
                         cliente.getId(),
                         cliente.getEmail(),
-                        cliente.getRol(),
+                        roles.findByNombre(cliente.getRol().name())
+                                .orElseThrow(() -> new IllegalStateException("Unknown role: " + cliente.getRol())),
                         cliente.getCreatedAt(),
                         cliente.isActive()));
         return toDomain(saved);

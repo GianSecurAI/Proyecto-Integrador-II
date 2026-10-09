@@ -49,6 +49,14 @@ logging:
     com.armakers3d: DEBUG
 
 app:
+  # The tests run on the in-memory adapters; the JPA adapters are exercised by the Jpa*Test classes, which override these.
+  persistence:
+    users: memory
+    catalog: memory
+    orders: memory
+    incidents: memory
+    payments: memory
+    proofs: memory
   frontend-base-url: http://localhost:4200
   payments:
     expiry-job-enabled: false

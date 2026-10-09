@@ -88,8 +88,9 @@ session:
 security:
   api-docs-public: ${API_DOCS_PUBLIC:false}
 
-# Which adapter backs each feature port (backend-foundation.md section 11). Customer profiles are
-# memory-only until the DB phase adds their migration; the prod profile refuses to start on memory.
+# Which adapter backs each feature port (backend-foundation.md section 11): `jpa` = PostgreSQL through Flyway-migrated tables
+# (the default and the only value allowed in a deployed environment), `memory` = in-memory adapters, enabled only by the
+# nodb profile and by the tests. The prod guard (InMemoryStorageGuard) refuses to start on memory.
 app:
   # Public origin of the Angular SPA, used only for the tracking link in order emails. No default here:
   # every deployment must set FRONTEND_BASE_URL (local/nodb profiles supply a localhost value).
@@ -106,12 +107,12 @@ app:
       storage-max-total-bytes: ${PAYMENTS_PROOF_STORAGE_MAX_TOTAL_BYTES:268435456}   # in-memory adapter only: 256 MB
       storage-max-bytes-per-checkout: ${PAYMENTS_PROOF_STORAGE_MAX_PER_CHECKOUT_BYTES:26214400}   # in-memory adapter only: 25 MB
   persistence:
-    users: memory
-    catalog: memory
-    orders: memory
-    incidents: memory
-    payments: memory
-    proofs: memory
+    users: jpa
+    catalog: jpa
+    orders: jpa
+    incidents: jpa
+    payments: jpa
+    proofs: jpa
 
 mail:
   from: ${MAIL_FROM:no-reply@armakers3d.com}
