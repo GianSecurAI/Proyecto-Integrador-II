@@ -1,4 +1,5 @@
 import { IncidentPriority, IncidentStatus, OrderStatus } from '../../../shared/models/wire-enums';
+import { QuotationStatus } from './admin-quotation.model';
 
 /** Backend `OrderReportDto`. `from`/`to` echo the effective inclusive range (`YYYY-MM-DD`,
  * America/Lima). Amounts are server-computed order totals in soles, EXCLUDING cancelled orders
@@ -25,6 +26,16 @@ export interface IncidentReportDto {
   resolvedIncidents: number;
   byStatus: { status: IncidentStatus; count: number }[];
   byPriority: { priority: IncidentPriority; count: number }[];
+}
+
+/** Backend `QuotationReportDto` (RF-17): quotations registered in the range and the amount agreed on the accepted ones. */
+export interface QuotationReportDto {
+  from: string;
+  to: string;
+  totalQuotations: number;
+  byStatus: { status: QuotationStatus; count: number; amount: number }[];
+  totalAmount: number;
+  acceptedAmount: number;
 }
 
 /** Maximum span (days, inclusive) the backend accepts; mirrored for UX validation only. */

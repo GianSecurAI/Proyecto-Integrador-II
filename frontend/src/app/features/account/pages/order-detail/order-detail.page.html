@@ -84,6 +84,27 @@
               </section>
             }
 
+            @if (order.kind === 'ESTANDAR') {
+              <div class="order-detail-page__reorder">
+                <app-button variant="secondary" [loading]="reordering()" [disabled]="reordering()" (clicked)="reorder()">
+                  Comprar de nuevo
+                </app-button>
+                @if (reorderResult(); as result) {
+                  <p role="status" class="order-detail-page__reorder-message">
+                    @if (result.added > 0) {
+                      Agregamos {{ result.added }} producto(s) a tu carrito con el precio actual.
+                      <a routerLink="/cart">Ver carrito</a>
+                    }
+                    @if (result.unavailable > 0) {
+                      {{ result.unavailable }} producto(s) ya no están disponibles.
+                    }
+                  </p>
+                }
+                @if (reorderError()) {
+                  <p role="alert" class="order-detail-page__reorder-message">{{ reorderError() }}</p>
+                }
+              </div>
+            }
           </app-card>
 
           <app-order-status-timeline [status]="order.status" />

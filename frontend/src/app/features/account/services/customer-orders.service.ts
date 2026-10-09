@@ -4,7 +4,7 @@ import { Observable, map } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { buildParams } from '../../../core/http/http-params';
 import { Page } from '../../../core/models/page.model';
-import { OrderKind, OrderStatus } from '../../../shared/models/wire-enums';
+import { OrderKind, OrderStatus, ProductCategory } from '../../../shared/models/wire-enums';
 import {
   OrderDetailViewModel,
   OrderResponseDto,
@@ -13,6 +13,23 @@ import {
   toOrderDetailViewModel,
   toOrderSummaryViewModel,
 } from '../models/order.model';
+
+/** `GET /api/orders/{id}/reorder` (RF-14): the products of a catalog order with their CURRENT price and availability. */
+export interface ReorderItem {
+  productId: number;
+  title: string;
+  category: ProductCategory | null;
+  subcategory: string | null;
+  unitPrice: number;
+  quantity: number;
+  available: boolean;
+}
+
+export interface Reorder {
+  orderId: string;
+  items: ReorderItem[];
+  availableCount: number;
+}
 
 export interface CustomerOrderFilter {
   status?: OrderStatus | null;
@@ -43,6 +60,11 @@ export class CustomerOrdersService {
     return this.http
       .get<Page<OrderSummaryDto>>(this.url, { params })
       .pipe(map((page) => ({ ...page, content: page.content.map(toOrderSummaryViewModel) })));
+  }
+
+  /** Buy again: nothing is created; the caller puts the available items in the cart and checks out as usual. */
+  reorder(orderId: string): Observable<Reorder> {
+    return this.http.get<Reorder>(`${this.url}/${encodeURIComponent(orderId)}/reorder`);
   }
 
   get(orderId: string): Observable<OrderDetailViewModel> {

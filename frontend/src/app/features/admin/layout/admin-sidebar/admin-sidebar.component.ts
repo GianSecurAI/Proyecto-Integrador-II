@@ -1,6 +1,6 @@
 import { Component, computed, inject, input } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
-import { ADMIN_ONLY_ROLES, AppRole } from '../../../../core/auth/roles';
+import { ADMIN_ONLY_ROLES, AppRole, MONITORING_ROLES, STAFF_ROLES } from '../../../../core/auth/roles';
 import { SessionStateService } from '../../../../core/services/session-state.service';
 
 interface AdminNavItem {
@@ -19,7 +19,9 @@ interface AdminNavItem {
  * `docs/discovery/06-system-definition.md`:
  * - Productos     -> RF-07 (lines 197-201: alta/edición/activación de productos) — Administrador-only.
  * - Pedidos       -> RF-13 (gestión de estados del pedido) — Administrador/Asesor.
- * (No Cotizaciones entry: quotations are prepared outside the system, ADR-004 D-14.)
+ * - Cotizaciones -> RF-08/09/11: quotations agreed over WhatsApp, their status and the order generated from them
+ *   (the price is always typed by staff; the system never computes it) — Administrador/Asesor.
+ * - Monitoreo y respaldos -> RF-18: system status and backup log — Responsable de TI and Administrador.
  * - Incidencias   -> RF-16/17/18 (gestión de estado, prioridad, resolución) — Administrador/Asesor.
  * - Reportes      -> RF-19 (reportes de pedidos/cotizaciones/incidencias, exclusivo Administrador).
  * - Usuarios y roles -> RF-03 (autorización por rol / gestión de roles y permisos) — Administrador-only.
@@ -34,12 +36,16 @@ interface AdminNavItem {
  */
 const ADMIN_NAV_ITEMS: readonly AdminNavItem[] = [
   { label: 'Productos', path: '/admin/products', roles: ADMIN_ONLY_ROLES },
-  { label: 'Pedidos', path: '/admin/orders' },
+  { label: 'Pedidos', path: '/admin/orders', roles: STAFF_ROLES },
+  // RF-08/09/11: quotations agreed over WhatsApp, their status and the order generated from them.
+  { label: 'Cotizaciones', path: '/admin/quotations', roles: STAFF_ROLES },
   // FE-11 (ADR-005): manual Yape/Plin payment verification — Administrador-only.
   { label: 'Pagos por verificar', path: '/admin/payments', roles: ADMIN_ONLY_ROLES },
-  { label: 'Incidencias', path: '/admin/incidents' },
+  { label: 'Incidencias', path: '/admin/incidents', roles: STAFF_ROLES },
   { label: 'Reportes', path: '/admin/reports', roles: ADMIN_ONLY_ROLES },
   { label: 'Usuarios y roles', path: '/admin/users', roles: ADMIN_ONLY_ROLES },
+  // RF-18: system status and backup log — IT officer and administrator.
+  { label: 'Monitoreo y respaldos', path: '/admin/monitoring', roles: MONITORING_ROLES },
 ];
 
 /**

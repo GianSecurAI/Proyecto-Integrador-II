@@ -28,15 +28,16 @@ describe('AdminSidebarComponent', () => {
       fixture.detectChanges();
     });
 
-    it('renders all six approved admin links (incl. Pagos por verificar)', () => {
+    it('renders all eight approved admin links (incl. Pagos por verificar, Cotizaciones and Monitoreo)', () => {
       const links: HTMLAnchorElement[] = Array.from(
         fixture.nativeElement.querySelectorAll('.admin-sidebar__link'),
       );
-      expect(links.length).toBe(6);
+      expect(links.length).toBe(8);
       expect(fixture.nativeElement.textContent).toContain('Productos');
       expect(fixture.nativeElement.textContent).toContain('Pedidos');
       expect(fixture.nativeElement.textContent).toContain('Pagos por verificar');
-      expect(fixture.nativeElement.textContent).not.toContain('Cotizaciones');
+      expect(fixture.nativeElement.textContent).toContain('Cotizaciones');
+      expect(fixture.nativeElement.textContent).toContain('Monitoreo y respaldos');
       expect(fixture.nativeElement.textContent).toContain('Incidencias');
       expect(fixture.nativeElement.textContent).toContain('Reportes');
       expect(fixture.nativeElement.textContent).toContain('Usuarios y roles');
@@ -50,10 +51,12 @@ describe('AdminSidebarComponent', () => {
       expect(paths).toEqual([
         '/admin/products',
         '/admin/orders',
+        '/admin/quotations',
         '/admin/payments',
         '/admin/incidents',
         '/admin/reports',
         '/admin/users',
+        '/admin/monitoring',
       ]);
     });
 
@@ -85,12 +88,13 @@ describe('AdminSidebarComponent', () => {
       fixture.detectChanges();
     });
 
-    it('shows only the two Administrador/Asesor-shared domains, hiding the Administrador-only ones', () => {
+    it('shows only the three Administrador/Asesor-shared domains, hiding the Administrador-only ones', () => {
       const links: HTMLAnchorElement[] = Array.from(
         fixture.nativeElement.querySelectorAll('.admin-sidebar__link'),
       );
       const paths = links.map((link) => link.pathname);
-      expect(paths).toEqual(['/admin/orders', '/admin/incidents']);
+      expect(paths).toEqual(['/admin/orders', '/admin/quotations', '/admin/incidents']);
+      expect(fixture.nativeElement.textContent).not.toContain('Monitoreo');
       expect(fixture.nativeElement.textContent).not.toContain('Productos');
       expect(fixture.nativeElement.textContent).not.toContain('Pagos por verificar');
       expect(fixture.nativeElement.textContent).not.toContain('Reportes');
@@ -98,13 +102,24 @@ describe('AdminSidebarComponent', () => {
     });
   });
 
-  describe('no session (defensive default)', () => {
-    it('shows no Administrador-only items when no role is known yet', () => {
+  describe('as RESPONSABLE_TI (UX-only role filtering)', () => {
+    it('shows only monitoring and backups', () => {
+      session.markAuthenticated('RESPONSABLE_TI', 'ti@armakers3d.com');
       fixture.detectChanges();
       const links: HTMLAnchorElement[] = Array.from(
         fixture.nativeElement.querySelectorAll('.admin-sidebar__link'),
       );
-      expect(links.length).toBe(2);
+      expect(links.map((link) => link.pathname)).toEqual(['/admin/monitoring']);
+    });
+  });
+
+  describe('no session (defensive default)', () => {
+    it('shows no role-restricted items when no role is known yet', () => {
+      fixture.detectChanges();
+      const links: HTMLAnchorElement[] = Array.from(
+        fixture.nativeElement.querySelectorAll('.admin-sidebar__link'),
+      );
+      expect(links.length).toBe(0);
     });
   });
 });

@@ -4,7 +4,7 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { buildParams } from '../../../core/http/http-params';
 import { IncidentStatus, OrderStatus } from '../../../shared/models/wire-enums';
-import { IncidentReportDto, OrderReportDto } from '../models/admin-report.model';
+import { IncidentReportDto, OrderReportDto, QuotationReportDto } from '../models/admin-report.model';
 
 /**
  * ADMINISTRADOR-only reports (`/api/admin/reports/orders` and `/incidents`). The backend
@@ -20,6 +20,10 @@ export class AdminReportsService {
     return this.http.get<OrderReportDto>(`${this.url}/orders`, {
       params: buildParams({ from, to, status }),
     });
+  }
+
+  quotations(from: string, to: string): Observable<QuotationReportDto> {
+    return this.http.get<QuotationReportDto>(`${this.url}/quotations`, { params: buildParams({ from, to }) });
   }
 
   incidents(from: string, to: string, status?: IncidentStatus | null): Observable<IncidentReportDto> {

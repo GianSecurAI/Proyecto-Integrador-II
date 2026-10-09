@@ -17,6 +17,7 @@ import {
   OrderStatus,
   describeOrderStatus,
 } from '../../models/order.model';
+import { CartStateService } from '../../../cart/services/cart-state.service';
 import { CustomerOrdersService } from '../../services/customer-orders.service';
 
 type LoadStatus = 'loading' | 'loaded' | 'not-found' | 'error';
@@ -50,11 +51,17 @@ type LoadStatus = 'loading' | 'loaded' | 'not-found' | 'error';
 })
 export class OrderDetailPage {
   private readonly ordersService = inject(CustomerOrdersService);
+  private readonly cart = inject(CartStateService);
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly status = signal<LoadStatus>('loading');
   readonly order = signal<OrderDetailViewModel | null>(null);
+
+  /** Result of "Comprar de nuevo" (RF-14): how many products went to the cart and how many are gone. */
+  readonly reorderResult = signal<{ added: number; unavailable: number } | null>(null);
+  readonly reorderError = signal<string | null>(null);
+  readonly reordering = signal(false);
 
   private currentId = '';
 
@@ -74,6 +81,46 @@ export class OrderDetailPage {
 
   retry(): void {
     this.load(this.currentId);
+  }
+
+  /**
+   * RF-14 / RN10: puts the products of this catalog order in the cart at today's price and availability, then the
+   * customer reviews the cart and checks out normally. Personalized orders are not offered this action.
+   */
+  reorder(): void {
+    const order = this.order();
+    if (!order || this.reordering()) return;
+    this.reordering.set(true);
+    this.reorderError.set(null);
+    this.reorderResult.set(null);
+    this.ordersService
+      .reorder(order.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (result) => {
+          let added = 0;
+          for (const item of result.items) {
+            if (!item.available || !item.category || !item.subcategory) continue;
+            this.cart.addItem(
+              {
+                id: item.productId,
+                title: item.title,
+                category: item.category,
+                subcategory: item.subcategory,
+                price: item.unitPrice,
+              },
+              item.quantity,
+            );
+            added += 1;
+          }
+          this.reorderResult.set({ added, unavailable: result.items.length - added });
+          this.reordering.set(false);
+        },
+        error: () => {
+          this.reorderError.set('No pudimos preparar la compra. Inténtalo de nuevo.');
+          this.reordering.set(false);
+        },
+      });
   }
 
   kindLabel(kind: OrderKind): string {

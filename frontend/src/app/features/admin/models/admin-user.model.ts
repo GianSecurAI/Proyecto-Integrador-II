@@ -6,7 +6,11 @@ export const ADMIN_USER_ROLES: readonly AdminUserRole[] = ROLES;
 
 /** Roles an administrator may PROVISION through `POST /api/admin/users` (never CLIENTE: customers
  * register themselves with the email OTP). */
-export const STAFF_PROVISION_ROLES: readonly AdminUserRole[] = ['ASESOR', 'ADMINISTRADOR'];
+export const STAFF_PROVISION_ROLES: readonly AdminUserRole[] = [
+  'ASESOR',
+  'ADMINISTRADOR',
+  'RESPONSABLE_TI',
+];
 
 export function describeAdminUserRole(role: AdminUserRole): {
   label: string;

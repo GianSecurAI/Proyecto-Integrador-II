@@ -98,7 +98,7 @@ describe('AdminUserListPage (GET/POST /api/admin/users)', () => {
     beforeEach(() => listReq().flush(page(USERS)));
 
     it('only offers the staff roles (never CLIENTE) and blocks an invalid email (UX)', () => {
-      expect(component.provisionRoles).toEqual(['ASESOR', 'ADMINISTRADOR']);
+      expect(component.provisionRoles).toEqual(['ASESOR', 'ADMINISTRADOR', 'RESPONSABLE_TI']);
       component.updateNewStaffEmail('not-an-email');
       component.provisionStaff();
       http.expectNone((r) => r.method === 'POST');

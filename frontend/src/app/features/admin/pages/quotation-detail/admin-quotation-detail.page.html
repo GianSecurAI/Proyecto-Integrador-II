@@ -1,0 +1,135 @@
+<div class="admin-quotation-detail-page">
+  <nav aria-label="Ruta de navegación" class="admin-quotation-detail-page__breadcrumb">
+    <a routerLink="/admin/quotations">Cotizaciones</a>
+  </nav>
+
+  @switch (status()) {
+    @case ('loading') {
+      <app-loading-state message="Cargando la cotización…" />
+    }
+    @case ('error') {
+      <app-error-state
+        title="No se pudo cargar la cotización"
+        description="Ocurrió un problema al conectar con la cotización. Inténtalo de nuevo."
+      >
+        <app-button errorStateAction variant="secondary" (clicked)="retry()">Reintentar</app-button>
+      </app-error-state>
+    }
+    @case ('not-found') {
+      <app-empty-state
+        title="No encontramos esta cotización"
+        description="Revisa la lista de cotizaciones."
+      >
+        <a emptyStateAction class="ui-btn ui-btn--primary ui-btn--md" routerLink="/admin/quotations">
+          Volver a cotizaciones
+        </a>
+      </app-empty-state>
+    }
+    @default {
+      @if (quotation(); as q) {
+        <app-card>
+          <div class="admin-quotation-detail-page__header">
+            <div>
+              <h1>Cotización n.° {{ q.id }}</h1>
+              <p class="admin-quotation-detail-page__meta">
+                Registrada el {{ formatDate(q.registeredAt) }} · Actualizada el {{ formatDate(q.updatedAt) }}
+              </p>
+            </div>
+            <app-status-badge [label]="statusLabel(q.status)" [tone]="statusTone(q.status)" />
+          </div>
+
+          <dl class="admin-quotation-detail-page__data">
+            <div>
+              <dt>Cliente</dt>
+              <dd>{{ q.customerName || '—' }} · {{ q.customerEmail }}</dd>
+            </div>
+            @if (q.customerPhone) {
+              <div>
+                <dt>Teléfono</dt>
+                <dd>{{ q.customerPhone }}</dd>
+              </div>
+            }
+            <div>
+              <dt>Monto acordado</dt>
+              <dd><strong>S/ {{ q.agreedAmount.toFixed(2) }}</strong></dd>
+            </div>
+            <div class="admin-quotation-detail-page__wide">
+              <dt>Descripción</dt>
+              <dd>{{ q.description }}</dd>
+            </div>
+            @if (q.notes) {
+              <div class="admin-quotation-detail-page__wide">
+                <dt>Notas</dt>
+                <dd>{{ q.notes }}</dd>
+              </div>
+            }
+            @if (q.orderId) {
+              <div>
+                <dt>Pedido generado</dt>
+                <dd><a [routerLink]="['/admin/orders', q.orderId]">{{ q.orderId }}</a></dd>
+              </div>
+            }
+          </dl>
+        </app-card>
+
+        @if (q.allowedNextStatuses.length > 0) {
+          <app-card>
+            <h2>Actualizar el estado</h2>
+            <p class="admin-quotation-detail-page__hint">
+              Registrada, aceptada, rechazada o vencida: el resultado es definitivo.
+            </p>
+            <label class="admin-quotation-detail-page__field">
+              <span>Notas del cambio (opcional)</span>
+              <textarea
+                class="ui-input"
+                rows="2"
+                maxlength="500"
+                [value]="notes()"
+                (input)="notes.set($any($event.target).value)"
+              ></textarea>
+            </label>
+            <div class="admin-quotation-detail-page__actions">
+              @for (next of q.allowedNextStatuses; track next) {
+                <app-button
+                  [variant]="next === 'ACEPTADA' ? 'primary' : 'secondary'"
+                  [disabled]="busy()"
+                  (clicked)="changeStatus(next)"
+                >
+                  Marcar como {{ statusLabel(next).toLowerCase() }}
+                </app-button>
+              }
+            </div>
+          </app-card>
+        }
+
+        @if (q.status === 'ACEPTADA' && !q.orderId) {
+          <app-card>
+            <h2>Generar el pedido</h2>
+            <p class="admin-quotation-detail-page__hint">
+              Hazlo solo después de confirmar que el cliente realizó el pago externo acordado. Este paso no
+              procesa ningún pago; el cliente podrá seguir el pedido y recibirá un correo.
+            </p>
+            <label class="admin-quotation-detail-page__checkbox">
+              <input
+                class="ui-checkbox"
+                type="checkbox"
+                [checked]="paymentConfirmed()"
+                (change)="paymentConfirmed.set($any($event.target).checked)"
+              />
+              Confirmo que el pago externo ya fue recibido.
+            </label>
+            <div class="admin-quotation-detail-page__actions">
+              <app-button [disabled]="busy() || !paymentConfirmed()" (clicked)="generateOrder()">
+                Generar pedido
+              </app-button>
+            </div>
+          </app-card>
+        }
+
+        @if (actionError()) {
+          <p role="alert" class="admin-quotation-detail-page__error">{{ actionError() }}</p>
+        }
+      }
+    }
+  }
+</div>

@@ -1,5 +1,13 @@
 import { Routes } from '@angular/router';
-import { ADMIN_ONLY_ROLES, CUSTOMER_ROLES, STAFF_ROLES } from './core/auth/roles';
+import { inject } from '@angular/core';
+import { SessionStateService } from './core/services/session-state.service';
+import {
+  ADMIN_ONLY_ROLES,
+  ADMIN_SHELL_ROLES,
+  CUSTOMER_ROLES,
+  MONITORING_ROLES,
+  STAFF_ROLES,
+} from './core/auth/roles';
 import { authGuard } from './core/guards/auth.guard';
 import { checkoutCartNotEmptyGuard } from './features/checkout/guards/checkout-cart-not-empty.guard';
 
@@ -146,7 +154,7 @@ export const routes: Routes = [
     // they correctly, and intentionally, inherit the parent's broader `STAFF_ROLES`.
     path: 'admin',
     canActivate: [authGuard],
-    data: { role: STAFF_ROLES },
+    data: { role: ADMIN_SHELL_ROLES },
     loadComponent: () =>
       import('./features/admin/layout/admin-shell/admin-shell.component').then(
         (m) => m.AdminShellComponent,
@@ -158,7 +166,13 @@ export const routes: Routes = [
       // been redirected straight into a route they cannot access and immediately bounced to
       // `/forbidden`. Now that staff OTP login makes `/admin` genuinely reachable
       // (`features/auth/pages/verify-code/verify-code.page.ts`), this is fixed.
-      { path: '', pathMatch: 'full', redirectTo: 'orders' },
+      {
+        path: '',
+        pathMatch: 'full',
+        // The IT officer cannot enter the order screens, so bare `/admin` sends them to monitoring instead.
+        redirectTo: () =>
+          inject(SessionStateService).currentRole() === 'RESPONSABLE_TI' ? 'monitoring' : 'orders',
+      },
       {
         // The one domain (RF-07/HU06 "Gestionar catálogo de productos") with a real feature
         // implementation — list/detail/create — instead of the generic placeholder used by the
@@ -202,6 +216,8 @@ export const routes: Routes = [
         // Asesor, see `pages/order-list/admin-order-list.page.ts`'s doc comment. Inherits the
         // parent's `['ADMINISTRADOR', 'ASESOR']` — no extra guard needed.
         path: 'orders',
+        canActivate: [authGuard],
+        data: { role: STAFF_ROLES },
         loadComponent: () =>
           import('./features/admin/pages/order-list/admin-order-list.page').then(
             (m) => m.AdminOrderListPage,
@@ -213,6 +229,8 @@ export const routes: Routes = [
         // the ':id' param route. RF-11 ("Registro de pedidos", flujo personalizado) advisor
         // workflow — see `pages/register-personalized-order/`'s doc comment.
         path: 'orders/register-personalized',
+        canActivate: [authGuard],
+        data: { role: STAFF_ROLES },
         loadComponent: () =>
           import(
             './features/admin/pages/register-personalized-order/admin-register-personalized-order.page'
@@ -221,6 +239,8 @@ export const routes: Routes = [
       },
       {
         path: 'orders/:id',
+        canActivate: [authGuard],
+        data: { role: STAFF_ROLES },
         loadComponent: () =>
           import('./features/admin/pages/order-detail/admin-order-detail.page').then(
             (m) => m.AdminOrderDetailPage,
@@ -233,6 +253,8 @@ export const routes: Routes = [
         // see `pages/incident-list/admin-incident-list.page.ts`'s doc comment. Inherits the
         // parent's `['ADMINISTRADOR', 'ASESOR']` — no extra guard needed.
         path: 'incidents',
+        canActivate: [authGuard],
+        data: { role: STAFF_ROLES },
         loadComponent: () =>
           import('./features/admin/pages/incident-list/admin-incident-list.page').then(
             (m) => m.AdminIncidentListPage,
@@ -241,11 +263,56 @@ export const routes: Routes = [
       },
       {
         path: 'incidents/:id',
+        canActivate: [authGuard],
+        data: { role: STAFF_ROLES },
         loadComponent: () =>
           import('./features/admin/pages/incident-detail/admin-incident-detail.page').then(
             (m) => m.AdminIncidentDetailPage,
           ),
         title: 'Detalle de la incidencia — Administración — Ar Makers 3D',
+      },
+      {
+        // RF-08/RF-09/RF-11: quotations agreed over WhatsApp — register, update status, generate the order.
+        // Registered BEFORE 'quotations/:id' so the literal 'new' is not captured by the param route.
+        path: 'quotations',
+        canActivate: [authGuard],
+        data: { role: STAFF_ROLES },
+        loadComponent: () =>
+          import('./features/admin/pages/quotation-list/admin-quotation-list.page').then(
+            (m) => m.AdminQuotationListPage,
+          ),
+        title: 'Cotizaciones — Administración — Ar Makers 3D',
+      },
+      {
+        path: 'quotations/new',
+        canActivate: [authGuard],
+        data: { role: STAFF_ROLES },
+        loadComponent: () =>
+          import('./features/admin/pages/quotation-create/admin-quotation-create.page').then(
+            (m) => m.AdminQuotationCreatePage,
+          ),
+        title: 'Registrar cotización — Administración — Ar Makers 3D',
+      },
+      {
+        path: 'quotations/:id',
+        canActivate: [authGuard],
+        data: { role: STAFF_ROLES },
+        loadComponent: () =>
+          import('./features/admin/pages/quotation-detail/admin-quotation-detail.page').then(
+            (m) => m.AdminQuotationDetailPage,
+          ),
+        title: 'Detalle de la cotización — Administración — Ar Makers 3D',
+      },
+      {
+        // RF-18: system status and backup log — IT officer and administrator only.
+        path: 'monitoring',
+        canActivate: [authGuard],
+        data: { role: MONITORING_ROLES },
+        loadComponent: () =>
+          import('./features/admin/pages/monitoring/admin-monitoring.page').then(
+            (m) => m.AdminMonitoringPage,
+          ),
+        title: 'Monitoreo y respaldos — Administración — Ar Makers 3D',
       },
       {
         // Administrador-ONLY — RF-19 (line 209: "Reportes... exclusivos para Administrador"). See

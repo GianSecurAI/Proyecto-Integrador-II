@@ -1,0 +1,134 @@
+<div class="admin-quotation-list-page">
+  <app-admin-page-header
+    title="Cotizaciones"
+    description="Cotizaciones acordadas con los clientes por WhatsApp. Registra el precio acordado, actualiza su estado y genera el pedido cuando el pago externo esté confirmado."
+  />
+
+  <div class="admin-quotation-list-page__actions">
+    <a routerLink="/admin/quotations/new" class="ui-btn ui-btn--primary ui-btn--md">
+      Registrar cotización
+    </a>
+  </div>
+
+  @switch (status()) {
+    @case ('loading') {
+      <app-loading-state message="Cargando cotizaciones…" />
+    }
+    @case ('error') {
+      <app-error-state
+        title="No se pudieron cargar las cotizaciones"
+        description="Ocurrió un problema al conectar con las cotizaciones. Inténtalo de nuevo."
+      >
+        <app-button errorStateAction variant="secondary" (clicked)="retry()">
+          Reintentar
+        </app-button>
+      </app-error-state>
+    }
+    @default {
+      @if (quotations().length === 0 && !hasActiveFilters()) {
+        <app-empty-state
+          title="Todavía no hay cotizaciones"
+          description="Cuando registres la primera cotización acordada con un cliente, la verás aquí."
+        />
+      } @else {
+        <div class="admin-quotation-list-page__filters">
+          <label class="admin-quotation-list-page__filter">
+            <span>Buscar por descripción o correo</span>
+            <input
+              class="ui-input"
+              type="search"
+              placeholder="Ej. llavero, cliente@correo.com"
+              [value]="search()"
+              (input)="updateSearch($any($event.target).value)"
+            />
+          </label>
+          <label class="admin-quotation-list-page__filter">
+            <span>Estado</span>
+            <select
+              class="ui-select"
+              [value]="statusFilter()"
+              (change)="updateStatusFilter($any($event.target).value)"
+            >
+              @for (opt of statusFilterOptions; track opt) {
+                <option [value]="opt">{{ opt === 'todos' ? 'Todos' : statusLabel(opt) }}</option>
+              }
+            </select>
+          </label>
+        </div>
+
+        @if (quotations().length === 0) {
+          <app-empty-state
+            title="Ninguna cotización coincide con los filtros"
+            description="Ajusta la búsqueda o el estado seleccionado."
+          />
+        } @else {
+          <app-admin-data-table>
+            <thead>
+              <tr>
+                <th scope="col">Fecha</th>
+                <th scope="col">Cliente</th>
+                <th scope="col">Descripción</th>
+                <th scope="col">Monto acordado</th>
+                <th scope="col">Estado</th>
+                <th scope="col">Pedido</th>
+                <th scope="col">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (quotation of quotations(); track quotation.id) {
+                <tr>
+                  <td>{{ formatDate(quotation.registeredAt) }}</td>
+                  <td>{{ quotation.customerEmail }}</td>
+                  <td>{{ preview(quotation.description) }}</td>
+                  <td>S/ {{ quotation.agreedAmount.toFixed(2) }}</td>
+                  <td>
+                    <app-status-badge
+                      [label]="statusLabel(quotation.status)"
+                      [tone]="statusTone(quotation.status)"
+                    />
+                  </td>
+                  <td>
+                    @if (quotation.orderId) {
+                      <a [routerLink]="['/admin/orders', quotation.orderId]">{{ quotation.orderId }}</a>
+                    } @else {
+                      —
+                    }
+                  </td>
+                  <td>
+                    <a
+                      [routerLink]="['/admin/quotations', quotation.id]"
+                      class="ui-btn ui-btn--ghost ui-btn--sm"
+                    >
+                      Ver detalle
+                    </a>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </app-admin-data-table>
+          @if (totalPages() > 1) {
+            <nav class="admin-quotation-list-page__pagination" aria-label="Paginación de cotizaciones">
+              <button
+                type="button"
+                class="ui-btn ui-btn--secondary ui-btn--sm"
+                [disabled]="page() === 0"
+                (click)="goToPage(page() - 1)"
+              >
+                Anterior
+              </button>
+              <span aria-live="polite">Página {{ page() + 1 }} de {{ totalPages() }}</span>
+              <button
+                type="button"
+                class="ui-btn ui-btn--secondary ui-btn--sm"
+                [disabled]="page() + 1 >= totalPages()"
+                (click)="goToPage(page() + 1)"
+              >
+                Siguiente
+              </button>
+            </nav>
+          }
+        }
+      }
+    }
+  }
+</div>

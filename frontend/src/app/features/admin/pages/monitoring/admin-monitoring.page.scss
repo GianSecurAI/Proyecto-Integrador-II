@@ -1,0 +1,93 @@
+@use 'tokens' as *;
+
+:host {
+  display: block;
+}
+
+.admin-monitoring-page {
+  display: grid;
+  gap: var(--ar-space-6);
+}
+
+.admin-monitoring-page__section {
+  display: grid;
+  gap: var(--ar-space-4);
+}
+
+.admin-monitoring-page__heading-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--ar-space-4);
+  flex-wrap: wrap;
+
+  h2 {
+    margin: 0;
+  }
+}
+
+.admin-monitoring-page__note {
+  margin: 0;
+  color: var(--ar-color-muted-on-light);
+  font-size: var(--ar-font-size-sm);
+}
+
+.admin-monitoring-page__cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--ar-space-4);
+
+  @media (min-width: $bp-sm) {
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  }
+}
+
+.admin-monitoring-page__tables {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--ar-space-4);
+
+  @media (min-width: $bp-md) {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.admin-monitoring-page__form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--ar-space-4);
+  max-width: 40rem;
+
+  @media (min-width: $bp-sm) {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.admin-monitoring-page__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ar-space-2);
+  font-size: var(--ar-font-size-sm);
+}
+
+.admin-monitoring-page__field--wide,
+.admin-monitoring-page__actions,
+.admin-monitoring-page__message {
+  grid-column: 1 / -1;
+}
+
+.admin-monitoring-page__checkbox {
+  display: flex;
+  align-items: center;
+  gap: var(--ar-space-2);
+  font-size: var(--ar-font-size-sm);
+  grid-column: 1 / -1;
+}
+
+.admin-monitoring-page__message {
+  margin: 0;
+
+  &--error {
+    color: var(--ar-color-danger);
+  }
+}

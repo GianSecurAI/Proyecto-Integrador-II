@@ -118,6 +118,40 @@
         </section>
       }
 
+      @if (quotationReport(); as quotations) {
+        <section class="admin-reports-page__section" aria-labelledby="reports-quotations-heading">
+          <h2 id="reports-quotations-heading">Cotizaciones</h2>
+          <p class="admin-reports-page__note">Del {{ quotations.from }} al {{ quotations.to }}.</p>
+          <div class="admin-reports-page__cards">
+            <app-admin-summary-card label="Total de cotizaciones" [value]="quotations.totalQuotations" />
+            <app-admin-summary-card
+              label="Monto aceptado"
+              [value]="'S/ ' + quotations.acceptedAmount.toFixed(2)"
+              tone="success"
+              caption="Suma de los montos acordados en las cotizaciones aceptadas"
+            />
+          </div>
+          <app-admin-data-table>
+            <thead>
+              <tr>
+                <th scope="col">Estado</th>
+                <th scope="col">Cantidad</th>
+                <th scope="col">Monto acordado</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of quotationRows(); track row.key) {
+                <tr>
+                  <td><app-status-badge [label]="row.label" [tone]="row.tone" /></td>
+                  <td>{{ row.count }}</td>
+                  <td>S/ {{ row.amount.toFixed(2) }}</td>
+                </tr>
+              }
+            </tbody>
+          </app-admin-data-table>
+        </section>
+      }
+
       @if (incidentReport(); as incidents) {
         <section class="admin-reports-page__section" aria-labelledby="reports-incidents-heading">
           <h2 id="reports-incidents-heading">Incidencias</h2>

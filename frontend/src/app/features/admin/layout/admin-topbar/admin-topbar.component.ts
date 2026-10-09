@@ -41,6 +41,7 @@ export class AdminTopbarComponent {
     const role = this.session.currentRole();
     if (role === 'ADMINISTRADOR') return 'Administrador';
     if (role === 'ASESOR') return 'Asesor';
+    if (role === 'RESPONSABLE_TI') return 'Responsable de TI';
     return 'Administración';
   });
 
