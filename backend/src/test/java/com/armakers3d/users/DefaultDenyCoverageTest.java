@@ -221,12 +221,11 @@ class DefaultDenyCoverageTest extends AbstractNoDbRbacTest {
 
     @Test
     void reportEndpointsAreAdminOnlyOnExactPathsAndReadOnly() {
-        for (String path : List.of("/api/admin/reports/orders", "/api/admin/reports/incidents")) {
+        for (String path : List.of("/api/admin/reports/orders", "/api/admin/reports/incidents", "/api/admin/reports/quotations")) {
             assertThat(ruleFor(path)).as(path).get().extracting(AccessMatrix.Rule::access)
                     .isEqualTo(AccessMatrix.Access.ADMIN);
         }
         assertThat(ruleFor("/api/admin/reports")).isEmpty();
-        assertThat(ruleFor("/api/admin/reports/quotations")).isEmpty();
         assertThat(ruleFor("/api/admin/reports/orders/export")).isEmpty();
         assertThat(apiEndpoints()).anyMatch(e -> e.method().equals("GET") && e.pattern().equals("/api/admin/reports/orders"));
         assertThat(apiEndpoints()).anyMatch(e -> e.method().equals("GET") && e.pattern().equals("/api/admin/reports/incidents"));

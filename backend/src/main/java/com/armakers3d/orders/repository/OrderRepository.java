@@ -47,4 +47,13 @@ public interface OrderRepository {
      * one returns true (a JPA adapter relies on the UNIQUE {@code checkout_id} constraint).
      */
     boolean insertIfCheckoutAbsent(Order order);
+
+    /** The order generated from a quotation, if any (a quotation produces at most one order, RN08). */
+    Optional<Order> findByQuotationId(Long quotationId);
+
+    /**
+     * Atomically inserts an order generated from a quotation unless that quotation already has one. Returns false (and
+     * stores nothing) when it does, so two concurrent requests can never create two orders for one quotation.
+     */
+    boolean insertIfQuotationAbsent(Order order);
 }

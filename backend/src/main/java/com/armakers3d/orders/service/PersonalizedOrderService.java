@@ -83,6 +83,26 @@ public class PersonalizedOrderService {
         return order;
     }
 
+    /**
+     * RF11: creates the personalized order of an accepted quotation (the caller has verified the status and the payment
+     * confirmation). The order keeps the link to the quotation; a second attempt is 409.
+     */
+    public Order createFromQuotation(
+            Long quotationId, Long customerId, String description, java.math.BigDecimal agreedAmount, Long staffId,
+            com.armakers3d.auth.domain.Rol staffRole) {
+        Order order = Order.registerPersonalized(
+                orders.nextOrderNumber(), customerId, staffId, staffRole, description, agreedAmount, clock.instant(),
+                quotationId);
+        if (!orders.insertIfQuotationAbsent(order)) {
+            throw new com.armakers3d.orders.service.exception.QuotationAlreadyOrderedException();
+        }
+        audit.info("order.personalized.generated actor={} role={} order={} customer={} quotation={}",
+                staffId, staffRole, order.id(), order.customerId(), quotationId);
+        events.publish(new OrderStatusChanged(order.id(), order.customerId(), order.kind(), null, order.status(),
+                staffId, staffRole, order.createdAt()));
+        return order;
+    }
+
     private Order load(String orderId) {
         return orders.findById(orderId).orElseThrow(() -> new IllegalStateException("Idempotent order vanished: " + orderId));
     }

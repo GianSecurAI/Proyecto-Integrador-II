@@ -43,4 +43,6 @@ app:
     incidents: memory
     payments: memory
     proofs: memory
+    quotations: memory
+    monitoring: memory
   frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:4200}

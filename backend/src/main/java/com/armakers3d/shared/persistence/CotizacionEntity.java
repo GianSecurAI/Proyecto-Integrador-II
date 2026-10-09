@@ -1,4 +1,4 @@
-package com.armakers3d.orders.infrastructure.jpa;
+package com.armakers3d.shared.persistence;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -15,15 +15,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * JPA mapping of table {@code cotizacion} (+ {@code detalle_cotizacion}). A personalized order registered by an advisor
- * after the external payment keeps the quotation that was agreed over WhatsApp: description and agreed amount, stored
- * as an accepted quotation linked one-to-one to the order (ADR-004 D-14). The system never computes the amount.
+ * JPA mapping of table {@code cotizacion} (+ {@code detalle_cotizacion}): the price agreed with the customer over
+ * WhatsApp (never computed by the system, ADR-004 D-14). Shared by the quotations module (register / update) and the
+ * orders module (a personalized order registered directly keeps an accepted quotation linked one-to-one).
  */
 @Entity
 @Table(name = "cotizacion")
 public class CotizacionEntity {
-
-    static final String ACCEPTED = "ACEPTADA";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -45,6 +43,15 @@ public class CotizacionEntity {
     @Column(name = "fecha_cotizacion", nullable = false)
     private Instant quotedAt;
 
+    @Column(name = "observaciones")
+    private String notes;
+
+    @Column(name = "registrado_por")
+    private Long registeredBy;
+
+    @Column(name = "fecha_actualizacion")
+    private Instant updatedAt;
+
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "id_cotizacion", nullable = false)
     private List<Detalle> details = new ArrayList<>();
@@ -52,17 +59,66 @@ public class CotizacionEntity {
     protected CotizacionEntity() {
     }
 
-    CotizacionEntity(Long customerId, String description, BigDecimal agreedAmount, int quantity, Instant quotedAt) {
+    public CotizacionEntity(
+            Long customerId,
+            String description,
+            BigDecimal agreedAmount,
+            String status,
+            Instant quotedAt,
+            String notes,
+            Long registeredBy) {
         this.customerId = customerId;
         this.description = description;
         this.agreedAmount = agreedAmount;
-        this.status = ACCEPTED;
+        this.status = status;
         this.quotedAt = quotedAt;
-        this.details.add(new Detalle(description, quantity));
+        this.notes = notes;
+        this.registeredBy = registeredBy;
+        this.updatedAt = quotedAt;
+        this.details.add(new Detalle(description, 1));
     }
 
-    Long getId() {
+    /** Applies a status change and the notes that explain it. */
+    public void changeStatus(String status, String notes, Instant updatedAt) {
+        this.status = status;
+        this.notes = notes;
+        this.updatedAt = updatedAt;
+    }
+
+    public Long getId() {
         return id;
+    }
+
+    public Long getCustomerId() {
+        return customerId;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public BigDecimal getAgreedAmount() {
+        return agreedAmount;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public Instant getQuotedAt() {
+        return quotedAt;
+    }
+
+    public String getNotes() {
+        return notes;
+    }
+
+    public Long getRegisteredBy() {
+        return registeredBy;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt == null ? quotedAt : updatedAt;
     }
 
     /** JPA mapping of table {@code detalle_cotizacion}. */

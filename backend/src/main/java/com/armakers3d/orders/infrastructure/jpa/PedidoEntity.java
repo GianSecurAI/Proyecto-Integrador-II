@@ -136,6 +136,10 @@ public class PedidoEntity {
         return customerId;
     }
 
+    Long getQuotationId() {
+        return quotationId;
+    }
+
     Long getStatusId() {
         return statusId;
     }

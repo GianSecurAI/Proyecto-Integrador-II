@@ -10,5 +10,6 @@ package com.armakers3d.auth.domain;
 public enum Rol {
     CLIENTE,
     ASESOR,
-    ADMINISTRADOR
+    ADMINISTRADOR,
+    RESPONSABLE_TI
 }

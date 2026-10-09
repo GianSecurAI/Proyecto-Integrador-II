@@ -47,6 +47,15 @@ public class CodigoOtpEntity {
     @Column(name = "utilizado", nullable = false)
     private boolean utilizado;
 
+    @Column(name = "nombres_registro", length = 80)
+    private String registrationFirstName;
+
+    @Column(name = "apellidos_registro", length = 80)
+    private String registrationLastName;
+
+    @Column(name = "telefono_registro", length = 20)
+    private String registrationPhone;
+
     protected CodigoOtpEntity() {
         // JPA
     }
@@ -59,7 +68,10 @@ public class CodigoOtpEntity {
             Instant expiresAt,
             Instant usedAt,
             int attemptCount,
-            CodigoOtpStatus status) {
+            CodigoOtpStatus status,
+            String registrationFirstName,
+            String registrationLastName,
+            String registrationPhone) {
         this.id = id;
         this.email = email;
         this.codeHash = codeHash;
@@ -69,6 +81,9 @@ public class CodigoOtpEntity {
         this.attemptCount = attemptCount;
         this.status = status;
         this.utilizado = status == CodigoOtpStatus.VERIFIED;
+        this.registrationFirstName = registrationFirstName;
+        this.registrationLastName = registrationLastName;
+        this.registrationPhone = registrationPhone;
     }
 
     Long getId() {
@@ -97,6 +112,18 @@ public class CodigoOtpEntity {
 
     int getAttemptCount() {
         return attemptCount;
+    }
+
+    String getRegistrationFirstName() {
+        return registrationFirstName;
+    }
+
+    String getRegistrationLastName() {
+        return registrationLastName;
+    }
+
+    String getRegistrationPhone() {
+        return registrationPhone;
     }
 
     CodigoOtpStatus getStatus() {

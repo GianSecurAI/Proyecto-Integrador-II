@@ -17,6 +17,10 @@ public interface PedidoJpaRepository extends JpaRepository<PedidoEntity, Long> {
 
     boolean existsByCheckoutId(String checkoutId);
 
+    Optional<PedidoEntity> findByQuotationId(Long quotationId);
+
+    boolean existsByQuotationId(Long quotationId);
+
     List<PedidoEntity> findByCustomerIdOrderByCreatedAtDescCodeDesc(Long customerId);
 
     /** Row lock used for the compare-and-set status change: concurrent updates of one order queue behind each other. */

@@ -16,6 +16,7 @@ import com.armakers3d.shared.error.ApiException;
 import com.armakers3d.shared.notification.EmailDeliveryException;
 import com.armakers3d.shared.notification.EmailSender;
 import com.armakers3d.shared.util.EmailAddress;
+import com.armakers3d.auth.domain.AccountCreatedEvent;
 import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Duration;
@@ -25,6 +26,7 @@ import java.util.Locale;
 import java.util.concurrent.locks.ReentrantLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -48,6 +50,7 @@ public class OtpService {
     private final EmailSender emailSender;
     private final Clock clock;
     private final OtpPolicyProperties policy;
+    private final ApplicationEventPublisher events;
     private final SecureRandom secureRandom = new SecureRandom();
 
     // BCrypt is used purely as an adaptive one-way hash for the 6-digit code (research.md #2) —
@@ -77,12 +80,14 @@ public class OtpService {
             CodigoOtpRepository codigoOtpRepository,
             EmailSender emailSender,
             Clock clock,
-            OtpPolicyProperties policy) {
+            OtpPolicyProperties policy,
+            ApplicationEventPublisher events) {
         this.clienteRepository = clienteRepository;
         this.codigoOtpRepository = codigoOtpRepository;
         this.emailSender = emailSender;
         this.clock = clock;
         this.policy = policy;
+        this.events = events;
     }
 
     /** The outcome of a successful verification, handed to the controller to build the session. */
@@ -101,6 +106,10 @@ public class OtpService {
      * The email is sent after the lock is released so a slow SMTP server cannot stall other requests.
      */
     public void requestOtp(String rawEmail) {
+        requestOtp(rawEmail, null);
+    }
+
+    public void requestOtp(String rawEmail, CodigoOtp.RegistrationProfile registrationProfile) {
         String email = normalize(rawEmail);
         Instant now = clock.instant();
         String masked = EmailAddress.mask(email);
@@ -120,7 +129,12 @@ public class OtpService {
             }
             superseceExistingPendingCodes(email);
             codigoOtpRepository.save(
-                    new CodigoOtp(email, codeHash, now, now.plus(Duration.ofMinutes(policy.getExpiryMinutes()))));
+                    new CodigoOtp(
+                            email,
+                            codeHash,
+                            now,
+                            now.plus(Duration.ofMinutes(policy.getExpiryMinutes())),
+                            registrationProfile));
         } finally {
             lock.unlock();
         }
@@ -230,6 +244,7 @@ public class OtpService {
         boolean accountJustCreated = cliente == null;
         if (cliente == null) {
             cliente = clienteRepository.save(new Cliente(email, now));
+            events.publishEvent(new AccountCreatedEvent(cliente.getId(), codigoOtp.getRegistrationProfile()));
         } else if (!cliente.isActive()) {
             log.info("otp.verify.failed email={} reason=account_deactivated", masked);
             throw new AccountDeactivatedException();
