@@ -36,4 +36,11 @@ auth:
     admin-email: admin@example.test
 
 app:
+  persistence:
+    users: memory
+    catalog: memory
+    orders: memory
+    incidents: memory
+    payments: memory
+    proofs: memory
   frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:4200}

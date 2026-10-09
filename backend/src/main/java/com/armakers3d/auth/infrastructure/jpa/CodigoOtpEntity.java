@@ -18,29 +18,34 @@ public class CodigoOtpEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id_otp")
     private Long id;
 
-    @Column(name = "email", nullable = false)
+    @Column(name = "correo", nullable = false)
     private String email;
 
-    @Column(name = "code_hash", nullable = false)
+    @Column(name = "codigo_hash", nullable = false)
     private String codeHash;
 
-    @Column(name = "issued_at", nullable = false)
+    @Column(name = "fecha_creacion", nullable = false)
     private Instant issuedAt;
 
-    @Column(name = "expires_at", nullable = false)
+    @Column(name = "fecha_expiracion", nullable = false)
     private Instant expiresAt;
 
-    @Column(name = "used_at")
+    @Column(name = "fecha_uso")
     private Instant usedAt;
 
-    @Column(name = "attempt_count", nullable = false)
+    @Column(name = "intentos", nullable = false)
     private int attemptCount;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     private CodigoOtpStatus status;
+
+    /** Document column {@code utilizado}: kept in step with {@code status == VERIFIED}. */
+    @Column(name = "utilizado", nullable = false)
+    private boolean utilizado;
 
     protected CodigoOtpEntity() {
         // JPA
@@ -63,6 +68,7 @@ public class CodigoOtpEntity {
         this.usedAt = usedAt;
         this.attemptCount = attemptCount;
         this.status = status;
+        this.utilizado = status == CodigoOtpStatus.VERIFIED;
     }
 
     Long getId() {

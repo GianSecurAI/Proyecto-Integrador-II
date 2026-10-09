@@ -54,17 +54,17 @@ class JpaStaffProvisioningTest extends AbstractOtpIntegrationTest {
         long id = clienteRepository.save(new Cliente(uniqueEmail("plain").toLowerCase(), clock.instant())).getId();
 
         org.assertj.core.api.Assertions.assertThatThrownBy(
-                        () -> jdbc.update("update cliente set rol = 'SUPERUSER' where id = ?", id))
+                        () -> jdbc.update("update usuario set id_rol = 999999 where id_usuario = ?", id))
                 .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
     }
 
     @Test
-    void v5AddedTheNullableProfileColumns() {
+    void theUsuarioTableKeepsTheNullableProfileColumns() {
         List<String> columns = jdbc.queryForList(
-                "select lower(column_name) from information_schema.columns where lower(table_name) = 'cliente'",
+                "select lower(column_name) from information_schema.columns where lower(table_name) = 'usuario'",
                 String.class);
 
-        assertThat(columns).contains("first_name", "last_name", "phone");
+        assertThat(columns).contains("nombres", "apellidos", "telefono", "direccion");
         // existing accounts are unaffected: the columns are nullable
         clienteRepository.save(new Cliente(uniqueEmail("nullable").toLowerCase(), clock.instant()));
     }

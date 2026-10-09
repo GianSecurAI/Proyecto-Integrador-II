@@ -18,7 +18,7 @@ public class AuthenticatedSessionEntity {
     @Column(name = "id", length = 64)
     private String id;
 
-    @Column(name = "cliente_id", nullable = false)
+    @Column(name = "usuario_id", nullable = false)
     private Long clienteId;
 
     @Enumerated(EnumType.STRING)
