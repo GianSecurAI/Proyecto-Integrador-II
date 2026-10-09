@@ -19,7 +19,8 @@ public record Product(
         List<String> characteristics,
         boolean available,
         Instant createdAt,
-        Instant updatedAt) {
+        Instant updatedAt,
+        String imageUrl) {
 
     public Product {
         characteristics = List.copyOf(characteristics);
@@ -28,22 +29,22 @@ public record Product(
     /** New, available product; the repository assigns the id on save. */
     public static Product create(ProductData data, Instant now) {
         return new Product(null, data.title(), data.category(), data.subcategory(), data.description(),
-                data.price(), data.characteristics(), true, now, now);
+                data.price(), data.characteristics(), true, now, now, null);
     }
 
     public Product withId(Long newId) {
         return new Product(newId, title, category, subcategory, description, price, characteristics,
-                available, createdAt, updatedAt);
+                available, createdAt, updatedAt, imageUrl);
     }
 
     /** Full replacement of the editable fields; availability and creation time are untouched. */
     public Product updatedWith(ProductData data, Instant now) {
         return new Product(id, data.title(), data.category(), data.subcategory(), data.description(),
-                data.price(), data.characteristics(), available, createdAt, now);
+                data.price(), data.characteristics(), available, createdAt, now, imageUrl);
     }
 
     public Product withAvailability(boolean newAvailable, Instant now) {
         return new Product(id, title, category, subcategory, description, price, characteristics,
-                newAvailable, createdAt, now);
+                newAvailable, createdAt, now, imageUrl);
     }
 }

@@ -13,23 +13,31 @@ interface Described {
 }
 
 // ---- Roles (backend `Rol`) ----
-export type Role = 'CLIENTE' | 'ASESOR' | 'ADMINISTRADOR';
-export const ROLES: readonly Role[] = ['CLIENTE', 'ASESOR', 'ADMINISTRADOR'];
+export type Role = 'CLIENTE' | 'ASESOR' | 'ADMINISTRADOR' | 'RESPONSABLE_TI';
+export const ROLES: readonly Role[] = ['CLIENTE', 'ASESOR', 'ADMINISTRADOR', 'RESPONSABLE_TI'];
 const ROLE_META: Record<Role, Described> = {
   CLIENTE: { label: 'Cliente', tone: 'neutral' },
   ASESOR: { label: 'Asesor', tone: 'info' },
   ADMINISTRADOR: { label: 'Administrador', tone: 'success' },
+  RESPONSABLE_TI: { label: 'Responsable de TI', tone: 'info' },
 };
 export function describeRole(role: Role): Described {
   return ROLE_META[role];
 }
 
 // ---- Product category (backend `ProductCategory`) ----
-export type ProductCategory = 'LLAVERO' | 'PEGATINAS';
-export const PRODUCT_CATEGORIES: readonly ProductCategory[] = ['LLAVERO', 'PEGATINAS'];
+export type ProductCategory = 'LLAVERO' | 'PEGATINAS' | 'FIGURA' | 'DECORACION';
+export const PRODUCT_CATEGORIES: readonly ProductCategory[] = [
+  'LLAVERO',
+  'PEGATINAS',
+  'FIGURA',
+  'DECORACION',
+];
 const CATEGORY_LABELS: Record<ProductCategory, string> = {
   LLAVERO: 'Llavero',
   PEGATINAS: 'Pegatinas',
+  FIGURA: 'Figura',
+  DECORACION: 'Decoración',
 };
 export function categoryLabel(category: ProductCategory): string {
   return CATEGORY_LABELS[category] ?? category;

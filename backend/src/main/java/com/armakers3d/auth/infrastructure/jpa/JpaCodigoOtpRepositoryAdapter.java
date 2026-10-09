@@ -31,7 +31,10 @@ public class JpaCodigoOtpRepositoryAdapter implements CodigoOtpRepository {
                 c.getExpiresAt(),
                 c.getUsedAt(),
                 c.getAttemptCount(),
-                c.getStatus())));
+                c.getStatus(),
+                c.getRegistrationProfile() == null ? null : c.getRegistrationProfile().firstName(),
+                c.getRegistrationProfile() == null ? null : c.getRegistrationProfile().lastName(),
+                c.getRegistrationProfile() == null ? null : c.getRegistrationProfile().phone())));
     }
 
     @Override
@@ -85,6 +88,8 @@ public class JpaCodigoOtpRepositoryAdapter implements CodigoOtpRepository {
                 e.getExpiresAt(),
                 e.getUsedAt(),
                 e.getAttemptCount(),
-                e.getStatus());
+                e.getStatus(),
+                CodigoOtp.RegistrationProfile.ofNullable(
+                        e.getRegistrationFirstName(), e.getRegistrationLastName(), e.getRegistrationPhone()));
     }
 }

@@ -53,7 +53,7 @@ export class HeaderComponent {
    * enforces access either way. */
   readonly isStaff = computed(() => {
     const role = this.session.currentRole();
-    return role === 'ADMINISTRADOR' || role === 'ASESOR';
+    return role === 'ADMINISTRADOR' || role === 'ASESOR' || role === 'RESPONSABLE_TI';
   });
 
   logout(): void {

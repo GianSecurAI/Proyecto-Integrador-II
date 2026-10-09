@@ -20,10 +20,12 @@ public final class AccessMatrix {
     /** Who may call an endpoint. Role names map to CUSTOMER / ADVISOR / ADMIN in the contract docs. */
     public enum Access {
         PUBLIC(),
-        ANY_ROLE(Rol.CLIENTE, Rol.ASESOR, Rol.ADMINISTRADOR),
+        ANY_ROLE(Rol.CLIENTE, Rol.ASESOR, Rol.ADMINISTRADOR, Rol.RESPONSABLE_TI),
         CLIENTE(Rol.CLIENTE),
         STAFF(Rol.ASESOR, Rol.ADMINISTRADOR),
-        ADMIN(Rol.ADMINISTRADOR);
+        ADMIN(Rol.ADMINISTRADOR),
+        /** Monitoring, availability and backups (RF18): the IT officer and the administrator. */
+        MONITORING(Rol.RESPONSABLE_TI, Rol.ADMINISTRADOR);
 
         private final List<Rol> roles;
 
@@ -59,6 +61,7 @@ public final class AccessMatrix {
             // Standard checkout (ADR-005): create (POST /api/checkout), owner-only read (GET /{id}), proof upload
             // (POST /{id}/proof, multipart), own proof image (GET /{id}/proof/{attemptId}) and cancel (POST /{id}/cancel).
             // CLIENTE only; explicit paths on purpose (no /api/checkout/**); ownership is enforced in the service (404).
+            new Rule("/api/orders/*/reorder", Access.CLIENTE),
             new Rule("/api/checkout", Access.CLIENTE),
             new Rule("/api/checkout/*", Access.CLIENTE),
             new Rule("/api/checkout/*/proof", Access.CLIENTE),
@@ -84,6 +87,14 @@ public final class AccessMatrix {
             new Rule("/api/admin/incidents/*", Access.STAFF),
             new Rule("/api/admin/incidents/*/resolution", Access.STAFF),
             // Administrative reports (E32, E33): ADMINISTRADOR only (ASESOR denied, PD-REP-06). Exact paths on purpose.
+            new Rule("/api/admin/quotations", Access.STAFF),
+            new Rule("/api/admin/quotations/*", Access.STAFF),
+            new Rule("/api/admin/quotations/*/status", Access.STAFF),
+            new Rule("/api/admin/quotations/*/order", Access.STAFF),
+            new Rule("/api/admin/monitoring", Access.MONITORING),
+            new Rule("/api/admin/monitoring/**", Access.MONITORING),
+            new Rule("/api/admin/roles", Access.ADMIN),
+            new Rule("/api/admin/reports/quotations", Access.ADMIN),
             new Rule("/api/admin/reports/orders", Access.ADMIN),
             new Rule("/api/admin/reports/incidents", Access.ADMIN),
             // Administration

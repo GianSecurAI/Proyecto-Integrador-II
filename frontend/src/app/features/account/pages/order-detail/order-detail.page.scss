@@ -128,3 +128,15 @@
 .order-detail-page__total {
   margin: var(--ar-space-2) 0;
 }
+
+.order-detail-page__reorder {
+  display: grid;
+  gap: var(--ar-space-3);
+  margin-top: var(--ar-space-4);
+  justify-items: start;
+}
+
+.order-detail-page__reorder-message {
+  margin: 0;
+  font-size: var(--ar-font-size-sm);
+}

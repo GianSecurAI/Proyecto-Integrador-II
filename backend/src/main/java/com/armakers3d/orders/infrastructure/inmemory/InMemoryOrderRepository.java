@@ -84,6 +84,25 @@ public class InMemoryOrderRepository implements OrderRepository {
     }
 
     @Override
+    public synchronized Optional<Order> findByQuotationId(Long quotationId) {
+        return byId.values().stream()
+                .filter(o -> quotationId.equals(o.quotationId()))
+                .findFirst();
+    }
+
+    @Override
+    public synchronized boolean insertIfQuotationAbsent(Order order) {
+        if (order.quotationId() == null) {
+            throw new IllegalArgumentException("An order created from a quotation needs a quotationId");
+        }
+        if (findByQuotationId(order.quotationId()).isPresent()) {
+            return false;
+        }
+        byId.put(order.id(), order);
+        return true;
+    }
+
+    @Override
     public boolean replaceIfStatus(Order updated, OrderStatus expectedCurrent) {
         boolean[] replaced = {false};
         byId.computeIfPresent(updated.id(), (id, current) -> {

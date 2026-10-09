@@ -5,7 +5,10 @@ import com.armakers3d.incidents.domain.IncidentPriority;
 import com.armakers3d.incidents.domain.IncidentStatus;
 import com.armakers3d.orders.domain.OrderKind;
 import com.armakers3d.orders.domain.OrderStatus;
+import com.armakers3d.quotations.domain.QuotationStatus;
+import com.armakers3d.quotations.repository.QuotationRepository;
 import com.armakers3d.reports.domain.ReportRange;
+import com.armakers3d.reports.dto.QuotationReportDto;
 import com.armakers3d.reports.dto.IncidentReportDto;
 import com.armakers3d.reports.dto.OrderReportDto;
 import com.armakers3d.reports.repository.IncidentReportSource;
@@ -32,11 +35,14 @@ public class ReportService {
 
     private final OrderReportSource orderSource;
     private final IncidentReportSource incidentSource;
+    private final QuotationRepository quotationSource;
     private final Clock clock;
 
-    public ReportService(OrderReportSource orderSource, IncidentReportSource incidentSource, Clock clock) {
+    public ReportService(OrderReportSource orderSource, IncidentReportSource incidentSource,
+            QuotationRepository quotationSource, Clock clock) {
         this.orderSource = orderSource;
         this.incidentSource = incidentSource;
+        this.quotationSource = quotationSource;
         this.clock = clock;
     }
 
@@ -76,6 +82,25 @@ public class ReportService {
         audit.info("report.generated actor={} role={} report=incidents from={} to={} status={}",
                 actorId, actorRole, range.from(), range.to(), status);
         return new IncidentReportDto(range.from(), range.to(), total, open, resolved, byStatus, byPriority);
+    }
+
+    public QuotationReportDto quotations(LocalDate from, LocalDate to, Long actorId, Rol actorRole) {
+        ReportRange range = resolve(from, to);
+        var agg = quotationSource.aggregate(range.fromInstant(), range.toExclusiveInstant());
+        List<QuotationReportDto.StatusCount> byStatus = Arrays.stream(QuotationStatus.values())
+                .map(s -> new QuotationReportDto.StatusCount(
+                        s,
+                        agg.countByStatus().getOrDefault(s, 0L),
+                        agg.amountByStatus().getOrDefault(s, BigDecimal.ZERO.setScale(2))))
+                .toList();
+        long total = byStatus.stream().mapToLong(QuotationReportDto.StatusCount::count).sum();
+        BigDecimal totalAmount =
+                byStatus.stream().map(QuotationReportDto.StatusCount::amount).reduce(BigDecimal.ZERO.setScale(2), BigDecimal::add);
+        audit.info("report.generated actor={} role={} report=quotations from={} to={}",
+                actorId, actorRole, range.from(), range.to());
+        return new QuotationReportDto(
+                range.from(), range.to(), total, byStatus, totalAmount,
+                agg.amountByStatus().getOrDefault(QuotationStatus.ACEPTADA, BigDecimal.ZERO.setScale(2)));
     }
 
     private ReportRange resolve(LocalDate from, LocalDate to) {

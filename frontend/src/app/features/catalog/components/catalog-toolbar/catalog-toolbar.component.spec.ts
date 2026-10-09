@@ -25,7 +25,7 @@ describe('CatalogToolbarComponent', () => {
     const pills: HTMLButtonElement[] = Array.from(
       fixture.nativeElement.querySelectorAll('.catalog-toolbar__pill'),
     );
-    expect(pills.length).toBe(3); // Todo + the two backend categories
+    expect(pills.length).toBe(5); // Todo + the four backend categories
     const active = pills.find((pill) => pill.classList.contains('catalog-toolbar__pill--active'));
     expect(active?.textContent).toContain('Todo');
     expect(active?.getAttribute('aria-pressed')).toBe('true');

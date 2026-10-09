@@ -1,4 +1,5 @@
 import { Injectable, InjectionToken, inject } from '@angular/core';
+import { PRODUCT_CATEGORIES, ProductCategory } from '../../../shared/models/wire-enums';
 import { CART_QUANTITY_MAX, CART_QUANTITY_MIN, CartItem } from '../models/cart-item.model';
 
 /**
@@ -88,7 +89,7 @@ function isCartItem(value: unknown): value is CartItem {
     Number.isInteger(c['productId']) &&
     (c['productId'] as number) > 0 &&
     typeof c['title'] === 'string' &&
-    (c['category'] === 'LLAVERO' || c['category'] === 'PEGATINAS') &&
+    PRODUCT_CATEGORIES.includes(c['category'] as ProductCategory) &&
     typeof c['subcategory'] === 'string' &&
     typeof c['unitPrice'] === 'number' &&
     Number.isFinite(c['unitPrice']) &&

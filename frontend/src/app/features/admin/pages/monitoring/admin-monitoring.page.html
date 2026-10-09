@@ -1,0 +1,235 @@
+<div class="admin-monitoring-page">
+  <app-admin-page-header
+    title="Monitoreo y respaldos"
+    description="Estado del sistema, disponibilidad de la base de datos y registro de los respaldos con sus pruebas de restauración."
+  />
+
+  @switch (status()) {
+    @case ('loading') {
+      <app-loading-state message="Consultando el estado del sistema…" />
+    }
+    @case ('error') {
+      <app-error-state
+        title="No se pudo consultar el estado del sistema"
+        description="Ocurrió un problema al conectar con el servicio de monitoreo. Inténtalo de nuevo."
+      >
+        <app-button errorStateAction variant="secondary" (clicked)="retry()">Reintentar</app-button>
+      </app-error-state>
+    }
+    @default {
+      @if (system(); as sys) {
+        <section class="admin-monitoring-page__section" aria-labelledby="monitoring-system-heading">
+          <div class="admin-monitoring-page__heading-row">
+            <h2 id="monitoring-system-heading">Sistema</h2>
+            <app-button variant="secondary" (clicked)="retry()">Actualizar</app-button>
+          </div>
+          <p class="admin-monitoring-page__note">Consultado el {{ formatDate(sys.checkedAt) }}.</p>
+          <div class="admin-monitoring-page__cards">
+            <app-admin-summary-card
+              label="API"
+              [value]="sys.status === 'UP' ? 'Disponible' : 'Caída'"
+              [tone]="sys.status === 'UP' ? 'success' : 'danger'"
+              [caption]="'Activa hace ' + uptime(sys.uptimeSeconds)"
+            />
+            <app-admin-summary-card
+              label="Base de datos"
+              [value]="sys.database.available ? 'Disponible' : 'Sin conexión'"
+              [tone]="sys.database.available ? 'success' : 'danger'"
+              [caption]="
+                sys.database.available
+                  ? sys.database.product + ' ' + sys.database.version + ' · ' + sys.database.latencyMs + ' ms'
+                  : 'No hay respuesta de la base de datos'
+              "
+            />
+            <app-admin-summary-card
+              label="Memoria de la aplicación"
+              [value]="sys.memory.usedMb + ' / ' + sys.memory.maxMb + ' MB'"
+              [caption]="'Java ' + sys.javaVersion + ' · ' + sys.processors + ' CPU'"
+            />
+            @if (sys.database.schemaVersion) {
+              <app-admin-summary-card
+                label="Esquema de la base"
+                [value]="'Versión ' + sys.database.schemaVersion"
+                caption="Última migración aplicada"
+              />
+            }
+          </div>
+
+          @if (sys.counters; as c) {
+            <div class="admin-monitoring-page__cards">
+              <app-admin-summary-card label="Usuarios" [value]="c.users" />
+              <app-admin-summary-card label="Productos activos" [value]="c.activeProducts" />
+              <app-admin-summary-card label="Pedidos" [value]="c.orders" />
+              <app-admin-summary-card label="Incidencias abiertas" [value]="c.openIncidents" tone="info" />
+              <app-admin-summary-card label="Pagos por verificar" [value]="c.paymentsToReview" tone="info" />
+              <app-admin-summary-card label="Cotizaciones pendientes" [value]="c.pendingQuotations" />
+            </div>
+          }
+
+          <div class="admin-monitoring-page__tables">
+            <app-admin-data-table>
+              <thead>
+                <tr>
+                  <th scope="col">Módulo</th>
+                  <th scope="col">Almacenamiento</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of persistenceRows(sys); track row.label) {
+                  <tr>
+                    <td>{{ row.label }}</td>
+                    <td>{{ row.value }}</td>
+                  </tr>
+                }
+              </tbody>
+            </app-admin-data-table>
+            <app-admin-data-table>
+              <thead>
+                <tr>
+                  <th scope="col">Tarea programada</th>
+                  <th scope="col">Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (job of jobRows(sys); track job.label) {
+                  <tr>
+                    <td>{{ job.label }}</td>
+                    <td>
+                      <app-status-badge
+                        [label]="job.enabled ? 'Activa' : 'Desactivada'"
+                        [tone]="job.enabled ? 'success' : 'neutral'"
+                      />
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </app-admin-data-table>
+          </div>
+        </section>
+      }
+
+      @if (backups(); as b) {
+        <section class="admin-monitoring-page__section" aria-labelledby="monitoring-backups-heading">
+          <h2 id="monitoring-backups-heading">Respaldos de la base de datos</h2>
+          <div class="admin-monitoring-page__cards">
+            <app-admin-summary-card
+              label="Estado de los respaldos"
+              [value]="healthMeta[b.health].label"
+              [tone]="healthMeta[b.health].tone"
+              [caption]="healthMeta[b.health].description"
+            />
+            <app-admin-summary-card
+              label="Último respaldo exitoso"
+              [value]="formatDate(b.lastSuccessfulAt)"
+              [caption]="
+                b.hoursSinceLastSuccess === null
+                  ? 'Máximo permitido: ' + b.maxAgeHours + ' h'
+                  : 'Hace ' + b.hoursSinceLastSuccess + ' h · máximo permitido: ' + b.maxAgeHours + ' h'
+              "
+            />
+            <app-admin-summary-card
+              label="Última restauración verificada"
+              [value]="formatDate(b.lastVerifiedRestoreAt)"
+              caption="Prueba de que el respaldo se puede recuperar"
+            />
+          </div>
+
+          @if (b.recent.length === 0) {
+            <p class="admin-monitoring-page__note">Todavía no hay respaldos registrados.</p>
+          } @else {
+            <app-admin-data-table>
+              <thead>
+                <tr>
+                  <th scope="col">Fecha del respaldo</th>
+                  <th scope="col">Tipo</th>
+                  <th scope="col">Resultado</th>
+                  <th scope="col">Restauración verificada</th>
+                  <th scope="col">Detalle</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (r of b.recent; track r.id) {
+                  <tr>
+                    <td>{{ formatDate(r.backupAt) }}</td>
+                    <td>{{ r.type === 'AUTOMATICO' ? 'Automático' : 'Manual' }}</td>
+                    <td>
+                      <app-status-badge
+                        [label]="r.result === 'EXITOSO' ? 'Exitoso' : 'Fallido'"
+                        [tone]="r.result === 'EXITOSO' ? 'success' : 'danger'"
+                      />
+                    </td>
+                    <td>{{ r.restoreVerified ? 'Sí' : 'No' }}</td>
+                    <td>{{ r.detail || '—' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </app-admin-data-table>
+          }
+        </section>
+
+        <app-card>
+          <h2>Registrar un respaldo o una prueba de restauración</h2>
+          <form class="admin-monitoring-page__form" (submit)="$event.preventDefault(); registerBackup()">
+            <label class="admin-monitoring-page__field">
+              <span>Fecha y hora del respaldo</span>
+              <input
+                class="ui-input"
+                type="datetime-local"
+                [value]="formAt()"
+                (input)="formAt.set($any($event.target).value)"
+                required
+              />
+            </label>
+            <label class="admin-monitoring-page__field">
+              <span>Tipo</span>
+              <select class="ui-select" [value]="formType()" (change)="formType.set($any($event.target).value)">
+                <option value="AUTOMATICO">Automático</option>
+                <option value="MANUAL">Manual</option>
+              </select>
+            </label>
+            <label class="admin-monitoring-page__field">
+              <span>Resultado</span>
+              <select class="ui-select" [value]="formResult()" (change)="setResult($any($event.target).value)">
+                <option value="EXITOSO">Exitoso</option>
+                <option value="FALLIDO">Fallido</option>
+              </select>
+            </label>
+            <label class="admin-monitoring-page__checkbox">
+              <input
+                class="ui-checkbox"
+                type="checkbox"
+                [checked]="formVerified()"
+                [disabled]="formResult() === 'FALLIDO'"
+                (change)="setVerified($any($event.target).checked)"
+              />
+              Verifiqué la restauración de este respaldo.
+            </label>
+            <label class="admin-monitoring-page__field admin-monitoring-page__field--wide">
+              <span>Detalle (opcional)</span>
+              <textarea
+                class="ui-input"
+                rows="2"
+                maxlength="500"
+                [value]="formDetail()"
+                (input)="formDetail.set($any($event.target).value)"
+              ></textarea>
+            </label>
+            <div class="admin-monitoring-page__actions">
+              <app-button type="submit" [loading]="saving()" [disabled]="saving()">
+                {{ saving() ? 'Registrando…' : 'Registrar respaldo' }}
+              </app-button>
+            </div>
+            @if (saveMessage(); as message) {
+              <p
+                [attr.role]="message.kind === 'error' ? 'alert' : 'status'"
+                [class]="'admin-monitoring-page__message admin-monitoring-page__message--' + message.kind"
+              >
+                {{ message.text }}
+              </p>
+            }
+          </form>
+        </app-card>
+      }
+    }
+  }
+</div>

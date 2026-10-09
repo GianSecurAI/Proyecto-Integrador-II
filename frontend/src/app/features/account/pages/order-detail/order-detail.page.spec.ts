@@ -9,6 +9,7 @@ import {
   provideRouter,
 } from '@angular/router';
 import { of } from 'rxjs';
+import { CartStateService } from '../../../cart/services/cart-state.service';
 import { OrderDetailPage } from './order-detail.page';
 
 /** Lightweight `ActivatedRoute` fake — only exposes `paramMap` for `:id`. */
@@ -130,5 +131,60 @@ describe('OrderDetailPage (GET /api/orders/{id})', () => {
     http.expectOne('/api/orders/PED-20261006-0001').flush(ORDER);
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('PED-20261006-0001');
+  });
+
+  describe('buy again (RF-14)', () => {
+    const REORDER = {
+      orderId: 'PED-20261006-0001',
+      availableCount: 1,
+      items: [
+        { productId: 5, title: 'Llavero naranja', category: 'LLAVERO', subcategory: 'Llaveros', unitPrice: 14, quantity: 2, available: true },
+        { productId: 6, title: 'Pack pegatinas', category: 'PEGATINAS', subcategory: 'Sets', unitPrice: 22.5, quantity: 1, available: false },
+      ],
+    };
+
+    function openLoaded() {
+      create('PED-20261006-0001');
+      TestBed.inject(CartStateService).clearCart(); // the cart persists in localStorage between tests
+      http.expectOne('/api/orders/PED-20261006-0001').flush(ORDER);
+      fixture.detectChanges();
+    }
+
+    function reorderButton(): HTMLButtonElement | undefined {
+      return (Array.from(fixture.nativeElement.querySelectorAll('button')) as HTMLButtonElement[]).find((b) =>
+        b.textContent?.includes('Comprar de nuevo'),
+      );
+    }
+
+    it('puts only the available products in the cart at the CURRENT price and reports the rest', () => {
+      openLoaded();
+      reorderButton()!.click();
+      http.expectOne('/api/orders/PED-20261006-0001/reorder').flush(REORDER);
+      fixture.detectChanges();
+      const cart = TestBed.inject(CartStateService);
+      expect(cart.items().length).toBe(1);
+      expect(cart.items()[0]).toEqual(jasmine.objectContaining({ productId: 5, quantity: 2, unitPrice: 14 }));
+      const text: string = fixture.nativeElement.textContent;
+      expect(text).toContain('Agregamos 1 producto(s) a tu carrito');
+      expect(text).toContain('1 producto(s) ya no están disponibles');
+    });
+
+    it('shows an alert when the server fails and adds nothing', () => {
+      openLoaded();
+      reorderButton()!.click();
+      http
+        .expectOne('/api/orders/PED-20261006-0001/reorder')
+        .flush({ code: 'INTERNAL_ERROR', message: 'x', timestamp: 't' }, { status: 500, statusText: 'x' });
+      fixture.detectChanges();
+      expect(TestBed.inject(CartStateService).items().length).toBe(0);
+      expect(fixture.nativeElement.querySelector('[role="alert"]')?.textContent).toContain('No pudimos preparar la compra');
+    });
+
+    it('is not offered for a personalized order', () => {
+      create('PED-20261006-0001');
+      http.expectOne('/api/orders/PED-20261006-0001').flush({ ...ORDER, kind: 'PERSONALIZADO' });
+      fixture.detectChanges();
+      expect(reorderButton()).toBeUndefined();
+    });
   });
 });

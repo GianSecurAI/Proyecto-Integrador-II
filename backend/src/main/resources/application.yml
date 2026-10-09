@@ -113,6 +113,8 @@ app:
     incidents: jpa
     payments: jpa
     proofs: jpa
+    quotations: jpa
+    monitoring: jpa
 
 mail:
   from: ${MAIL_FROM:no-reply@armakers3d.com}

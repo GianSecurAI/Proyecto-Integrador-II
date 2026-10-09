@@ -19,9 +19,45 @@ public class CodigoOtp {
     private final Instant usedAt;
     private final int attemptCount;
     private CodigoOtpStatus status;
+    private final RegistrationProfile registrationProfile;
+
+    /** Profile data typed in the registration form, applied to the account if this code creates it. */
+    public record RegistrationProfile(String firstName, String lastName, String phone) {
+        public static RegistrationProfile ofNullable(String firstName, String lastName, String phone) {
+            if (isBlank(firstName) && isBlank(lastName) && isBlank(phone)) {
+                return null;
+            }
+            return new RegistrationProfile(trimToNull(firstName), trimToNull(lastName), trimToNull(phone));
+        }
+
+        private static boolean isBlank(String v) {
+            return v == null || v.isBlank();
+        }
+
+        private static String trimToNull(String v) {
+            return isBlank(v) ? null : v.trim();
+        }
+    }
 
     public CodigoOtp(String email, String codeHash, Instant issuedAt, Instant expiresAt) {
-        this(null, email, codeHash, issuedAt, expiresAt, null, 0, CodigoOtpStatus.PENDING);
+        this(null, email, codeHash, issuedAt, expiresAt, null, 0, CodigoOtpStatus.PENDING, null);
+    }
+
+    public CodigoOtp(
+            String email, String codeHash, Instant issuedAt, Instant expiresAt, RegistrationProfile registrationProfile) {
+        this(null, email, codeHash, issuedAt, expiresAt, null, 0, CodigoOtpStatus.PENDING, registrationProfile);
+    }
+
+    public CodigoOtp(
+            Long id,
+            String email,
+            String codeHash,
+            Instant issuedAt,
+            Instant expiresAt,
+            Instant usedAt,
+            int attemptCount,
+            CodigoOtpStatus status) {
+        this(id, email, codeHash, issuedAt, expiresAt, usedAt, attemptCount, status, null);
     }
 
     /** Restores a persisted code. */
@@ -33,7 +69,8 @@ public class CodigoOtp {
             Instant expiresAt,
             Instant usedAt,
             int attemptCount,
-            CodigoOtpStatus status) {
+            CodigoOtpStatus status,
+            RegistrationProfile registrationProfile) {
         this.id = id;
         this.email = email;
         this.codeHash = codeHash;
@@ -42,6 +79,7 @@ public class CodigoOtp {
         this.usedAt = usedAt;
         this.attemptCount = attemptCount;
         this.status = status;
+        this.registrationProfile = registrationProfile;
     }
 
     public Long getId() {
@@ -70,6 +108,10 @@ public class CodigoOtp {
 
     public int getAttemptCount() {
         return attemptCount;
+    }
+
+    public RegistrationProfile getRegistrationProfile() {
+        return registrationProfile;
     }
 
     public CodigoOtpStatus getStatus() {

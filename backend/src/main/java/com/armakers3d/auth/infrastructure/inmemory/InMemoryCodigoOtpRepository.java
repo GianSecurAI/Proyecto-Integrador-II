@@ -114,6 +114,7 @@ public class InMemoryCodigoOtpRepository implements CodigoOtpRepository {
     }
 
     private static CodigoOtp withId(CodigoOtp c, Long id, int attempts, CodigoOtpStatus status, Instant usedAt) {
-        return new CodigoOtp(id, c.getEmail(), c.getCodeHash(), c.getIssuedAt(), c.getExpiresAt(), usedAt, attempts, status);
+        return new CodigoOtp(id, c.getEmail(), c.getCodeHash(), c.getIssuedAt(), c.getExpiresAt(), usedAt, attempts, status,
+                c.getRegistrationProfile());
     }
 }

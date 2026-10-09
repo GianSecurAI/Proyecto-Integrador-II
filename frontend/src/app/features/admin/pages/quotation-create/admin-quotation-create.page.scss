@@ -1,0 +1,39 @@
+@use 'tokens' as *;
+
+:host {
+  display: block;
+}
+
+.admin-quotation-create-page__breadcrumb {
+  margin-bottom: var(--ar-space-4);
+
+  a {
+    color: var(--ar-color-muted-on-light);
+  }
+}
+
+.admin-quotation-create-page__intro {
+  color: var(--ar-color-muted-on-light);
+  max-width: 42rem;
+}
+
+.admin-quotation-create-page__form {
+  display: grid;
+  gap: var(--ar-space-4);
+  max-width: 32rem;
+}
+
+.admin-quotation-create-page__textarea {
+  resize: vertical;
+}
+
+.admin-quotation-create-page__actions {
+  display: flex;
+  gap: var(--ar-space-3);
+  flex-wrap: wrap;
+}
+
+.admin-quotation-create-page__error {
+  margin: 0;
+  color: var(--ar-color-danger);
+}

@@ -1,0 +1,119 @@
+<div class="admin-quotation-create-page">
+  <nav aria-label="Ruta de navegación" class="admin-quotation-create-page__breadcrumb">
+    <a routerLink="/admin/quotations">Cotizaciones</a>
+  </nav>
+
+  <app-card>
+    <h1>Registrar cotización</h1>
+    <p class="admin-quotation-create-page__intro">
+      Registra el precio que acordaste con el cliente por WhatsApp. El sistema no calcula precios de
+      impresión personalizada: el monto lo escribes tú. Cuando el cliente acepte y pague, generarás el
+      pedido desde el detalle de la cotización.
+    </p>
+
+    <form
+      class="admin-quotation-create-page__form"
+      [formGroup]="form"
+      (ngSubmit)="submit()"
+      novalidate
+      [attr.aria-busy]="submitting()"
+    >
+      <app-form-field
+        #emailField="appFormField"
+        label="Correo del cliente"
+        [required]="true"
+        [error]="
+          customerEmailControl.invalid && customerEmailControl.touched
+            ? serverError(customerEmailControl) ?? 'Ingresa un correo electrónico válido.'
+            : null
+        "
+      >
+        <input
+          class="ui-input"
+          [id]="emailField.inputId()"
+          type="email"
+          formControlName="customerEmail"
+          placeholder="cliente@correo.com"
+          [attr.aria-invalid]="emailField.hasError()"
+          [attr.aria-describedby]="emailField.describedBy()"
+        />
+      </app-form-field>
+
+      <app-form-field
+        #descriptionField="appFormField"
+        label="Descripción de lo acordado"
+        [required]="true"
+        [error]="
+          descriptionControl.invalid && descriptionControl.touched
+            ? serverError(descriptionControl) ?? 'Ingresa una descripción de lo acordado (máx. 1000 caracteres).'
+            : null
+        "
+      >
+        <textarea
+          class="ui-input admin-quotation-create-page__textarea"
+          [id]="descriptionField.inputId()"
+          formControlName="description"
+          rows="3"
+          placeholder="Ej. 50 llaveros con el logo de la empresa en PLA"
+          [attr.aria-invalid]="descriptionField.hasError()"
+          [attr.aria-describedby]="descriptionField.describedBy()"
+        ></textarea>
+      </app-form-field>
+
+      <app-form-field
+        #amountField="appFormField"
+        label="Monto acordado (S/)"
+        [required]="true"
+        [error]="
+          agreedAmountControl.invalid && agreedAmountControl.touched
+            ? serverError(agreedAmountControl) ?? 'Ingresa un monto mayor a S/ 0.00.'
+            : null
+        "
+      >
+        <input
+          class="ui-input"
+          [id]="amountField.inputId()"
+          type="number"
+          min="0.01"
+          step="0.01"
+          inputmode="decimal"
+          formControlName="agreedAmount"
+          [attr.aria-invalid]="amountField.hasError()"
+          [attr.aria-describedby]="amountField.describedBy()"
+        />
+      </app-form-field>
+
+      <app-form-field
+        #notesField="appFormField"
+        label="Notas (opcional)"
+        [error]="
+          notesControl.invalid && notesControl.touched
+            ? serverError(notesControl) ?? 'Las notas admiten hasta 500 caracteres.'
+            : null
+        "
+      >
+        <textarea
+          class="ui-input admin-quotation-create-page__textarea"
+          [id]="notesField.inputId()"
+          formControlName="notes"
+          rows="2"
+          [attr.aria-invalid]="notesField.hasError()"
+          [attr.aria-describedby]="notesField.describedBy()"
+        ></textarea>
+      </app-form-field>
+
+      <div class="admin-quotation-create-page__actions">
+        <app-button type="submit" [loading]="submitting()" [disabled]="submitting()">
+          {{ submitting() ? 'Registrando…' : 'Registrar cotización' }}
+        </app-button>
+        <app-button type="button" variant="ghost" [disabled]="submitting()" (clicked)="cancel()">
+          Cancelar
+        </app-button>
+      </div>
+
+      @if (errorMessage()) {
+        <p role="alert" class="admin-quotation-create-page__error">{{ errorMessage() }}</p>
+      }
+    </form>
+  </app-card>
+</div>

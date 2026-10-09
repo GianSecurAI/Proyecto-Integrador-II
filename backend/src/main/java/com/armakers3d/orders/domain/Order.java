@@ -30,7 +30,8 @@ public record Order(
         Long registeredBy,
         List<StatusHistoryEntry> history,
         String checkoutId,
-        String paymentReference) {
+        String paymentReference,
+        Long quotationId) {
 
     /** Status every standard order starts in (docs/architecture/order-lifecycle.md). */
     public static final OrderStatus INITIAL_STANDARD_STATUS = OrderStatus.CONFIRMADO;
@@ -40,6 +41,24 @@ public record Order(
 
     /** Maximum length of the optional note on a status change (contract E26). */
     public static final int NOTE_MAX_LENGTH = 500;
+
+    /** An order that does not come from a registered quotation (every order created before quotations existed). */
+    public Order(
+            String id,
+            Long customerId,
+            OrderKind kind,
+            OrderStatus status,
+            List<OrderLine> lines,
+            DeliveryInfo delivery,
+            ContactInfo contact,
+            Instant createdAt,
+            Long registeredBy,
+            List<StatusHistoryEntry> history,
+            String checkoutId,
+            String paymentReference) {
+        this(id, customerId, kind, status, lines, delivery, contact, createdAt, registeredBy, history, checkoutId,
+                paymentReference, null);
+    }
 
     public Order {
         lines = List.copyOf(lines);
@@ -84,11 +103,18 @@ public record Order(
     public static Order registerPersonalized(
             String id, Long customerId, Long registeredBy, Rol staffRole, String description,
             BigDecimal agreedAmount, Instant now) {
+        return registerPersonalized(id, customerId, registeredBy, staffRole, description, agreedAmount, now, null);
+    }
+
+    /** Same, for an order generated from an accepted quotation (RF11): it keeps the link to that quotation. */
+    public static Order registerPersonalized(
+            String id, Long customerId, Long registeredBy, Rol staffRole, String description,
+            BigDecimal agreedAmount, Instant now, Long quotationId) {
         return new Order(
                 id, customerId, OrderKind.PERSONALIZADO, INITIAL_PERSONALIZED_STATUS,
                 List.of(new OrderLine(null, description, agreedAmount, 1)), null, null, now, registeredBy,
                 List.of(new StatusHistoryEntry(null, INITIAL_PERSONALIZED_STATUS, registeredBy, staffRole, now, null)),
-                null, null);
+                null, null, quotationId);
     }
 
     /**
@@ -105,7 +131,7 @@ public record Order(
         List<StatusHistoryEntry> entries = new ArrayList<>(history);
         entries.add(new StatusHistoryEntry(status, newStatus, actorId, actorRole, now, cleanNote));
         return new Order(id, customerId, kind, newStatus, lines, delivery, contact, createdAt, registeredBy, entries,
-                checkoutId, paymentReference);
+                checkoutId, paymentReference, quotationId);
     }
 
     /** Trims; blank becomes null; rejects over-long text and control characters (log and display safety). */

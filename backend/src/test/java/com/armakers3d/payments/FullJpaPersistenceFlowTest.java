@@ -39,7 +39,9 @@ import org.springframework.test.web.servlet.MvcResult;
             "app.persistence.orders=jpa",
             "app.persistence.incidents=jpa",
             "app.persistence.payments=jpa",
-            "app.persistence.proofs=jpa"
+            "app.persistence.proofs=jpa",
+            "app.persistence.quotations=jpa",
+            "app.persistence.monitoring=jpa"
         })
 class FullJpaPersistenceFlowTest extends AbstractOtpIntegrationTest {
 
@@ -52,6 +54,70 @@ class FullJpaPersistenceFlowTest extends AbstractOtpIntegrationTest {
 
     private JsonNode body(MvcResult result) throws Exception {
         return objectMapper.readTree(result.getResponse().getContentAsString());
+    }
+
+    @Test
+    void registrationProfileQuotationsReorderAndBackupsAreAllStoredInPostgres() throws Exception {
+        String adminEmail = uniqueEmail("admin2").toLowerCase();
+        clienteRepository.save(Cliente.provisioned(adminEmail, Rol.ADMINISTRADOR, clock.instant()));
+        Cookie admin = registerAndGetSessionCookie(adminEmail);
+
+        // RF01: the name and phone typed at registration are stored in the profile of the new account
+        String email = uniqueEmail("registro").toLowerCase();
+        Map<String, Object> request = new LinkedHashMap<>();
+        request.put("email", email);
+        request.put("firstName", "Ana");
+        request.put("lastName", "Quispe");
+        request.put("phone", "+51 999 888 777");
+        mockMvc.perform(post("/api/auth/otp/request").contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isAccepted());
+        Cookie customer = mockMvc.perform(post("/api/auth/otp/verify").contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("email", email, "code", emailSender.lastCodeFor(email)))))
+                .andExpect(status().isOk()).andReturn().getResponse().getCookie("ARM3D_SESSION");
+        assertThat(jdbc.queryForObject("select nombres || '|' || telefono from usuario where correo = ?", String.class, email))
+                .isEqualTo("Ana|+51 999 888 777");
+        mockMvc.perform(get("/api/customers/me").cookie(customer)).andExpect(status().isOk());
+
+        // RF08, RF09, RF11: quotation -> accepted -> order, linked one to one (cotizacion.id_cotizacion = pedido.id_cotizacion)
+        long quotationId = body(mockMvc.perform(post("/api/admin/quotations").cookie(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("customerEmail", email,
+                                "description", "Figura personalizada de la mascota", "agreedAmount", 180.0))))
+                .andExpect(status().isCreated()).andReturn()).get("id").asLong();
+        mockMvc.perform(patch("/api/admin/quotations/" + quotationId + "/status").cookie(admin)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"ACEPTADA\"}"))
+                .andExpect(status().isOk());
+        String orderId = body(mockMvc.perform(post("/api/admin/quotations/" + quotationId + "/order").cookie(admin)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"paymentConfirmed\":true}"))
+                .andExpect(status().isCreated()).andReturn()).get("orderId").asText();
+        assertThat(jdbc.queryForObject(
+                        "select c.estado || '|' || c.precio_acordado from cotizacion c join pedido p on p.id_cotizacion = c.id_cotizacion"
+                                + " where p.codigo_pedido = ?", String.class, orderId))
+                .isEqualTo("ACEPTADA|180.00");
+        mockMvc.perform(post("/api/admin/quotations/" + quotationId + "/order").cookie(admin)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"paymentConfirmed\":true}"))
+                .andExpect(status().isConflict());
+        mockMvc.perform(get("/api/admin/reports/quotations").cookie(admin)).andExpect(status().isOk());
+
+        // RF18: the backup log lives in respaldo_registro and the status endpoint reports the real database
+        mockMvc.perform(post("/api/admin/monitoring/backups").cookie(admin).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"backupAt\":\"" + java.time.Instant.now().minusSeconds(600)
+                                + "\",\"type\":\"AUTOMATICO\",\"result\":\"EXITOSO\",\"restoreVerified\":true}"))
+                .andExpect(status().isCreated());
+        assertThat(jdbc.queryForObject("select count(*) from respaldo_registro where restauracion_verificada", Integer.class))
+                .isEqualTo(1);
+        JsonNode monitoring = body(mockMvc.perform(get("/api/admin/monitoring").cookie(admin))
+                .andExpect(status().isOk()).andReturn());
+        assertThat(monitoring.get("database").get("available").asBoolean()).isTrue();
+        assertThat(monitoring.get("persistence").get("quotations").asText()).isEqualTo("jpa");
+        assertThat(monitoring.get("database").get("schemaVersion").asText()).isEqualTo("10");
+        assertThat(body(mockMvc.perform(get("/api/admin/monitoring/backups").cookie(admin)).andReturn()).get("health").asText())
+                .isEqualTo("OK");
+
+        // RF03: roles and permissions come from the rol / permiso / rol_permiso tables
+        JsonNode roles = body(mockMvc.perform(get("/api/admin/roles").cookie(admin)).andExpect(status().isOk()).andReturn());
+        assertThat(roles.toString()).contains("RESPONSABLE_TI").contains("MONITOREO_VER").contains("COTIZACION_GESTIONAR");
     }
 
     @Test

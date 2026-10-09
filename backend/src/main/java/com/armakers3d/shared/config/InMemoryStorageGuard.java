@@ -21,7 +21,8 @@ import org.springframework.stereotype.Component;
 @Profile("!local & !nodb & !test")
 public class InMemoryStorageGuard {
 
-    static final List<String> FEATURES = List.of("users", "catalog", "orders", "incidents", "payments", "proofs");
+    static final List<String> FEATURES = List.of(
+            "users", "catalog", "orders", "incidents", "payments", "proofs", "quotations", "monitoring");
 
     private final Environment environment;
 

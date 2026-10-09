@@ -24,6 +24,11 @@
   border-radius: var(--ar-radius-sm);
 }
 
+.product-card__image--photo {
+  display: block;
+  object-fit: cover;
+}
+
 .product-card__eyebrow {
   margin: 0;
   font-size: var(--ar-font-size-xs);

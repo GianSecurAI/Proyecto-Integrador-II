@@ -17,6 +17,7 @@ public final class JpaTestData {
     /** Deletes the business data in foreign-key order and the fixed fixture users. */
     public static void reset(JdbcTemplate jdbc) {
         for (String table : List.of(
+                "respaldo_registro",
                 "comprobante_imagen",
                 "comprobante_pago",
                 "checkout_linea",

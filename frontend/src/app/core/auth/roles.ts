@@ -22,6 +22,7 @@ export type AppRole = Role;
 export const CUSTOMER_ROLE = 'CLIENTE' as const;
 export const ADMIN_ROLE = 'ADMINISTRADOR' as const;
 export const ADVISOR_ROLE = 'ASESOR' as const;
+export const IT_ROLE = 'RESPONSABLE_TI' as const;
 
 /** `/account` boundary — the customer-facing area (RF-05/RF-12/RF-14/RF-15). */
 export const CUSTOMER_ROLES: readonly AppRole[] = [CUSTOMER_ROLE];
@@ -37,6 +38,12 @@ export const STAFF_ROLES: readonly AppRole[] = [ADMIN_ROLE, ADVISOR_ROLE];
 /** Administrador-only child routes within `/admin` (products, reports, users — see above). */
 export const ADMIN_ONLY_ROLES: readonly AppRole[] = [ADMIN_ROLE];
 
+/** Monitoring and backups (RF18): the IT officer and the administrator. */
+export const MONITORING_ROLES: readonly AppRole[] = [ADMIN_ROLE, IT_ROLE];
+
+/** Everyone allowed into the `/admin` shell: both staff roles and the IT officer. Each child route narrows it. */
+export const ADMIN_SHELL_ROLES: readonly AppRole[] = [ADMIN_ROLE, ADVISOR_ROLE, IT_ROLE];
+
 /**
  * Post-login navigation default, keyed by role — pure UX convenience for
  * `VerifyCodePage.navigateAfterLogin`, not an authorization decision (the destination route's own
@@ -46,6 +53,7 @@ export const ADMIN_ONLY_ROLES: readonly AppRole[] = [ADMIN_ROLE];
  */
 export function defaultRouteForRole(role: AppRole): string {
   if (role === 'CLIENTE') return '/account';
+  if (role === 'RESPONSABLE_TI') return '/admin/monitoring';
   // Both staff roles land on the admin shell's bare `/admin`, which now correctly redirects to
   // `orders` (reachable by both ADMINISTRADOR and ASESOR) rather than the Administrador-only
   // `products` default it used to carry — see `app.routes.ts`.

@@ -10,6 +10,8 @@ export const CATALOG_CATEGORY_LABELS: Record<CatalogCategory, string> = {
   todo: 'Todo',
   LLAVERO: categoryLabel('LLAVERO'),
   PEGATINAS: categoryLabel('PEGATINAS'),
+  FIGURA: categoryLabel('FIGURA'),
+  DECORACION: categoryLabel('DECORACION'),
 };
 
 /** Sort options accepted by `GET /api/catalog/products?sort=` (price|title|createdAt[,asc|desc]). */

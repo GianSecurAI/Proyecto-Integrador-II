@@ -90,10 +90,10 @@ describe('app.routes', () => {
 describe('app.routes — /admin', () => {
   const adminRoute = () => routes.find((route) => route.path === 'admin');
 
-  it('guards the parent /admin route with authGuard and role: [ADMINISTRADOR, ASESOR]', () => {
+  it('guards the parent /admin route with authGuard and role: [ADMINISTRADOR, ASESOR, RESPONSABLE_TI]', () => {
     const route = adminRoute();
     expect(route?.canActivate).toBeTruthy();
-    expect(route?.data?.['role']).toEqual(['ADMINISTRADOR', 'ASESOR']);
+    expect(route?.data?.['role']).toEqual(['ADMINISTRADOR', 'ASESOR', 'RESPONSABLE_TI']);
   });
 
   it('loads AdminShellComponent for the parent /admin route', async () => {
@@ -105,12 +105,13 @@ describe('app.routes — /admin', () => {
 
   it('redirects the default /admin child to orders (reachable by both ADMINISTRADOR and ASESOR — regression check for the bare-/admin bug)', () => {
     const defaultChild = adminRoute()?.children?.find((child) => child.path === '');
-    expect(defaultChild?.redirectTo).toBe('orders');
+    // role-aware redirect: orders for the staff roles, monitoring for the IT officer (who cannot enter orders)
+    expect(typeof defaultChild?.redirectTo).toBe('function');
     // The redirect target itself must NOT be Administrador-only, otherwise an Asesor landing on
     // bare /admin would still bounce to /forbidden.
     const ordersChild = adminRoute()?.children?.find((c) => c.path === 'orders');
-    expect(ordersChild?.data?.['role']).toBeFalsy();
-    expect(ordersChild?.canActivate).toBeFalsy();
+    expect(ordersChild?.data?.['role']).toEqual(['ADMINISTRADOR', 'ASESOR']);
+    expect(ordersChild?.canActivate).toBeTruthy(); // its own guard keeps the IT officer out
   });
 
   it('loads AdminProductListPage for /admin/products, re-restricted to ADMINISTRADOR', async () => {
@@ -137,9 +138,10 @@ describe('app.routes — /admin', () => {
     expect((loaded as { name: string }).name).toMatch(/^AdminProductDetailPage/);
   });
 
-  it('loads AdminOrderListPage for /admin/orders, inheriting the parent [ADMINISTRADOR, ASESOR] guard (no extra child guard)', async () => {
+  it('loads AdminOrderListPage for /admin/orders, restricted to [ADMINISTRADOR, ASESOR]', async () => {
     const child = adminRoute()?.children?.find((c) => c.path === 'orders');
-    expect(child?.canActivate).toBeFalsy();
+    expect(child?.canActivate).toBeTruthy();
+    expect(child?.data?.['role']).toEqual(['ADMINISTRADOR', 'ASESOR']);
     const loaded = await child!.loadComponent!();
     expect((loaded as { name: string }).name).toMatch(/^AdminOrderListPage/);
   });
@@ -158,9 +160,10 @@ describe('app.routes — /admin', () => {
     expect((loaded as { name: string }).name).toMatch(/^AdminOrderDetailPage/);
   });
 
-  it('loads AdminIncidentListPage for /admin/incidents, inheriting the parent [ADMINISTRADOR, ASESOR] guard (no extra child guard)', async () => {
+  it('loads AdminIncidentListPage for /admin/incidents, restricted to [ADMINISTRADOR, ASESOR]', async () => {
     const child = adminRoute()?.children?.find((c) => c.path === 'incidents');
-    expect(child?.canActivate).toBeFalsy();
+    expect(child?.canActivate).toBeTruthy();
+    expect(child?.data?.['role']).toEqual(['ADMINISTRADOR', 'ASESOR']);
     const loaded = await child!.loadComponent!();
     expect((loaded as { name: string }).name).toMatch(/^AdminIncidentListPage/);
   });
@@ -172,8 +175,31 @@ describe('app.routes — /admin', () => {
     expect((loaded as { name: string }).name).toMatch(/^AdminIncidentDetailPage/);
   });
 
-  it('has no /admin/quotations route (D-14: quotations are managed outside the system)', () => {
-    expect(adminRoute()?.children?.some((c) => c.path === 'quotations')).toBeFalse();
+  it('guards /admin/quotations (list, new, detail) to the staff roles', async () => {
+    for (const path of ['quotations', 'quotations/new', 'quotations/:id']) {
+      const child = adminRoute()?.children?.find((c) => c.path === path);
+      expect(child?.canActivate).withContext(path).toBeTruthy();
+      expect(child?.data?.['role']).withContext(path).toEqual(['ADMINISTRADOR', 'ASESOR']);
+    }
+    const detail = adminRoute()?.children?.find((c) => c.path === 'quotations/:id');
+    const loaded = await detail!.loadComponent!();
+    expect((loaded as { name: string }).name).toMatch(/^AdminQuotationDetailPage/);
+  });
+
+  it('guards /admin/monitoring to the IT officer and the administrator', async () => {
+    const child = adminRoute()?.children?.find((c) => c.path === 'monitoring');
+    expect(child?.canActivate).toBeTruthy();
+    expect(child?.data?.['role']).toEqual(['ADMINISTRADOR', 'RESPONSABLE_TI']);
+    const loaded = await child!.loadComponent!();
+    expect((loaded as { name: string }).name).toMatch(/^AdminMonitoringPage/);
+  });
+
+  it('keeps the order and incident screens out of reach of the IT officer', () => {
+    for (const path of ['orders', 'orders/:id', 'orders/register-personalized', 'incidents', 'incidents/:id']) {
+      const child = adminRoute()?.children?.find((c) => c.path === path);
+      expect(child?.canActivate).withContext(path).toBeTruthy();
+      expect(child?.data?.['role']).withContext(path).not.toContain('RESPONSABLE_TI');
+    }
   });
 
   it('loads AdminReportsPage for /admin/reports', async () => {

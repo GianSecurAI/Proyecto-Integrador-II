@@ -189,7 +189,6 @@ class ReportApiTest extends AbstractNoDbRbacTest {
     void unlistedReportPathsAreDeniedEvenToAdmin() throws Exception {
         Cookie admin = signInAs(Rol.ADMINISTRADOR);
         getAs(admin, "/api/admin/reports").andExpect(status().isForbidden());
-        getAs(admin, "/api/admin/reports/quotations").andExpect(status().isForbidden());
         getAs(admin, "/api/admin/reports/orders/export").andExpect(status().isForbidden());
         getAs(admin, "/api/admin/reports/orders.csv").andExpect(status().isForbidden());
     }

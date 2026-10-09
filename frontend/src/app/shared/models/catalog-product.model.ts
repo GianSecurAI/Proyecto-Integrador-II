@@ -13,6 +13,8 @@ export interface CatalogProduct {
   category: ProductCategory;
   subcategory: string;
   price: number;
+  /** Photo of the product (static file under `/images/products`), absent when it has none. */
+  imageUrl?: string | null;
 }
 
 /** Backend `ProductImageDto` (read-only; the backend currently returns an empty list). */

@@ -4,6 +4,7 @@ import com.armakers3d.auth.security.AuthenticatedUser;
 import com.armakers3d.incidents.domain.IncidentStatus;
 import com.armakers3d.orders.domain.OrderStatus;
 import com.armakers3d.reports.dto.IncidentReportDto;
+import com.armakers3d.reports.dto.QuotationReportDto;
 import com.armakers3d.reports.dto.OrderReportDto;
 import com.armakers3d.reports.service.ReportService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -39,6 +40,17 @@ public class AdminReportController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(required = false) OrderStatus status) {
         return service.orders(from, to, status, admin.id(), admin.rol());
+    }
+
+    @GetMapping("/quotations")
+    @Operation(
+            summary = "Quotation report: counts and agreed amounts by status",
+            description = "from/to as in the order report, on the registration date of the quotation.")
+    public QuotationReportDto quotations(
+            @AuthenticationPrincipal AuthenticatedUser admin,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return service.quotations(from, to, admin.id(), admin.rol());
     }
 
     @GetMapping("/incidents")

@@ -53,7 +53,8 @@ public class JpaProductRepositoryAdapter implements ProductRepository {
                 product.characteristics(),
                 product.available(),
                 product.createdAt(),
-                product.updatedAt())));
+                product.updatedAt(),
+                product.imageUrl())));
     }
 
     @Override
@@ -138,6 +139,7 @@ public class JpaProductRepositoryAdapter implements ProductRepository {
                 List.copyOf(e.getCharacteristics()),
                 e.isAvailable(),
                 e.getCreatedAt(),
-                e.getUpdatedAt());
+                e.getUpdatedAt(),
+                e.getImageUrl());
     }
 }

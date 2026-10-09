@@ -12,6 +12,7 @@ import com.armakers3d.orders.domain.StatusHistoryEntry;
 import com.armakers3d.orders.repository.OrderRepository;
 import com.armakers3d.shared.pagination.Page;
 import com.armakers3d.shared.pagination.PageRequest;
+import com.armakers3d.shared.persistence.CotizacionEntity;
 import com.armakers3d.shared.persistence.LookupTable;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -142,6 +143,30 @@ public class JpaOrderRepositoryAdapter implements OrderRepository {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Optional<Order> findByQuotationId(Long quotationId) {
+        return jpa.findByQuotationId(quotationId).map(this::toDomain);
+    }
+
+    @Override
+    public boolean insertIfQuotationAbsent(Order order) {
+        if (order.quotationId() == null) {
+            throw new IllegalArgumentException("An order created from a quotation needs a quotationId");
+        }
+        try {
+            return Boolean.TRUE.equals(tx.execute(status -> {
+                if (jpa.existsByQuotationId(order.quotationId())) {
+                    return false;
+                }
+                jpa.saveAndFlush(insert(order));
+                return true;
+            }));
+        } catch (DataIntegrityViolationException raced) {
+            return false; // another request generated the order of this quotation between the check and the insert
+        }
+    }
+
+    @Override
     @Transactional
     public boolean replaceIfStatus(Order updated, OrderStatus expectedCurrent) {
         Optional<PedidoEntity> locked = jpa.findByCodeForUpdate(updated.id());
@@ -155,11 +180,18 @@ public class JpaOrderRepositoryAdapter implements OrderRepository {
     // ---------------------------------------------------------------------------------------------------------------
 
     private PedidoEntity insert(Order order) {
-        Long quotationId = null;
-        if (order.kind() == OrderKind.PERSONALIZADO) {
+        Long quotationId = order.quotationId();
+        if (quotationId == null && order.kind() == OrderKind.PERSONALIZADO) {
+            // registered directly after the external payment: keep the agreed price as an accepted quotation
             OrderLine line = order.lines().get(0);
-            CotizacionEntity quotation =
-                    new CotizacionEntity(order.customerId(), line.title(), line.unitPrice(), line.quantity(), order.createdAt());
+            CotizacionEntity quotation = new CotizacionEntity(
+                    order.customerId(),
+                    line.title(),
+                    line.unitPrice(),
+                    "ACEPTADA",
+                    order.createdAt(),
+                    null,
+                    order.registeredBy());
             em.persist(quotation);
             quotationId = quotation.getId();
         }
@@ -245,7 +277,8 @@ public class JpaOrderRepositoryAdapter implements OrderRepository {
                 e.getRegisteredBy(),
                 history,
                 e.getCheckoutId(),
-                e.getPaymentReference());
+                e.getPaymentReference(),
+                e.getQuotationId());
     }
 
     private Predicate[] predicates(CriteriaBuilder cb, Root<PedidoEntity> root, OrderSearchCriteria c) {

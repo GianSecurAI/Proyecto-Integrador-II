@@ -1,6 +1,7 @@
 package com.armakers3d.auth.controller;
 
 import com.armakers3d.auth.domain.AuthenticatedSession;
+import com.armakers3d.auth.domain.CodigoOtp;
 import com.armakers3d.auth.dto.OtpRequestDto;
 import com.armakers3d.auth.dto.OtpRequestResponseDto;
 import com.armakers3d.auth.dto.OtpVerifyDto;
@@ -61,7 +62,9 @@ public class OtpAuthController {
             description = "The email already reached its request limit for the current throttling window.",
             content = @Content(schema = @Schema(implementation = ApiError.class)))
     public OtpRequestResponseDto requestOtp(@Valid @RequestBody OtpRequestDto request) {
-        otpService.requestOtp(request.email());
+        otpService.requestOtp(
+                request.email(),
+                CodigoOtp.RegistrationProfile.ofNullable(request.firstName(), request.lastName(), request.phone()));
         return OtpRequestResponseDto.generic();
     }
 

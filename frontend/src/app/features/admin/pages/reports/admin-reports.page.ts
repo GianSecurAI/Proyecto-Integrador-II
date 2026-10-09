@@ -20,8 +20,10 @@ import { AdminSummaryCardComponent } from '../../components/admin-summary-card/a
 import {
   IncidentReportDto,
   OrderReportDto,
+  QuotationReportDto,
   REPORT_MAX_DAYS,
 } from '../../models/admin-report.model';
+import { describeQuotationStatus } from '../../models/admin-quotation.model';
 import { AdminReportsService } from '../../services/admin-reports.service';
 
 type LoadStatus = 'idle' | 'loading' | 'loaded' | 'error';
@@ -74,6 +76,7 @@ export class AdminReportsPage {
   readonly status = signal<LoadStatus>('idle');
   readonly orderReport = signal<OrderReportDto | null>(null);
   readonly incidentReport = signal<IncidentReportDto | null>(null);
+  readonly quotationReport = signal<QuotationReportDto | null>(null);
   readonly errorMessage = signal<string | null>(null);
 
   readonly startDate = signal(limaDay(new Date(Date.now() - (DEFAULT_RANGE_DAYS - 1) * DAY_MS)));
@@ -110,6 +113,14 @@ export class AdminReportsPage {
       key: row.status,
       count: row.count,
       ...describeIncidentStatus(row.status),
+    })),
+  );
+  readonly quotationRows = computed(() =>
+    (this.quotationReport()?.byStatus ?? []).map((row) => ({
+      key: row.status,
+      count: row.count,
+      amount: row.amount,
+      ...describeQuotationStatus(row.status),
     })),
   );
   readonly incidentPriorityRows = computed(() =>
@@ -166,10 +177,12 @@ export class AdminReportsPage {
         this.endDate(),
         incidentStatus === 'todos' ? null : incidentStatus,
       ),
+      this.reports.quotations(this.startDate(), this.endDate()),
     ]).subscribe({
-      next: ([orders, incidents]) => {
+      next: ([orders, incidents, quotations]) => {
         this.orderReport.set(orders);
         this.incidentReport.set(incidents);
+        this.quotationReport.set(quotations);
         this.status.set('loaded');
       },
       error: (err: unknown) => {
