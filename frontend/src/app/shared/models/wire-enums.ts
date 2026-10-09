@@ -25,11 +25,18 @@ export function describeRole(role: Role): Described {
 }
 
 // ---- Product category (backend `ProductCategory`) ----
-export type ProductCategory = 'LLAVERO' | 'PEGATINAS';
-export const PRODUCT_CATEGORIES: readonly ProductCategory[] = ['LLAVERO', 'PEGATINAS'];
+export type ProductCategory = 'LLAVERO' | 'PEGATINAS' | 'FIGURA' | 'DECORACION';
+export const PRODUCT_CATEGORIES: readonly ProductCategory[] = [
+  'LLAVERO',
+  'PEGATINAS',
+  'FIGURA',
+  'DECORACION',
+];
 const CATEGORY_LABELS: Record<ProductCategory, string> = {
   LLAVERO: 'Llavero',
   PEGATINAS: 'Pegatinas',
+  FIGURA: 'Figura',
+  DECORACION: 'Decoración',
 };
 export function categoryLabel(category: ProductCategory): string {
   return CATEGORY_LABELS[category] ?? category;

@@ -51,6 +51,9 @@ public class ProductEntity {
     @Column(name = "texto", nullable = false, length = 200)
     private List<String> characteristics = new ArrayList<>();
 
+    @Column(name = "imagen_url", length = 500)
+    private String imageUrl;
+
     @Column(name = "estado", nullable = false)
     private boolean available;
 
@@ -73,7 +76,8 @@ public class ProductEntity {
             List<String> characteristics,
             boolean available,
             Instant createdAt,
-            Instant updatedAt) {
+            Instant updatedAt,
+            String imageUrl) {
         this.id = id;
         this.title = title;
         this.category = category;
@@ -84,6 +88,7 @@ public class ProductEntity {
         this.available = available;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.imageUrl = imageUrl;
     }
 
     Long getId() {
@@ -112,6 +117,10 @@ public class ProductEntity {
 
     List<String> getCharacteristics() {
         return characteristics;
+    }
+
+    String getImageUrl() {
+        return imageUrl;
     }
 
     boolean isAvailable() {

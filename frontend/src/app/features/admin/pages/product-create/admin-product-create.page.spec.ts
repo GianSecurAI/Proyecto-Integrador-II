@@ -44,7 +44,7 @@ describe('AdminProductCreatePage (POST /api/admin/products)', () => {
   }
 
   it('offers only the backend categories and no discount / personalizable fields', () => {
-    expect(form().categories).toEqual(['LLAVERO', 'PEGATINAS']);
+    expect(form().categories).toEqual(['LLAVERO', 'PEGATINAS', 'FIGURA', 'DECORACION']);
     const text: string = fixture.nativeElement.textContent;
     expect(text).not.toContain('Personalizable');
     expect(text).not.toContain('antes de descuento');

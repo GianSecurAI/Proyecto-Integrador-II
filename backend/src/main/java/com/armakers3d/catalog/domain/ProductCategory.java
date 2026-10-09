@@ -7,5 +7,7 @@ package com.armakers3d.catalog.domain;
  */
 public enum ProductCategory {
     LLAVERO,
-    PEGATINAS
+    PEGATINAS,
+    FIGURA,
+    DECORACION
 }
