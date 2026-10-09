@@ -3,6 +3,7 @@
 !/.gitignore
 !/backend/
 !/frontend/
+!/README.md
 
 # Local workspace configuration and tooling.
 **/.agents/
@@ -47,3 +48,4 @@ application-local.yml
 .DS_Store
 Thumbs.db
 *.swp
+
